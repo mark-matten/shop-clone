@@ -19,7 +19,7 @@ export default function SignInPage() {
     try {
       await signIn.create({
         strategy: "phone_code",
-        phoneNumber,
+        identifier: phoneNumber,
       });
       setPendingVerification(true);
     } catch (err) {

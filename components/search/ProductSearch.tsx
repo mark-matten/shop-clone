@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { SearchBar } from "./SearchBar";
 import { ProductCard } from "./ProductCard";
+import { ProductGridSkeleton } from "./ProductCardSkeleton";
 import { SearchFilters } from "./SearchFilters";
 import { FilterSidebar, FilterState } from "./FilterSidebar";
 import { mockSearch } from "@/lib/mockData";
@@ -86,7 +87,11 @@ export function ProductSearch() {
       // Simulate network delay
       await new Promise((resolve) => setTimeout(resolve, 500));
       const result = mockSearch(query);
-      setSearchResult(result as SearchResult);
+      setSearchResult({
+        products: result.products as Product[],
+        filter: { query, ...result.filter } as SearchFilter,
+        totalResults: result.totalResults,
+      });
     } catch (err) {
       console.error("Search error:", err);
       setError("Failed to search products. Please try again.");
@@ -111,7 +116,17 @@ export function ProductSearch() {
         </div>
       )}
 
-      {searchResult && (
+      {isLoading && hasSearched && (
+        <div className="mt-8">
+          <div className="mb-6 flex items-center gap-3">
+            <div className="h-10 w-24 animate-pulse rounded-lg bg-zinc-200 dark:bg-zinc-700" />
+            <div className="h-5 w-32 animate-pulse rounded bg-zinc-200 dark:bg-zinc-700" />
+          </div>
+          <ProductGridSkeleton count={6} />
+        </div>
+      )}
+
+      {!isLoading && searchResult && (
         <div className="mt-8">
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">

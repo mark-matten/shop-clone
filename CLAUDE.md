@@ -26,7 +26,17 @@ Retail brands + marketplaces (eBay, Poshmark, TheRealReal).
 - `/` - Home with product search
 - `/profile` - User profile, size preferences, tracked items
 - `/product/[id]` - Product detail with price history chart
+- `/compare` - Side-by-side product comparison
+- `/favorites` - User's saved/favorited items
 - `/sign-in` - SMS OTP authentication
+
+## Components
+- `components/layout/Header` - Navigation with mobile menu, notifications, user dropdown
+- `components/search/ProductSearch` - Main search with filters and skeleton loading
+- `components/search/ProductCard` - Product card with track/favorite buttons
+- `components/search/FilterSidebar` - Advanced filter panel
+- `components/comparison/ProductComparison` - Product comparison table
+- `components/ui/Skeleton` - Loading skeleton components
 
 ## Convex Tables
 - `users` - clerkId, phoneNumber, preferences

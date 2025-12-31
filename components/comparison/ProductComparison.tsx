@@ -1,11 +1,23 @@
 "use client";
 
-import { useQuery } from "convex/react";
-import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+interface Product {
+  _id: string;
+  name: string;
+  description: string;
+  brand: string;
+  price: number;
+  material?: string;
+  size?: string;
+  category: string;
+  gender?: "men" | "women" | "unisex";
+  condition: "new" | "used" | "like_new";
+  sourceUrl: string;
+  sourcePlatform: string;
+  imageUrl?: string;
+}
 
 interface ProductComparisonProps {
-  productIds: [Id<"products">, Id<"products">, Id<"products">];
+  products: (Product | null)[];
 }
 
 const conditionLabels = {
@@ -14,23 +26,8 @@ const conditionLabels = {
   like_new: "Like New",
 };
 
-export function ProductComparison({ productIds }: ProductComparisonProps) {
-  const product1 = useQuery(api.products.getProduct, { id: productIds[0] });
-  const product2 = useQuery(api.products.getProduct, { id: productIds[1] });
-  const product3 = useQuery(api.products.getProduct, { id: productIds[2] });
-
-  const products = [product1, product2, product3];
-  const isLoading = products.some((p) => p === undefined);
-
-  if (isLoading) {
-    return (
-      <div className="animate-pulse">
-        <div className="h-96 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
-      </div>
-    );
-  }
-
-  const validProducts = products.filter((p) => p !== null);
+export function ProductComparison({ products }: ProductComparisonProps) {
+  const validProducts = products.filter((p): p is Product => p !== null);
 
   if (validProducts.length === 0) {
     return (
@@ -43,7 +40,7 @@ export function ProductComparison({ productIds }: ProductComparisonProps) {
   }
 
   // Find lowest price for highlighting
-  const prices = validProducts.map((p) => p?.price ?? Infinity);
+  const prices = validProducts.map((p) => p.price);
   const lowestPrice = Math.min(...prices);
 
   const comparisonRows = [
@@ -59,7 +56,10 @@ export function ProductComparison({ productIds }: ProductComparisonProps) {
   return (
     <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
       {/* Header with product images and names */}
-      <div className="grid grid-cols-4 border-b border-zinc-200 dark:border-zinc-800">
+      <div
+        className="grid border-b border-zinc-200 dark:border-zinc-800"
+        style={{ gridTemplateColumns: `1fr repeat(${products.length}, 1fr)` }}
+      >
         <div className="bg-zinc-50 p-4 dark:bg-zinc-800/50">
           <span className="text-sm font-medium text-zinc-500 dark:text-zinc-400">
             Compare
@@ -67,7 +67,7 @@ export function ProductComparison({ productIds }: ProductComparisonProps) {
         </div>
         {products.map((product, index) => (
           <div
-            key={productIds[index]}
+            key={product?._id || index}
             className="border-l border-zinc-200 p-4 dark:border-zinc-800"
           >
             {product ? (
@@ -114,11 +114,12 @@ export function ProductComparison({ productIds }: ProductComparisonProps) {
       {comparisonRows.map((row, rowIndex) => (
         <div
           key={row.key}
-          className={`grid grid-cols-4 ${
+          className={`grid ${
             rowIndex < comparisonRows.length - 1
               ? "border-b border-zinc-200 dark:border-zinc-800"
               : ""
           }`}
+          style={{ gridTemplateColumns: `1fr repeat(${products.length}, 1fr)` }}
         >
           <div className="bg-zinc-50 p-4 dark:bg-zinc-800/50">
             <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -142,7 +143,7 @@ export function ProductComparison({ productIds }: ProductComparisonProps) {
 
             return (
               <div
-                key={productIds[index]}
+                key={product?._id || index}
                 className={`border-l border-zinc-200 p-4 dark:border-zinc-800 ${
                   isLowestPrice
                     ? "bg-green-50 dark:bg-green-900/20"
@@ -168,11 +169,14 @@ export function ProductComparison({ productIds }: ProductComparisonProps) {
       ))}
 
       {/* Action buttons */}
-      <div className="grid grid-cols-4 border-t border-zinc-200 dark:border-zinc-800">
+      <div
+        className="grid border-t border-zinc-200 dark:border-zinc-800"
+        style={{ gridTemplateColumns: `1fr repeat(${products.length}, 1fr)` }}
+      >
         <div className="bg-zinc-50 p-4 dark:bg-zinc-800/50" />
         {products.map((product, index) => (
           <div
-            key={productIds[index]}
+            key={product?._id || index}
             className="border-l border-zinc-200 p-4 dark:border-zinc-800"
           >
             {product && (
