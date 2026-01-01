@@ -9,11 +9,104 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
 
 const sizeOptions = {
-  shoeSize: ["5", "5.5", "6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12"],
-  topSize: ["XS", "S", "M", "L", "XL", "XXL"],
-  bottomSize: ["24", "25", "26", "27", "28", "29", "30", "31", "32", "33", "34", "36", "38", "40"],
-  dressSize: ["0", "2", "4", "6", "8", "10", "12", "14", "16"],
+  women: {
+    shoe: ["5", "5.5", "6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11"],
+    top: ["XXS", "XS", "S", "M", "L", "XL", "XXL"],
+    bottom: ["00", "0", "2", "4", "6", "8", "10", "12", "14", "16"],
+    dress: ["00", "0", "2", "4", "6", "8", "10", "12", "14", "16"],
+  },
+  men: {
+    shoe: ["7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12", "12.5", "13", "14"],
+    top: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
+    bottom: ["28", "29", "30", "31", "32", "33", "34", "36", "38", "40", "42"],
+  },
 };
+
+interface Preferences {
+  shopsMen: boolean;
+  shopsWomen: boolean;
+  // Women's size ranges
+  womenShoeSizeMin: string;
+  womenShoeSizeMax: string;
+  womenTopSizeMin: string;
+  womenTopSizeMax: string;
+  womenBottomSizeMin: string;
+  womenBottomSizeMax: string;
+  womenDressSizeMin: string;
+  womenDressSizeMax: string;
+  // Men's size ranges
+  menShoeSizeMin: string;
+  menShoeSizeMax: string;
+  menTopSizeMin: string;
+  menTopSizeMax: string;
+  menBottomSizeMin: string;
+  menBottomSizeMax: string;
+}
+
+const defaultPreferences: Preferences = {
+  shopsMen: false,
+  shopsWomen: false,
+  womenShoeSizeMin: "",
+  womenShoeSizeMax: "",
+  womenTopSizeMin: "",
+  womenTopSizeMax: "",
+  womenBottomSizeMin: "",
+  womenBottomSizeMax: "",
+  womenDressSizeMin: "",
+  womenDressSizeMax: "",
+  menShoeSizeMin: "",
+  menShoeSizeMax: "",
+  menTopSizeMin: "",
+  menTopSizeMax: "",
+  menBottomSizeMin: "",
+  menBottomSizeMax: "",
+};
+
+interface SizeRangeSelectProps {
+  label: string;
+  options: string[];
+  minValue: string;
+  maxValue: string;
+  onMinChange: (value: string) => void;
+  onMaxChange: (value: string) => void;
+}
+
+function SizeRangeSelect({ label, options, minValue, maxValue, onMinChange, onMaxChange }: SizeRangeSelectProps) {
+  return (
+    <div>
+      <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <select
+          value={minValue}
+          onChange={(e) => onMinChange(e.target.value)}
+          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+        >
+          <option value="">Min</option>
+          {options.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
+        <span className="text-zinc-400 text-sm">to</span>
+        <select
+          value={maxValue}
+          onChange={(e) => onMaxChange(e.target.value)}
+          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+        >
+          <option value="">Max</option>
+          {options.map((size) => (
+            <option key={size} value={size}>
+              {size}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
+}
 
 export default function ProfilePage() {
   const { user: clerkUser, isLoaded } = useUser();
@@ -29,29 +122,55 @@ export default function ProfilePage() {
   const updatePreferences = useMutation(api.users.updateUserPreferences);
   const untrackProduct = useMutation(api.tracking.untrackProduct);
 
-  const [preferences, setPreferences] = useState({
-    shoeSize: "",
-    topSize: "",
-    bottomSize: "",
-    dressSize: "",
-  });
+  const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
+  const [validationError, setValidationError] = useState<string | null>(null);
 
   // Update preferences when user data loads
   useEffect(() => {
     if (convexUser?.preferences) {
+      const prefs = convexUser.preferences;
       setPreferences({
-        shoeSize: convexUser.preferences.shoeSize || "",
-        topSize: convexUser.preferences.topSize || "",
-        bottomSize: convexUser.preferences.bottomSize || "",
-        dressSize: convexUser.preferences.dressSize || "",
+        shopsMen: prefs.shopsMen ?? false,
+        shopsWomen: prefs.shopsWomen ?? false,
+        womenShoeSizeMin: prefs.womenShoeSizeMin ?? "",
+        womenShoeSizeMax: prefs.womenShoeSizeMax ?? "",
+        womenTopSizeMin: prefs.womenTopSizeMin ?? "",
+        womenTopSizeMax: prefs.womenTopSizeMax ?? "",
+        womenBottomSizeMin: prefs.womenBottomSizeMin ?? "",
+        womenBottomSizeMax: prefs.womenBottomSizeMax ?? "",
+        womenDressSizeMin: prefs.womenDressSizeMin ?? "",
+        womenDressSizeMax: prefs.womenDressSizeMax ?? "",
+        menShoeSizeMin: prefs.menShoeSizeMin ?? "",
+        menShoeSizeMax: prefs.menShoeSizeMax ?? "",
+        menTopSizeMin: prefs.menTopSizeMin ?? "",
+        menTopSizeMax: prefs.menTopSizeMax ?? "",
+        menBottomSizeMin: prefs.menBottomSizeMin ?? "",
+        menBottomSizeMax: prefs.menBottomSizeMax ?? "",
       });
     }
   }, [convexUser]);
 
+  const handleGenderToggle = (gender: "shopsMen" | "shopsWomen") => {
+    setPreferences((prev) => ({ ...prev, [gender]: !prev[gender] }));
+    setValidationError(null);
+  };
+
+  const updatePreference = (key: keyof Preferences, value: string | boolean) => {
+    setPreferences((prev) => ({ ...prev, [key]: value }));
+  };
+
   const handleSave = async () => {
     if (!clerkUser?.id) return;
+
+    // Validate at least one gender is selected
+    if (!preferences.shopsMen && !preferences.shopsWomen) {
+      setValidationError("Please select at least one: Men's or Women's clothing");
+      return;
+    }
+
+    setValidationError(null);
     setIsSaving(true);
     try {
       await updatePreferences({
@@ -125,50 +244,133 @@ export default function ProfilePage() {
           {convexUser?.phoneNumber || clerkUser.primaryPhoneNumber?.phoneNumber || "No phone number"}
         </p>
 
-        {/* Size Preferences */}
+        {/* Shopping Preferences */}
         <section className="mt-8">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-            Size Preferences
+            Shopping Preferences
           </h2>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Set your sizes to get personalized recommendations
+            Select which clothing you shop for and set your size ranges
           </p>
 
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {Object.entries(sizeOptions).map(([key, options]) => (
-              <div key={key}>
-                <label
-                  htmlFor={key}
-                  className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
-                >
-                  {key === "shoeSize"
-                    ? "Shoe Size"
-                    : key === "topSize"
-                    ? "Top Size"
-                    : key === "bottomSize"
-                    ? "Bottom Size"
-                    : "Dress Size"}
-                </label>
-                <select
-                  id={key}
-                  value={preferences[key as keyof typeof preferences] || ""}
-                  onChange={(e) =>
-                    setPreferences({ ...preferences, [key]: e.target.value })
-                  }
-                  className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                >
-                  <option value="">Select...</option>
-                  {options.map((size) => (
-                    <option key={size} value={size}>
-                      {size}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ))}
+          {/* Gender Selection */}
+          <div className="mt-4">
+            <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
+              I shop for: <span className="text-red-500">*</span>
+            </p>
+            <div className="flex gap-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={preferences.shopsWomen}
+                  onChange={() => handleGenderToggle("shopsWomen")}
+                  className="h-5 w-5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                />
+                <span className="text-zinc-900 dark:text-white font-medium">Women&apos;s Clothing</span>
+              </label>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={preferences.shopsMen}
+                  onChange={() => handleGenderToggle("shopsMen")}
+                  className="h-5 w-5 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                />
+                <span className="text-zinc-900 dark:text-white font-medium">Men&apos;s Clothing</span>
+              </label>
+            </div>
+            {validationError && (
+              <p className="mt-2 text-sm text-red-600 dark:text-red-400">{validationError}</p>
+            )}
           </div>
 
-          <div className="mt-4 flex items-center gap-4">
+          {/* Women's Sizes */}
+          {preferences.shopsWomen && (
+            <div className="mt-6 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+              <h3 className="font-medium text-zinc-900 dark:text-white mb-4">
+                Women&apos;s Size Ranges
+              </h3>
+              <div className="grid gap-6 sm:grid-cols-2">
+                <SizeRangeSelect
+                  label="Shoe Size"
+                  options={sizeOptions.women.shoe}
+                  minValue={preferences.womenShoeSizeMin}
+                  maxValue={preferences.womenShoeSizeMax}
+                  onMinChange={(v) => updatePreference("womenShoeSizeMin", v)}
+                  onMaxChange={(v) => updatePreference("womenShoeSizeMax", v)}
+                />
+                <SizeRangeSelect
+                  label="Top Size"
+                  options={sizeOptions.women.top}
+                  minValue={preferences.womenTopSizeMin}
+                  maxValue={preferences.womenTopSizeMax}
+                  onMinChange={(v) => updatePreference("womenTopSizeMin", v)}
+                  onMaxChange={(v) => updatePreference("womenTopSizeMax", v)}
+                />
+                <SizeRangeSelect
+                  label="Bottom Size"
+                  options={sizeOptions.women.bottom}
+                  minValue={preferences.womenBottomSizeMin}
+                  maxValue={preferences.womenBottomSizeMax}
+                  onMinChange={(v) => updatePreference("womenBottomSizeMin", v)}
+                  onMaxChange={(v) => updatePreference("womenBottomSizeMax", v)}
+                />
+                <SizeRangeSelect
+                  label="Dress Size"
+                  options={sizeOptions.women.dress}
+                  minValue={preferences.womenDressSizeMin}
+                  maxValue={preferences.womenDressSizeMax}
+                  onMinChange={(v) => updatePreference("womenDressSizeMin", v)}
+                  onMaxChange={(v) => updatePreference("womenDressSizeMax", v)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Men's Sizes */}
+          {preferences.shopsMen && (
+            <div className="mt-4 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-800/50">
+              <h3 className="font-medium text-zinc-900 dark:text-white mb-4">
+                Men&apos;s Size Ranges
+              </h3>
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                <SizeRangeSelect
+                  label="Shoe Size"
+                  options={sizeOptions.men.shoe}
+                  minValue={preferences.menShoeSizeMin}
+                  maxValue={preferences.menShoeSizeMax}
+                  onMinChange={(v) => updatePreference("menShoeSizeMin", v)}
+                  onMaxChange={(v) => updatePreference("menShoeSizeMax", v)}
+                />
+                <SizeRangeSelect
+                  label="Top Size"
+                  options={sizeOptions.men.top}
+                  minValue={preferences.menTopSizeMin}
+                  maxValue={preferences.menTopSizeMax}
+                  onMinChange={(v) => updatePreference("menTopSizeMin", v)}
+                  onMaxChange={(v) => updatePreference("menTopSizeMax", v)}
+                />
+                <SizeRangeSelect
+                  label="Bottom/Waist Size"
+                  options={sizeOptions.men.bottom}
+                  minValue={preferences.menBottomSizeMin}
+                  maxValue={preferences.menBottomSizeMax}
+                  onMinChange={(v) => updatePreference("menBottomSizeMin", v)}
+                  onMaxChange={(v) => updatePreference("menBottomSizeMax", v)}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* No selection message */}
+          {!preferences.shopsMen && !preferences.shopsWomen && (
+            <div className="mt-4 rounded-lg border border-dashed border-zinc-300 bg-zinc-50 p-6 text-center dark:border-zinc-700 dark:bg-zinc-800/30">
+              <p className="text-zinc-500 dark:text-zinc-400">
+                Select Men&apos;s or Women&apos;s clothing above to set your size ranges
+              </p>
+            </div>
+          )}
+
+          <div className="mt-6 flex items-center gap-4">
             <button
               onClick={handleSave}
               disabled={isSaving}
@@ -177,7 +379,7 @@ export default function ProfilePage() {
               {isSaving ? "Saving..." : "Save Preferences"}
             </button>
             {saveMessage && (
-              <span className="text-sm text-green-600 dark:text-green-400">
+              <span className={`text-sm ${saveMessage.includes("Failed") ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
                 {saveMessage}
               </span>
             )}
@@ -200,7 +402,7 @@ export default function ProfilePage() {
           {items.length === 0 ? (
             <div className="mt-4 rounded-xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-zinc-500 dark:text-zinc-400">No tracked items yet</p>
-              <p className="mt-1 text-sm text-zinc-400">Click "Track Price" on products to start tracking</p>
+              <p className="mt-1 text-sm text-zinc-400">Click &quot;Track Price&quot; on products to start tracking</p>
             </div>
           ) : (
             <div className="mt-4 space-y-4">

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useAction } from "convex/react";
+import { useAction, useQuery } from "convex/react";
+import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { SearchBar } from "./SearchBar";
 import { ProductCard } from "./ProductCard";
@@ -43,6 +44,24 @@ interface SearchResult {
   totalResults: number;
 }
 
+// Size ordering for comparison
+const SHOE_SIZES = ["5", "5.5", "6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12", "12.5", "13", "14", "15"];
+const CLOTHING_SIZES = ["XXS", "XS", "S", "M", "L", "XL", "XXL", "3XL", "4XL"];
+const NUMERIC_SIZES = ["0", "2", "4", "6", "8", "10", "12", "14", "16", "18", "20"];
+
+function isSizeInRange(productSize: string, minSize: string | undefined, maxSize: string | undefined, sizeScale: string[]): boolean {
+  if (!minSize && !maxSize) return true;
+
+  const normalizedProductSize = productSize.toUpperCase().trim();
+  const productIndex = sizeScale.findIndex(s => normalizedProductSize.includes(s.toUpperCase()));
+  if (productIndex === -1) return true; // Can't determine, include it
+
+  const minIndex = minSize ? sizeScale.findIndex(s => s.toUpperCase() === minSize.toUpperCase()) : -1;
+  const maxIndex = maxSize ? sizeScale.findIndex(s => s.toUpperCase() === maxSize.toUpperCase()) : sizeScale.length;
+
+  return productIndex >= (minIndex >= 0 ? minIndex : 0) && productIndex <= (maxIndex >= 0 ? maxIndex : sizeScale.length - 1);
+}
+
 export function ProductSearch() {
   const [isLoading, setIsLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
@@ -50,31 +69,88 @@ export function ProductSearch() {
   const [hasSearched, setHasSearched] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
   const [sidebarFilters, setSidebarFilters] = useState<FilterState | null>(null);
+  const [showMySizesOnly, setShowMySizesOnly] = useState(false);
+
+  const { user: clerkUser } = useUser();
+  const convexUser = useQuery(
+    api.users.getUserByClerkId,
+    clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
+  );
 
   const searchProducts = useAction(api.search.searchProducts);
 
   const applyFilters = (products: Product[], filters: FilterState | null): Product[] => {
-    if (!filters) return products;
+    let filtered = products;
 
-    return products.filter((product) => {
-      // Price filter
-      if (filters.priceMin && product.price < parseFloat(filters.priceMin)) return false;
-      if (filters.priceMax && product.price > parseFloat(filters.priceMax)) return false;
+    // Apply sidebar filters
+    if (filters) {
+      filtered = filtered.filter((product) => {
+        // Price filter
+        if (filters.priceMin && product.price < parseFloat(filters.priceMin)) return false;
+        if (filters.priceMax && product.price > parseFloat(filters.priceMax)) return false;
 
-      // Brand filter
-      if (filters.brands.length > 0 && !filters.brands.includes(product.brand)) return false;
+        // Brand filter
+        if (filters.brands.length > 0 && !filters.brands.includes(product.brand)) return false;
 
-      // Condition filter
-      if (filters.conditions.length > 0 && !filters.conditions.includes(product.condition)) return false;
+        // Condition filter
+        if (filters.conditions.length > 0 && !filters.conditions.includes(product.condition)) return false;
 
-      // Size filter
-      if (filters.sizes.length > 0 && product.size && !filters.sizes.includes(product.size)) return false;
+        // Size filter
+        if (filters.sizes.length > 0 && product.size && !filters.sizes.includes(product.size)) return false;
 
-      // Platform filter
-      if (filters.platforms.length > 0 && !filters.platforms.includes(product.sourcePlatform)) return false;
+        // Platform filter
+        if (filters.platforms.length > 0 && !filters.platforms.includes(product.sourcePlatform)) return false;
 
-      return true;
-    });
+        return true;
+      });
+    }
+
+    // Apply "My sizes only" filter
+    if (showMySizesOnly && convexUser?.preferences && products.length > 0) {
+      const prefs = convexUser.preferences;
+      filtered = filtered.filter((product) => {
+        if (!product.size) return true; // No size info, include it
+
+        const category = product.category.toLowerCase();
+        const gender = product.gender;
+        const size = product.size;
+
+        // Determine which size preferences to use based on product gender/category
+        if (gender === "women" || (!gender && prefs.shopsWomen)) {
+          if (category.includes("shoe") || category.includes("boot") || category.includes("sneaker") || category.includes("sandal") || category.includes("heel") || category.includes("loafer")) {
+            return isSizeInRange(size, prefs.womenShoeSizeMin, prefs.womenShoeSizeMax, SHOE_SIZES);
+          }
+          if (category.includes("dress")) {
+            return isSizeInRange(size, prefs.womenDressSizeMin, prefs.womenDressSizeMax, NUMERIC_SIZES) ||
+                   isSizeInRange(size, prefs.womenDressSizeMin, prefs.womenDressSizeMax, CLOTHING_SIZES);
+          }
+          if (category.includes("top") || category.includes("shirt") || category.includes("blouse") || category.includes("sweater")) {
+            return isSizeInRange(size, prefs.womenTopSizeMin, prefs.womenTopSizeMax, CLOTHING_SIZES);
+          }
+          if (category.includes("pant") || category.includes("jean") || category.includes("short") || category.includes("skirt")) {
+            return isSizeInRange(size, prefs.womenBottomSizeMin, prefs.womenBottomSizeMax, NUMERIC_SIZES) ||
+                   isSizeInRange(size, prefs.womenBottomSizeMin, prefs.womenBottomSizeMax, CLOTHING_SIZES);
+          }
+        }
+
+        if (gender === "men" || (!gender && prefs.shopsMen)) {
+          if (category.includes("shoe") || category.includes("boot") || category.includes("sneaker")) {
+            return isSizeInRange(size, prefs.menShoeSizeMin, prefs.menShoeSizeMax, SHOE_SIZES);
+          }
+          if (category.includes("top") || category.includes("shirt") || category.includes("sweater")) {
+            return isSizeInRange(size, prefs.menTopSizeMin, prefs.menTopSizeMax, CLOTHING_SIZES);
+          }
+          if (category.includes("pant") || category.includes("jean") || category.includes("short")) {
+            return isSizeInRange(size, prefs.menBottomSizeMin, prefs.menBottomSizeMax, NUMERIC_SIZES) ||
+                   isSizeInRange(size, prefs.menBottomSizeMin, prefs.menBottomSizeMax, CLOTHING_SIZES);
+          }
+        }
+
+        return true; // No matching category, include it
+      });
+    }
+
+    return filtered;
   };
 
   const handleFilterChange = (filters: FilterState) => {
@@ -140,6 +216,17 @@ export function ProductSearch() {
                 </svg>
                 Filters
               </button>
+              {clerkUser && convexUser?.preferences && (
+                <label className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={showMySizesOnly}
+                    onChange={(e) => setShowMySizesOnly(e.target.checked)}
+                    className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                  />
+                  <span className="text-zinc-600 dark:text-zinc-400">My sizes only</span>
+                </label>
+              )}
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 Found{" "}
                 <span className="font-medium text-zinc-900 dark:text-white">

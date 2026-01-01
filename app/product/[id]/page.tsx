@@ -1,9 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
+import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
@@ -26,15 +27,46 @@ function generatePriceHistory(basePrice: number) {
 export default function ProductDetailPage() {
   const params = useParams();
   const productId = params.id as string;
+  const { user: clerkUser } = useUser();
 
   // Fetch product from Convex
   const product = useQuery(api.products.getProduct, {
     id: productId as Id<"products">,
   });
 
-  const [isTracking, setIsTracking] = useState(false);
+  // Get the Convex user
+  const convexUser = useQuery(
+    api.users.getUserByClerkId,
+    clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
+  );
+
+  // Check if already tracking this product
+  const trackedItems = useQuery(
+    api.tracking.getTrackedItems,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
+
+  const trackProduct = useMutation(api.tracking.trackProduct);
+  const untrackProduct = useMutation(api.tracking.untrackProduct);
+
   const [targetPrice, setTargetPrice] = useState("");
   const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
+
+  // Check if this product is being tracked
+  const trackedItem = trackedItems?.find(
+    (item) => item.productId === productId
+  );
+  const isTracking = !!trackedItem;
+
+  // Set default target price only once when product first loads
+  useEffect(() => {
+    if (product && !hasInitializedPrice) {
+      setTargetPrice(Math.round(product.price * 0.85).toString());
+      setHasInitializedPrice(true);
+    }
+  }, [product, hasInitializedPrice]);
 
   // Generate price history only when product is loaded
   const priceHistory = useMemo(
@@ -48,9 +80,39 @@ export default function ProductDetailPage() {
     ? priceHistory.reduce((sum, p) => sum + p.price, 0) / priceHistory.length
     : 0;
 
-  const handleTrack = () => {
-    setIsTracking(true);
-    setShowTrackingModal(false);
+  const handleTrack = async () => {
+    if (!convexUser?._id) {
+      alert("Please sign in to track prices");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      await trackProduct({
+        userId: convexUser._id,
+        productId: productId as Id<"products">,
+        targetPrice: targetPrice ? parseFloat(targetPrice) : undefined,
+      });
+      setShowTrackingModal(false);
+    } catch (error) {
+      console.error("Failed to track product:", error);
+      alert("Failed to track product. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleUntrack = async () => {
+    if (!convexUser?._id) return;
+
+    try {
+      await untrackProduct({
+        userId: convexUser._id,
+        productId: productId as Id<"products">,
+      });
+    } catch (error) {
+      console.error("Failed to untrack product:", error);
+    }
   };
 
   const conditionLabels: Record<string, string> = {
@@ -106,11 +168,6 @@ export default function ProductDetailPage() {
         </main>
       </div>
     );
-  }
-
-  // Set default target price when product loads
-  if (targetPrice === "" && product) {
-    setTargetPrice(Math.round(product.price * 0.85).toString());
   }
 
   return (
@@ -211,13 +268,18 @@ export default function ProductDetailPage() {
               </a>
               {isTracking ? (
                 <button
-                  onClick={() => setIsTracking(false)}
+                  onClick={handleUntrack}
                   className="flex items-center gap-2 rounded-xl border border-green-600 px-6 py-3 font-medium text-green-600 transition-colors hover:bg-green-50 dark:border-green-500 dark:text-green-500 dark:hover:bg-green-950"
                 >
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                   </svg>
                   Tracking
+                  {trackedItem?.targetPrice && (
+                    <span className="text-sm opacity-75">
+                      (${trackedItem.targetPrice.toFixed(0)})
+                    </span>
+                  )}
                 </button>
               ) : (
                 <button
@@ -316,9 +378,9 @@ export default function ProductDetailPage() {
 
             {/* X-axis labels */}
             <div className="ml-12 mt-2 flex justify-between text-xs text-zinc-400">
-              <span>{priceHistory[0].date}</span>
-              <span>{priceHistory[Math.floor(priceHistory.length / 2)].date}</span>
-              <span>{priceHistory[priceHistory.length - 1].date}</span>
+              <span>{priceHistory[0]?.date}</span>
+              <span>{priceHistory[Math.floor(priceHistory.length / 2)]?.date}</span>
+              <span>{priceHistory[priceHistory.length - 1]?.date}</span>
             </div>
           </div>
         </section>
@@ -335,6 +397,12 @@ export default function ProductDetailPage() {
               Set a target price and we&apos;ll notify you when it drops.
             </p>
 
+            {!clerkUser && (
+              <div className="mt-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+                Please sign in to track prices.
+              </div>
+            )}
+
             <div className="mt-4">
               <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Target Price
@@ -342,14 +410,16 @@ export default function ProductDetailPage() {
               <div className="relative mt-1">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
                 <input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={targetPrice}
                   onChange={(e) => setTargetPrice(e.target.value)}
+                  placeholder="Enter target price"
                   className="block w-full rounded-lg border border-zinc-300 bg-white py-2 pl-8 pr-3 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
               </div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Current price: ${product.price.toFixed(2)}
+                Current price: ${product.price.toFixed(2)} | Leave empty to track any price drop
               </p>
             </div>
 
@@ -362,9 +432,10 @@ export default function ProductDetailPage() {
               </button>
               <button
                 onClick={handleTrack}
-                className="flex-1 rounded-lg bg-zinc-900 py-2 font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                disabled={isSaving || !clerkUser}
+                className="flex-1 rounded-lg bg-zinc-900 py-2 font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
               >
-                Start Tracking
+                {isSaving ? "Saving..." : "Start Tracking"}
               </button>
             </div>
           </div>

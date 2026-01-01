@@ -106,9 +106,9 @@ function parseBasic(searchText: string): SearchFilter {
   const query = searchText.toLowerCase();
   const filter: SearchFilter = { query: searchText };
 
-  // Gender detection
+  // Gender detection (including possessives like "men's" and "women's")
   if (query.includes("women") || query.includes("woman")) filter.gender = "women";
-  else if (query.includes("men") || query.includes("man")) filter.gender = "men";
+  else if (query.includes("men's") || query.includes("mens") || query.includes("men ") || query.includes("man")) filter.gender = "men";
 
   // Price detection
   const underMatch = query.match(/under \$?(\d+)/);
@@ -167,8 +167,12 @@ export const filterProducts = query({
         if (!hasMatch && queryWords.length > 0) return false;
       }
 
-      // Exact filters
-      if (args.gender && product.gender !== args.gender) return false;
+      // Gender filter: include unisex products in men's or women's searches
+      if (args.gender) {
+        if (args.gender === "men" && product.gender !== "men" && product.gender !== "unisex") return false;
+        if (args.gender === "women" && product.gender !== "women" && product.gender !== "unisex") return false;
+        if (args.gender === "unisex" && product.gender !== "unisex") return false;
+      }
       if (args.condition && product.condition !== args.condition) return false;
 
       // Partial match filters
@@ -296,7 +300,12 @@ export const filterProductsInternal = internalQuery({
         if (!hasMatch && queryWords.length > 0) return false;
       }
 
-      if (args.gender && product.gender !== args.gender) return false;
+      // Gender filter: include unisex products in men's or women's searches
+      if (args.gender) {
+        if (args.gender === "men" && product.gender !== "men" && product.gender !== "unisex") return false;
+        if (args.gender === "women" && product.gender !== "women" && product.gender !== "unisex") return false;
+        if (args.gender === "unisex" && product.gender !== "unisex") return false;
+      }
       if (args.condition && product.condition !== args.condition) return false;
       if (args.category && !product.category.toLowerCase().includes(args.category.toLowerCase())) return false;
       if (args.brand && !product.brand.toLowerCase().includes(args.brand.toLowerCase())) return false;

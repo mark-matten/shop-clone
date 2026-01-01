@@ -38,20 +38,41 @@ export const updateUserPreferences = mutation({
   args: {
     clerkId: v.string(),
     preferences: v.object({
-      shoeSize: v.optional(v.string()),
-      topSize: v.optional(v.string()),
-      bottomSize: v.optional(v.string()),
-      dressSize: v.optional(v.string()),
+      // Gender preferences
+      shopsMen: v.optional(v.boolean()),
+      shopsWomen: v.optional(v.boolean()),
+      // Women's size ranges
+      womenShoeSizeMin: v.optional(v.string()),
+      womenShoeSizeMax: v.optional(v.string()),
+      womenTopSizeMin: v.optional(v.string()),
+      womenTopSizeMax: v.optional(v.string()),
+      womenBottomSizeMin: v.optional(v.string()),
+      womenBottomSizeMax: v.optional(v.string()),
+      womenDressSizeMin: v.optional(v.string()),
+      womenDressSizeMax: v.optional(v.string()),
+      // Men's size ranges
+      menShoeSizeMin: v.optional(v.string()),
+      menShoeSizeMax: v.optional(v.string()),
+      menTopSizeMin: v.optional(v.string()),
+      menTopSizeMax: v.optional(v.string()),
+      menBottomSizeMin: v.optional(v.string()),
+      menBottomSizeMax: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
+    // Create user if they don't exist
     if (!user) {
-      throw new Error("User not found");
+      const userId = await ctx.db.insert("users", {
+        clerkId: args.clerkId,
+        phoneNumber: "",
+        preferences: args.preferences,
+      });
+      return userId;
     }
 
     return await ctx.db.patch(user._id, {

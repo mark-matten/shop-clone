@@ -41,7 +41,7 @@ async function fetchPoshmarkListings(
     const html = await response.text();
 
     // Extract JSON data from the page
-    const dataMatch = html.match(/__NEXT_DATA__.*?<\/script>/s);
+    const dataMatch = html.match(/__NEXT_DATA__[\s\S]*?<\/script>/);
     if (dataMatch) {
       const jsonStr = dataMatch[0].replace('__NEXT_DATA__" type="application/json">', '').replace('</script>', '');
       try {

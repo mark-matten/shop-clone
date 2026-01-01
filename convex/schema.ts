@@ -6,6 +6,33 @@ export default defineSchema({
     clerkId: v.string(),
     phoneNumber: v.string(),
     preferences: v.object({
+      // Gender preferences (at least one required)
+      shopsMen: v.optional(v.boolean()),
+      shopsWomen: v.optional(v.boolean()),
+      // Women's size ranges (min/max)
+      womenShoeSizeMin: v.optional(v.string()),
+      womenShoeSizeMax: v.optional(v.string()),
+      womenTopSizeMin: v.optional(v.string()),
+      womenTopSizeMax: v.optional(v.string()),
+      womenBottomSizeMin: v.optional(v.string()),
+      womenBottomSizeMax: v.optional(v.string()),
+      womenDressSizeMin: v.optional(v.string()),
+      womenDressSizeMax: v.optional(v.string()),
+      // Men's size ranges (min/max)
+      menShoeSizeMin: v.optional(v.string()),
+      menShoeSizeMax: v.optional(v.string()),
+      menTopSizeMin: v.optional(v.string()),
+      menTopSizeMax: v.optional(v.string()),
+      menBottomSizeMin: v.optional(v.string()),
+      menBottomSizeMax: v.optional(v.string()),
+      // Legacy fields (for backwards compatibility)
+      womenShoeSize: v.optional(v.string()),
+      womenTopSize: v.optional(v.string()),
+      womenBottomSize: v.optional(v.string()),
+      womenDressSize: v.optional(v.string()),
+      menShoeSize: v.optional(v.string()),
+      menTopSize: v.optional(v.string()),
+      menBottomSize: v.optional(v.string()),
       shoeSize: v.optional(v.string()),
       topSize: v.optional(v.string()),
       bottomSize: v.optional(v.string()),
