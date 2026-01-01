@@ -117,14 +117,14 @@ export default function ClosetPage() {
               My Closet
             </h1>
             <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-              {closetStats?.totalItems || 0} items worth ${closetStats?.totalValue?.toFixed(2) || "0.00"}
+              {closetStats?.totalItems || 0} items
             </p>
           </div>
         </div>
 
         {/* Stats Cards */}
         {closetStats && closetStats.totalItems > 0 && (
-          <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
             <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Total Items</p>
               <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
@@ -132,21 +132,9 @@ export default function ClosetPage() {
               </p>
             </div>
             <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Total Value</p>
-              <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
-                ${closetStats.totalValue.toFixed(2)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <p className="text-sm text-zinc-500 dark:text-zinc-400">Categories</p>
               <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
                 {Object.keys(closetStats.categories).length}
-              </p>
-            </div>
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Avg Price</p>
-              <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
-                ${closetStats.totalItems > 0 ? (closetStats.totalValue / closetStats.totalItems).toFixed(2) : "0.00"}
               </p>
             </div>
           </div>
