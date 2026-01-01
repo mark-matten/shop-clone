@@ -157,14 +157,22 @@ export const filterProducts = query({
     // Get all products (in production, you'd want proper indexing)
     let products = await ctx.db.query("products").collect();
 
+    // Words that are handled by specific filters and shouldn't require text matching
+    const genderWords = ["women", "womens", "women's", "men", "mens", "men's", "unisex"];
+
     // Apply filters
     products = products.filter((product) => {
       // Text search with synonym expansion
       if (args.query) {
         const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""}`.toLowerCase();
         const queryWords = expandQueryWithSynonyms(args.query);
-        const hasMatch = queryWords.some(word => productText.includes(word));
-        if (!hasMatch && queryWords.length > 0) return false;
+        // Filter out gender words from text search since they're handled by gender filter
+        const nonGenderWords = queryWords.filter(word => !genderWords.includes(word.toLowerCase()));
+        // Only require text match if there are non-gender search terms
+        if (nonGenderWords.length > 0) {
+          const hasMatch = nonGenderWords.some(word => productText.includes(word));
+          if (!hasMatch) return false;
+        }
       }
 
       // Gender filter: include unisex products in men's or women's searches
@@ -218,10 +226,12 @@ export const searchProducts = action({
       searchText: args.searchText,
     }) as SearchFilter;
 
-    // Step 2: Query products with ONLY the query text (not parsed filters)
-    // This allows client-side filter removal to show more products
+    // Step 2: Query products with query text and gender filter
+    // Gender is passed to backend since it's essential for "women's" or "men's" searches
+    // Other filters applied client-side to allow filter removal
     const products: any[] = await ctx.runQuery(internal.search.filterProductsInternal, {
       query: filter.query,
+      gender: filter.gender,
       limit,
     });
 
@@ -305,12 +315,20 @@ export const filterProductsInternal = internalQuery({
 
     let products = await ctx.db.query("products").collect();
 
+    // Words that are handled by specific filters and shouldn't require text matching
+    const genderWords = ["women", "womens", "women's", "men", "mens", "men's", "unisex"];
+
     products = products.filter((product) => {
       if (args.query) {
         const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""}`.toLowerCase();
         const queryWords = expandQueryWithSynonyms(args.query);
-        const hasMatch = queryWords.some(word => productText.includes(word));
-        if (!hasMatch && queryWords.length > 0) return false;
+        // Filter out gender words from text search since they're handled by gender filter
+        const nonGenderWords = queryWords.filter(word => !genderWords.includes(word.toLowerCase()));
+        // Only require text match if there are non-gender search terms
+        if (nonGenderWords.length > 0) {
+          const hasMatch = nonGenderWords.some(word => productText.includes(word));
+          if (!hasMatch) return false;
+        }
       }
 
       // Gender filter: include unisex products in men's or women's searches
