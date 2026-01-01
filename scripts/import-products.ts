@@ -1,0 +1,121 @@
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "../convex/_generated/api";
+import { scrapeAll, ScrapedProduct } from "./scrapers";
+
+// Load environment
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
+
+const CONVEX_URL = process.env.NEXT_PUBLIC_CONVEX_URL;
+
+if (!CONVEX_URL) {
+  console.error("Missing NEXT_PUBLIC_CONVEX_URL in .env.local");
+  process.exit(1);
+}
+
+const client = new ConvexHttpClient(CONVEX_URL);
+
+async function importProducts(products: ScrapedProduct[]): Promise<number> {
+  console.log(`\nImporting ${products.length} products to Convex...`);
+
+  let imported = 0;
+  let errors = 0;
+
+  // Import in batches to avoid rate limits
+  const batchSize = 10;
+
+  for (let i = 0; i < products.length; i += batchSize) {
+    const batch = products.slice(i, i + batchSize);
+
+    for (const product of batch) {
+      try {
+        await client.mutation(api.products.addProduct, {
+          name: product.name,
+          description: product.description,
+          brand: product.brand,
+          price: product.price,
+          material: product.material,
+          size: product.size,
+          category: product.category,
+          gender: product.gender,
+          condition: product.condition,
+          sourceUrl: product.sourceUrl,
+          sourcePlatform: product.sourcePlatform,
+          imageUrl: product.imageUrl,
+        });
+        imported++;
+      } catch (error) {
+        errors++;
+        console.error(`Failed to import "${product.name}":`, error);
+      }
+    }
+
+    // Progress update
+    console.log(`  Imported ${Math.min(i + batchSize, products.length)}/${products.length}`);
+
+    // Rate limiting
+    await new Promise((r) => setTimeout(r, 100));
+  }
+
+  console.log(`\nImport complete: ${imported} added, ${errors} errors`);
+  return imported;
+}
+
+async function main() {
+  const args = process.argv.slice(2);
+
+  // Parse command line options
+  const sources: ("poshmark" | "therealreal" | "brands")[] = [];
+  let maxProducts = 50;
+
+  for (const arg of args) {
+    if (arg === "--poshmark") sources.push("poshmark");
+    if (arg === "--therealreal") sources.push("therealreal");
+    if (arg === "--brands") sources.push("brands");
+    if (arg === "--all") sources.push("poshmark", "therealreal", "brands");
+    if (arg.startsWith("--max=")) {
+      maxProducts = parseInt(arg.split("=")[1]) || 50;
+    }
+  }
+
+  // Default to all sources if none specified
+  if (sources.length === 0) {
+    sources.push("poshmark", "therealreal", "brands");
+  }
+
+  console.log("Product Scraper & Importer");
+  console.log("==========================");
+  console.log(`Sources: ${sources.join(", ")}`);
+  console.log(`Max products per source: ${maxProducts}`);
+  console.log("");
+
+  try {
+    // Scrape products
+    const products = await scrapeAll({
+      sources,
+      maxProductsPerSource: maxProducts,
+    });
+
+    if (products.length === 0) {
+      console.log("No products scraped. This might be due to:");
+      console.log("  - Sites blocking requests");
+      console.log("  - Changed HTML structure");
+      console.log("  - Network issues");
+      return;
+    }
+
+    // Deduplicate by URL
+    const uniqueProducts = products.filter(
+      (p, i, arr) => arr.findIndex((x) => x.sourceUrl === p.sourceUrl) === i
+    );
+    console.log(`\nUnique products after dedup: ${uniqueProducts.length}`);
+
+    // Import to Convex
+    await importProducts(uniqueProducts);
+  } catch (error) {
+    console.error("Script failed:", error);
+    process.exit(1);
+  }
+}
+
+main();

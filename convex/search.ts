@@ -221,6 +221,52 @@ export const searchProducts = action({
   },
 });
 
+// Synonym expansion for common search terms
+const SYNONYMS: Record<string, string[]> = {
+  // Footwear
+  shoe: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes"],
+  shoes: ["boots", "sneakers", "sandals", "heels", "loafers", "shoe"],
+  footwear: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes"],
+  // Tops
+  top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan"],
+  tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan"],
+  // Outerwear
+  outerwear: ["jacket", "coat", "blazer"],
+  coats: ["coat", "jacket"],
+  jackets: ["jacket", "coat", "blazer"],
+  // Bottoms
+  bottom: ["pants", "jeans", "shorts", "skirt"],
+  bottoms: ["pants", "jeans", "shorts", "skirt"],
+  // Bags
+  bags: ["bag", "purse", "handbag"],
+  purse: ["bag", "handbag"],
+  handbag: ["bag", "purse"],
+  // Dresses
+  dresses: ["dress"],
+  // Materials
+  denim: ["jeans", "denim"],
+  leather: ["leather", "boots", "bag"],
+  // Conditions
+  vintage: ["used", "vintage"],
+  preloved: ["used", "like_new"],
+  secondhand: ["used", "like_new"],
+};
+
+function expandQueryWithSynonyms(query: string): string[] {
+  const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
+  const expanded = new Set<string>();
+
+  for (const word of words) {
+    expanded.add(word);
+    // Add synonyms if they exist
+    if (SYNONYMS[word]) {
+      SYNONYMS[word].forEach(syn => expanded.add(syn));
+    }
+  }
+
+  return Array.from(expanded);
+}
+
 // Internal version of filterProducts for use in actions
 import { internalQuery } from "./_generated/server";
 
@@ -244,9 +290,8 @@ export const filterProductsInternal = internalQuery({
 
     products = products.filter((product) => {
       if (args.query) {
-        const searchText = args.query.toLowerCase();
         const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""}`.toLowerCase();
-        const queryWords = searchText.split(/\s+/).filter(w => w.length > 2);
+        const queryWords = expandQueryWithSynonyms(args.query);
         const hasMatch = queryWords.some(word => productText.includes(word));
         if (!hasMatch && queryWords.length > 0) return false;
       }

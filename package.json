@@ -8,7 +8,11 @@
     "dev:convex": "convex dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "scrape": "npx tsx scripts/import-products.ts",
+    "scrape:brands": "npx tsx scripts/import-products.ts --brands",
+    "scrape:poshmark": "npx tsx scripts/import-products.ts --poshmark",
+    "scrape:therealreal": "npx tsx scripts/import-products.ts --therealreal"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",
@@ -23,10 +27,14 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cheerio": "^1.1.2",
+    "dotenv": "^17.2.3",
     "eslint": "^9",
     "eslint-config-next": "16.1.1",
     "npm-run-all": "^4.1.5",
+    "puppeteer": "^24.34.0",
     "tailwindcss": "^4",
+    "tsx": "^4.21.0",
     "typescript": "^5"
   }
 }
