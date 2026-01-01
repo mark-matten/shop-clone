@@ -9,6 +9,7 @@ export const searchFilterSchema = v.object({
   category: v.optional(v.string()),
   brand: v.optional(v.string()),
   material: v.optional(v.string()),
+  color: v.optional(v.string()),
   size: v.optional(v.string()),
   condition: v.optional(v.union(v.literal("new"), v.literal("used"), v.literal("like_new"))),
   minPrice: v.optional(v.number()),
@@ -21,6 +22,7 @@ export type SearchFilter = {
   category?: string;
   brand?: string;
   material?: string;
+  color?: string;
   size?: string;
   condition?: "new" | "used" | "like_new";
   minPrice?: number;
@@ -45,9 +47,10 @@ Parse the user's natural language search into a structured JSON object.
 Extract these fields when present:
 - query: the core search terms (always required)
 - gender: "men", "women", or "unisex"
-- category: product type (e.g., "boots", "jacket", "dress", "sneakers", "bag", "sweater")
+- category: product type (e.g., "boots", "jacket", "dress", "sneakers", "bag", "sweater", "shoes")
 - brand: brand name if mentioned (e.g., "Nike", "Gucci", "Levi's")
-- material: material type (e.g., "leather", "cotton", "silk", "denim", "cashmere")
+- material: material type (e.g., "leather", "cotton", "silk", "denim", "cashmere", "suede", "wool")
+- color: color if mentioned (e.g., "black", "white", "red", "blue", "brown", "navy", "beige")
 - size: size mentioned (e.g., "8", "M", "32", "XL")
 - condition: "new", "used", or "like_new"
 - minPrice: minimum price as number (extract from phrases like "over $100")

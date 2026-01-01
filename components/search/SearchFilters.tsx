@@ -6,6 +6,7 @@ interface SearchFilter {
   category?: string;
   brand?: string;
   material?: string;
+  color?: string;
   size?: string;
   condition?: "new" | "used" | "like_new";
   minPrice?: number;

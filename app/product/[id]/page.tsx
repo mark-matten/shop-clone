@@ -487,11 +487,11 @@ export default function ProductDetailPage() {
 
               {/* Chart area */}
               <div className="ml-12 h-full">
-                <svg className="h-full w-full" preserveAspectRatio="none">
+                <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
                   {/* Grid lines */}
-                  <line x1="0" y1="0" x2="100%" y2="0" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" />
-                  <line x1="0" y1="50%" x2="100%" y2="50%" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" strokeDasharray="4" />
-                  <line x1="0" y1="100%" x2="100%" y2="100%" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" />
+                  <line x1="0" y1="0" x2="100" y2="0" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+                  <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" strokeDasharray="4" vectorEffect="non-scaling-stroke" />
+                  <line x1="0" y1="100" x2="100" y2="100" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" vectorEffect="non-scaling-stroke" />
 
                   {/* Price line */}
                   <polyline
@@ -499,11 +499,12 @@ export default function ProductDetailPage() {
                     stroke="currentColor"
                     className="text-blue-500"
                     strokeWidth="2"
+                    vectorEffect="non-scaling-stroke"
                     points={priceHistory
                       .map((p, i) => {
                         const x = (i / (priceHistory.length - 1)) * 100;
                         const y = 100 - ((p.price - lowestPrice) / (highestPrice - lowestPrice)) * 100;
-                        return `${x}%,${y}%`;
+                        return `${x},${y}`;
                       })
                       .join(" ")}
                   />
@@ -512,13 +513,13 @@ export default function ProductDetailPage() {
                   <polygon
                     fill="currentColor"
                     className="text-blue-500/10"
-                    points={`0%,100% ${priceHistory
+                    points={`0,100 ${priceHistory
                       .map((p, i) => {
                         const x = (i / (priceHistory.length - 1)) * 100;
                         const y = 100 - ((p.price - lowestPrice) / (highestPrice - lowestPrice)) * 100;
-                        return `${x}%,${y}%`;
+                        return `${x},${y}`;
                       })
-                      .join(" ")} 100%,100%`}
+                      .join(" ")} 100,100`}
                   />
                 </svg>
               </div>

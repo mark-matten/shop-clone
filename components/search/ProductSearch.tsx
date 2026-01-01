@@ -36,6 +36,7 @@ interface SearchFilter {
   category?: string;
   brand?: string;
   material?: string;
+  color?: string;
   size?: string;
   condition?: "new" | "used" | "like_new";
   minPrice?: number;
@@ -127,10 +128,26 @@ function removeFilterTextFromQuery(query: string, filterKey: string, filterValue
       cleanedQuery = cleanedQuery.replace(/\b(women'?s?|men'?s?|unisex)\b/gi, "");
       break;
     case "category":
-      // Remove the category word
+      // Remove the category word and common variations
       if (typeof filterValue === "string") {
-        const categoryRegex = new RegExp(`\\b${filterValue}\\b`, "gi");
-        cleanedQuery = cleanedQuery.replace(categoryRegex, "");
+        const val = filterValue.toLowerCase();
+        // Handle singular/plural variations
+        const variations = [val];
+        if (val.endsWith("s")) {
+          variations.push(val.slice(0, -1)); // shoes -> shoe
+        } else {
+          variations.push(val + "s"); // shoe -> shoes
+        }
+        // Also handle special cases
+        if (val === "boots" || val === "boot") {
+          variations.push("boots", "boot");
+        }
+        if (val === "sneakers" || val === "sneaker") {
+          variations.push("sneakers", "sneaker");
+        }
+        for (const v of variations) {
+          cleanedQuery = cleanedQuery.replace(new RegExp(`\\b${v}\\b`, "gi"), "");
+        }
       }
       break;
     case "brand":
@@ -152,10 +169,24 @@ function removeFilterTextFromQuery(query: string, filterKey: string, filterValue
       }
       break;
     case "material":
-      // Remove the material word
+      // Remove the material word (includes colors that Claude might parse as material)
       if (typeof filterValue === "string") {
         const materialRegex = new RegExp(`\\b${filterValue}\\b`, "gi");
         cleanedQuery = cleanedQuery.replace(materialRegex, "");
+      }
+      break;
+    case "color":
+      // Remove color words
+      if (typeof filterValue === "string") {
+        const colorRegex = new RegExp(`\\b${filterValue}\\b`, "gi");
+        cleanedQuery = cleanedQuery.replace(colorRegex, "");
+      }
+      break;
+    default:
+      // For any unknown filter type, try to remove the value directly
+      if (typeof filterValue === "string" && filterValue.length > 2) {
+        const valueRegex = new RegExp(`\\b${filterValue}\\b`, "gi");
+        cleanedQuery = cleanedQuery.replace(valueRegex, "");
       }
       break;
   }
@@ -185,8 +216,8 @@ export function ProductSearch() {
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
   const lastRestoredQuery = useRef<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<SearchFilter | null>(null);
-  const hasRestoredFromStorage = useRef(false);
   const isRestoringFromUrl = useRef(false);
+  const pendingScrollPosition = useRef<number | null>(null);
 
   const { user: clerkUser } = useUser();
   const convexUser = useQuery(
@@ -412,8 +443,6 @@ export function ProductSearch() {
     if (updateUrl) {
       setActiveFilter(null);
       setSidebarFilters(null);
-      hasRestoredFromStorage.current = false;
-      isRestoringFromUrl.current = false;
     }
 
     // Update URL with search query
@@ -448,6 +477,8 @@ export function ProductSearch() {
       setError("Failed to search products. Please try again.");
     } finally {
       setIsLoading(false);
+      // Always reset this flag after search completes so saving can happen
+      isRestoringFromUrl.current = false;
     }
   }, [searchParams, router, searchProducts, clerkUser?.id, saveSearch]);
 
@@ -478,13 +509,79 @@ export function ProductSearch() {
     router.replace(`/?${params.toString()}`, { scroll: false });
   }, [activeFilter, searchResult?.filter, currentSearchQuery, searchParams, router]);
 
+  // Handle back navigation via pageshow event (fires when page is restored from bfcache)
+  useEffect(() => {
+    const handlePageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        // Page was restored from bfcache (back/forward navigation)
+        const saved = sessionStorage.getItem(SEARCH_STATE_KEY);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed.scrollPosition) {
+              // Scroll immediately since page is already rendered
+              setTimeout(() => {
+                window.scrollTo(0, parsed.scrollPosition);
+              }, 50);
+            }
+          } catch (e) {}
+        }
+      }
+    };
+
+    window.addEventListener("pageshow", handlePageShow);
+    return () => window.removeEventListener("pageshow", handlePageShow);
+  }, []);
+
   // Restore search from URL when query changes (including on navigation back)
   // Also clear everything when navigating to "/" without a query
   useEffect(() => {
-    if (initialQuery && lastRestoredQuery.current !== initialQuery) {
-      lastRestoredQuery.current = initialQuery;
-      isRestoringFromUrl.current = true; // Mark that we're restoring
-      handleSearch(initialQuery, false);
+    if (initialQuery) {
+      const isNewQuery = lastRestoredQuery.current !== initialQuery;
+      const needsResults = !searchResult;
+
+      // If it's a new query OR we don't have results (back navigation), try to restore
+      if (isNewQuery || needsResults) {
+        lastRestoredQuery.current = initialQuery;
+
+        // Check if we have cached results for this query
+        const saved = sessionStorage.getItem(SEARCH_STATE_KEY);
+        if (saved) {
+          try {
+            const parsed = JSON.parse(saved);
+            if (parsed.query === initialQuery && parsed.searchResult) {
+              // Restore everything from cache without making API call
+              setSearchResult(parsed.searchResult);
+              setHasSearched(true);
+              setCurrentSearchQuery(parsed.query);
+              if (parsed.activeFilter) setActiveFilter(parsed.activeFilter);
+              if (parsed.sidebarFilters) setSidebarFilters(parsed.sidebarFilters);
+              if (parsed.displayCount) setDisplayCount(parsed.displayCount);
+
+              // Scroll after state is restored
+              if (typeof parsed.scrollPosition === "number" && parsed.scrollPosition > 0) {
+                pendingScrollPosition.current = parsed.scrollPosition;
+                // Use requestAnimationFrame to wait for render
+                requestAnimationFrame(() => {
+                  requestAnimationFrame(() => {
+                    if (pendingScrollPosition.current !== null) {
+                      window.scrollTo(0, pendingScrollPosition.current);
+                      pendingScrollPosition.current = null;
+                    }
+                  });
+                });
+              }
+              return;
+            }
+          } catch (e) {
+            console.error("Failed to parse cached state:", e);
+          }
+        }
+
+        // No cache or different query, do a fresh search
+        isRestoringFromUrl.current = true;
+        handleSearch(initialQuery, false);
+      }
     } else if (!initialQuery && lastRestoredQuery.current) {
       // Clear everything when URL query is removed (e.g., clicking logo)
       lastRestoredQuery.current = null;
@@ -493,51 +590,83 @@ export function ProductSearch() {
       setActiveFilter(null);
       setCurrentSearchQuery("");
       setSidebarFilters(null);
+      setDisplayCount(20);
       // Clear sessionStorage too
       sessionStorage.removeItem(SEARCH_STATE_KEY);
     }
   }, [initialQuery, handleSearch]);
 
-  // Save filter state to sessionStorage when it changes
+  // Save full state including search results to sessionStorage
   // But NOT while we're restoring from URL/sessionStorage
   useEffect(() => {
     if (searchResult && hasSearched && !isRestoringFromUrl.current) {
       const stateToSave = {
         activeFilter,
-        originalFilter: searchResult.filter,
+        searchResult, // Cache the full search results
         sidebarFilters,
         query: currentSearchQuery,
+        displayCount,
+        scrollPosition: window.scrollY,
       };
       sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(stateToSave));
     }
-  }, [activeFilter, searchResult, sidebarFilters, currentSearchQuery, hasSearched]);
+  }, [activeFilter, searchResult, sidebarFilters, currentSearchQuery, hasSearched, displayCount]);
 
-  // Restore filter state from sessionStorage after search results load
+  // Save scroll position on scroll (debounced) so it's captured before navigation
   useEffect(() => {
-    if (searchResult && !hasRestoredFromStorage.current && initialQuery && isRestoringFromUrl.current) {
-      hasRestoredFromStorage.current = true;
-      try {
-        const saved = sessionStorage.getItem(SEARCH_STATE_KEY);
-        if (saved) {
-          const parsed = JSON.parse(saved);
-          // Only restore if it's the same query
-          if (parsed.query === initialQuery) {
-            if (parsed.activeFilter) {
-              setActiveFilter(parsed.activeFilter);
-            }
-            if (parsed.sidebarFilters) {
-              setSidebarFilters(parsed.sidebarFilters);
-            }
+    if (!searchResult || !hasSearched) return;
+
+    let timeoutId: NodeJS.Timeout;
+    const handleScroll = () => {
+      clearTimeout(timeoutId);
+      timeoutId = setTimeout(() => {
+        if (isRestoringFromUrl.current) return;
+        try {
+          const saved = sessionStorage.getItem(SEARCH_STATE_KEY);
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            parsed.scrollPosition = window.scrollY;
+            sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(parsed));
           }
+        } catch (e) {
+          // Ignore errors
         }
-      } catch (e) {
-        console.error("Failed to restore search state:", e);
-      } finally {
-        // Done restoring, allow saves again
-        isRestoringFromUrl.current = false;
-      }
+      }, 150);
+    };
+
+    window.addEventListener("scroll", handleScroll, { passive: true });
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener("scroll", handleScroll);
+    };
+  }, [searchResult, hasSearched]);
+
+  // Scroll to saved position after displayCount changes (for cache restoration)
+  useEffect(() => {
+    if (pendingScrollPosition.current !== null) {
+      const scrollTarget = pendingScrollPosition.current;
+
+      // Wait for React to render the products
+      const attemptScroll = (attempts: number) => {
+        if (attempts <= 0) {
+          pendingScrollPosition.current = null;
+          return;
+        }
+
+        requestAnimationFrame(() => {
+          const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+          if (maxScroll >= scrollTarget) {
+            window.scrollTo(0, scrollTarget);
+            pendingScrollPosition.current = null;
+          } else {
+            setTimeout(() => attemptScroll(attempts - 1), 50);
+          }
+        });
+      };
+
+      attemptScroll(20);
     }
-  }, [searchResult, initialQuery]);
+  }, [displayCount, searchResult]);
 
   return (
     <div className="w-full">
