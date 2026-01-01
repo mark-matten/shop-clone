@@ -3,44 +3,62 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { SignOutButton } from "@clerk/nextjs";
+import { SignOutButton, useUser } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
-
-// Mock alerts for preview
-const mockAlerts = [
-  {
-    _id: "alert_1",
-    productName: "Sam Edelman Boots",
-    previousPrice: 149.99,
-    newPrice: 119.99,
-    alertType: "price_drop" as const,
-    createdAt: Date.now() - 3600000,
-  },
-  {
-    _id: "alert_2",
-    productName: "Gucci Marmont Bag",
-    previousPrice: 1450.0,
-    newPrice: 1299.0,
-    alertType: "target_reached" as const,
-    createdAt: Date.now() - 86400000,
-  },
-];
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 
 export function Header() {
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
-  const [alerts] = useState(mockAlerts);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
+
+  const { user: clerkUser } = useUser();
+
+  // Get user from Convex
+  const convexUser = useQuery(
+    api.users.getUserByClerkId,
+    clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
+  );
+
+  // Get alerts from Convex
+  const userAlerts = useQuery(
+    api.alerts.getUserAlerts,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
+
+  // Mark all alerts as read mutation
+  const markAllRead = useMutation(api.alerts.markAllAlertsRead);
+
+  // Transform alerts to match expected format
+  const alerts = userAlerts?.map((alert) => ({
+    _id: alert._id,
+    productName: alert.product?.name || "Unknown Product",
+    previousPrice: alert.previousPrice,
+    newPrice: alert.newPrice,
+    alertType: alert.alertType,
+    createdAt: alert.createdAt,
+    sentAt: alert.sentAt,
+  })) || [];
 
   // Avoid hydration mismatch by only showing theme toggle after mount
   useEffect(() => {
     setMounted(true);
   }, []);
 
-  const unreadCount = alerts.length;
+  const unreadCount = alerts.filter((a) => !a.sentAt).length;
+
+  const handleMarkAllRead = async () => {
+    if (!convexUser?._id) return;
+    try {
+      await markAllRead({ userId: convexUser._id });
+    } catch (error) {
+      console.error("Failed to mark alerts as read:", error);
+    }
+  };
 
   const formatTimeAgo = (timestamp: number) => {
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
@@ -50,10 +68,10 @@ export function Header() {
   };
 
   return (
-    <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+    <header className="border-b border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="text-xl font-bold text-zinc-900 dark:text-white">
-          ShopWatch
+          Shop<span className="text-emerald-800 dark:text-emerald-400">Watch</span>
         </Link>
 
         {/* Mobile menu button */}
@@ -75,43 +93,63 @@ export function Header() {
         <nav className="hidden items-center gap-1 sm:flex">
           <Link
             href="/"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
               pathname === "/"
-                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
             }`}
           >
             Search
           </Link>
           <Link
             href="/compare"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
               pathname === "/compare"
-                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
             }`}
           >
             Compare
           </Link>
           <Link
             href="/favorites"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
               pathname === "/favorites"
-                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
             }`}
           >
             Favorites
           </Link>
           <Link
             href="/dashboard"
-            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
               pathname === "/dashboard"
-                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
             }`}
           >
             Dashboard
+          </Link>
+          <Link
+            href="/tools"
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+              pathname === "/tools"
+                ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+          >
+            Tools
+          </Link>
+          <Link
+            href="/coupons"
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+              pathname === "/coupons"
+                ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+          >
+            Deals
           </Link>
 
           {/* Notifications */}
@@ -143,9 +181,14 @@ export function Header() {
               <div className="absolute right-0 top-full z-50 mt-2 w-80 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
                 <div className="flex items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
                   <h3 className="font-semibold text-zinc-900 dark:text-white">Notifications</h3>
-                  <button className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">
-                    Mark all read
-                  </button>
+                  {unreadCount > 0 && (
+                    <button
+                      onClick={handleMarkAllRead}
+                      className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    >
+                      Mark all read
+                    </button>
+                  )}
                 </div>
                 <div className="max-h-80 overflow-y-auto">
                   {alerts.length === 0 ? (
@@ -156,7 +199,11 @@ export function Header() {
                     alerts.map((alert) => (
                       <div
                         key={alert._id}
-                        className="flex gap-3 border-b border-zinc-100 px-4 py-3 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800"
+                        className={`flex gap-3 border-b border-zinc-100 px-4 py-3 hover:bg-zinc-50 dark:border-zinc-800 dark:hover:bg-zinc-800 ${
+                          !alert.sentAt
+                            ? "bg-blue-50/50 dark:bg-blue-950/20"
+                            : ""
+                        }`}
                       >
                         <div
                           className={`mt-1 flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full ${
@@ -306,10 +353,10 @@ export function Header() {
             <Link
               href="/"
               onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
                 pathname === "/"
-                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
               }`}
             >
               Search
@@ -317,10 +364,10 @@ export function Header() {
             <Link
               href="/compare"
               onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
                 pathname === "/compare"
-                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
               }`}
             >
               Compare
@@ -328,10 +375,10 @@ export function Header() {
             <Link
               href="/favorites"
               onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
                 pathname === "/favorites"
-                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
               }`}
             >
               Favorites
@@ -339,21 +386,43 @@ export function Header() {
             <Link
               href="/dashboard"
               onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
                 pathname === "/dashboard"
-                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
               }`}
             >
               Dashboard
             </Link>
             <Link
+              href="/tools"
+              onClick={() => setShowMobileMenu(false)}
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+                pathname === "/tools"
+                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+              }`}
+            >
+              Tools
+            </Link>
+            <Link
+              href="/coupons"
+              onClick={() => setShowMobileMenu(false)}
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+                pathname === "/coupons"
+                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+              }`}
+            >
+              Deals
+            </Link>
+            <Link
               href="/profile"
               onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
                 pathname === "/profile"
-                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
               }`}
             >
               Profile

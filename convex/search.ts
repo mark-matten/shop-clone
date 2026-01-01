@@ -228,9 +228,13 @@ export const searchProducts = action({
 // Synonym expansion for common search terms
 const SYNONYMS: Record<string, string[]> = {
   // Footwear
-  shoe: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes"],
-  shoes: ["boots", "sneakers", "sandals", "heels", "loafers", "shoe"],
-  footwear: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes"],
+  shoe: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes", "shoe"],
+  shoes: ["boots", "sneakers", "sandals", "heels", "loafers", "shoe", "shoes"],
+  footwear: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes", "shoe"],
+  boot: ["boots", "boot"],
+  boots: ["boots", "boot"],
+  sneaker: ["sneakers", "sneaker"],
+  sneakers: ["sneakers", "sneaker"],
   // Tops
   top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan"],
   tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan"],
@@ -307,7 +311,17 @@ export const filterProductsInternal = internalQuery({
         if (args.gender === "unisex" && product.gender !== "unisex") return false;
       }
       if (args.condition && product.condition !== args.condition) return false;
-      if (args.category && !product.category.toLowerCase().includes(args.category.toLowerCase())) return false;
+
+      // Category filter with synonym expansion (e.g., "shoes" matches "boots", "sneakers", etc.)
+      if (args.category) {
+        const categoryLower = args.category.toLowerCase();
+        const productCategoryLower = product.category.toLowerCase();
+        const expandedCategories = expandQueryWithSynonyms(categoryLower);
+        const categoryMatches = expandedCategories.some(cat =>
+          productCategoryLower.includes(cat) || cat.includes(productCategoryLower)
+        );
+        if (!categoryMatches) return false;
+      }
       if (args.brand && !product.brand.toLowerCase().includes(args.brand.toLowerCase())) return false;
       if (args.material && product.material && !product.material.toLowerCase().includes(args.material.toLowerCase())) return false;
       if (args.size && product.size && !product.size.toLowerCase().includes(args.size.toLowerCase())) return false;

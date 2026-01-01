@@ -9,6 +9,8 @@ import { ProductCard } from "./ProductCard";
 import { ProductGridSkeleton } from "./ProductCardSkeleton";
 import { SearchFilters } from "./SearchFilters";
 import { FilterDropdown, FilterState } from "./FilterSidebar";
+import { ViewToggle, ProductListItem } from "./ViewToggle";
+import { RecentlyViewed, useRecentlyViewed } from "./RecentlyViewed";
 import { Id } from "@/convex/_generated/dataModel";
 
 interface Product {
@@ -77,6 +79,7 @@ export function ProductSearch() {
   const [saveSearchName, setSaveSearchName] = useState("");
   const [currentSearchQuery, setCurrentSearchQuery] = useState("");
   const [showSavedSearchesDropdown, setShowSavedSearchesDropdown] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
 
   const { user: clerkUser } = useUser();
   const convexUser = useQuery(
@@ -431,6 +434,8 @@ export function ProductSearch() {
                 <option value="price_high">Price: High to Low</option>
                 <option value="newest">Newest First</option>
               </select>
+
+              <ViewToggle view={viewMode} onViewChange={setViewMode} />
             </div>
           </div>
 
@@ -448,15 +453,27 @@ export function ProductSearch() {
 
             return allProducts.length > 0 ? (
               <>
-                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                  {displayedProducts.map((product) => (
-                    <ProductCard
-                      key={product._id}
-                      product={product}
-                      isFavorited={favoriteIds?.includes(product._id as any) ?? false}
-                    />
-                  ))}
-                </div>
+                {viewMode === "grid" ? (
+                  <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {displayedProducts.map((product) => (
+                      <ProductCard
+                        key={product._id}
+                        product={product}
+                        isFavorited={favoriteIds?.includes(product._id as any) ?? false}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {displayedProducts.map((product) => (
+                      <ProductListItem
+                        key={product._id}
+                        product={product}
+                        isFavorited={favoriteIds?.includes(product._id as any) ?? false}
+                      />
+                    ))}
+                  </div>
+                )}
                 {hasMore && (
                   <div className="mt-8 text-center">
                     <button
@@ -498,19 +515,11 @@ export function ProductSearch() {
 
       
       {!hasSearched && (
-        <div className="mt-16 text-center">
-          <h2 className="text-lg font-medium text-zinc-900 dark:text-white">
-            Natural Language Search
-          </h2>
-          <p className="mx-auto mt-2 max-w-md text-zinc-500 dark:text-zinc-400">
-            Search using everyday language. Describe the style, size, price
-            range, or any other details you&apos;re looking for.
-          </p>
-
+        <div className="mt-6">
           {/* Recent Searches */}
           {recentSearches && recentSearches.length > 0 && (
-            <div className="mx-auto mt-8 max-w-lg">
-              <h3 className="mb-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            <div className="mx-auto max-w-2xl">
+              <h3 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Recent Searches
               </h3>
               <div className="flex flex-wrap gap-2">
@@ -530,51 +539,63 @@ export function ProductSearch() {
             </div>
           )}
 
-          {/* Suggested Searches */}
-          {suggestedSearches && suggestedSearches.length > 0 && (
-            <div className="mx-auto mt-6 max-w-lg">
-              <h3 className="mb-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Suggested for You
+          {/* Popular Searches - combines suggested and examples */}
+          <div className="mx-auto mt-6 max-w-2xl">
+            <div className="mb-3 flex items-center gap-2">
+              <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Popular Searches
               </h3>
-              <div className="flex flex-wrap gap-2">
-                {suggestedSearches.map((suggestion, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSearch(suggestion)}
-                    className="flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:border-blue-700"
-                  >
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                    </svg>
-                    {suggestion}
-                  </button>
-                ))}
-              </div>
+              <span className="text-zinc-300 dark:text-zinc-600">|</span>
+              <span className="flex items-center gap-1 text-xs text-zinc-400 dark:text-zinc-500">
+                <span className="inline-block h-2 w-2 rounded-full bg-indigo-400"></span>
+                For you
+              </span>
+              <span className="flex items-center gap-1 text-xs text-zinc-400 dark:text-zinc-500">
+                <span className="inline-block h-2 w-2 rounded-full bg-zinc-300 dark:bg-zinc-600"></span>
+                Trending
+              </span>
             </div>
-          )}
-
-          {/* Example Searches */}
-          <div className="mx-auto mt-6 grid max-w-lg gap-3 text-left">
-            <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-              Try these examples
-            </h3>
-            {[
-              "vintage Levi's denim jacket size M",
-              "women's running shoes under $150",
-              "used Gucci handbag like new condition",
-              "men's cashmere sweater navy blue XL",
-            ].map((example) => (
-              <button
-                key={example}
-                onClick={() => handleSearch(example)}
-                className="rounded-lg border border-zinc-200 bg-white px-4 py-3 text-left text-sm text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-400 dark:hover:border-zinc-700 dark:hover:bg-zinc-800"
-              >
-                &quot;{example}&quot;
-              </button>
-            ))}
+            <div className="flex flex-wrap gap-2">
+              {/* User's suggested searches based on preferences */}
+              {suggestedSearches?.slice(0, 4).map((suggestion, i) => (
+                <button
+                  key={`suggested-${i}`}
+                  onClick={() => handleSearch(suggestion)}
+                  className="group flex items-center gap-2 rounded-full border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-sm text-indigo-700 transition-colors hover:border-indigo-300 hover:bg-indigo-100 dark:border-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300 dark:hover:border-indigo-700"
+                  title="Based on your preferences"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5.121 17.804A13.937 13.937 0 0112 16c2.5 0 4.847.655 6.879 1.804M15 10a3 3 0 11-6 0 3 3 0 016 0zm6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                  {suggestion}
+                </button>
+              ))}
+              {/* Trending searches */}
+              {[
+                "vintage Levi's denim jacket size M",
+                "women's running shoes under $150",
+                "used Gucci handbag like new condition",
+                "men's cashmere sweater navy blue XL",
+              ].map((example) => (
+                <button
+                  key={example}
+                  onClick={() => handleSearch(example)}
+                  className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600"
+                  title="Trending search"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                  </svg>
+                  {example}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       )}
+
+      {/* Recently Viewed */}
+      <RecentlyViewed />
 
       {/* Save Search Modal */}
       {showSaveSearchModal && (

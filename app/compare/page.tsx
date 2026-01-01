@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Header } from "@/components/layout";
+import Link from "next/link";
 
 type Product = {
   _id: string;
@@ -84,7 +85,7 @@ export default function ComparePage() {
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       <Header />
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
             Compare Products
@@ -93,6 +94,27 @@ export default function ComparePage() {
             Select up to 3 products to compare side by side
           </p>
         </div>
+
+        {/* Quick Summary */}
+        {validProducts.length >= 2 && (
+          <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800 dark:bg-emerald-950/30">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/50">
+                <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div>
+                <p className="font-medium text-emerald-900 dark:text-emerald-100">
+                  Best Value: {validProducts.find(p => p.price === lowestPrice)?.name}
+                </p>
+                <p className="text-sm text-emerald-700 dark:text-emerald-300">
+                  ${lowestPrice.toFixed(2)} - Save up to ${(Math.max(...prices) - lowestPrice).toFixed(2)} compared to other options
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
           {/* Header with product selection */}
@@ -225,21 +247,33 @@ export default function ComparePage() {
 
           {/* Action buttons */}
           <div className="grid grid-cols-4 border-t border-zinc-200 dark:border-zinc-800">
-            <div className="bg-zinc-50 p-4 dark:bg-zinc-800/50" />
+            <div className="bg-zinc-50 p-4 dark:bg-zinc-800/50">
+              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Actions
+              </span>
+            </div>
             {selectedProducts.map((product, index) => (
               <div
                 key={index}
                 className="border-l border-zinc-200 p-4 dark:border-zinc-800"
               >
                 {product && (
-                  <a
-                    href={product.sourceUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="block w-full rounded-lg bg-zinc-900 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  >
-                    View on {product.sourcePlatform}
-                  </a>
+                  <div className="flex flex-col gap-2">
+                    <a
+                      href={product.sourceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block w-full rounded-lg bg-zinc-900 py-2 text-center text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                    >
+                      Buy on {product.sourcePlatform}
+                    </a>
+                    <Link
+                      href={`/product/${product._id}`}
+                      className="block w-full rounded-lg border border-zinc-300 py-2 text-center text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      View Details
+                    </Link>
+                  </div>
                 )}
               </div>
             ))}

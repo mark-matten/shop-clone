@@ -41,6 +41,12 @@ const conditionColors = {
   like_new: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
 };
 
+const genderLabels = {
+  men: "M",
+  women: "F",
+  unisex: "M/F",
+};
+
 export function ProductCard({ product, isFavorited = false }: ProductCardProps) {
   const { user } = useUser();
   const [isTracked, setIsTracked] = useState(false);
@@ -134,6 +140,11 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
           </h3>
 
           <div className="mb-3 flex flex-wrap gap-1">
+            {product.gender && (
+              <span className="rounded bg-purple-100 px-2 py-0.5 text-xs font-medium text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">
+                {genderLabels[product.gender]}
+              </span>
+            )}
             {product.size && (
               <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
                 Size {product.size}

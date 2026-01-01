@@ -1,6 +1,9 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
+import { useQuery } from "convex/react";
+import { useUser } from "@clerk/nextjs";
+import { api } from "@/convex/_generated/api";
 
 interface SearchBarProps {
   onSearch: (query: string) => void;
@@ -14,32 +17,131 @@ export function SearchBar({
   placeholder = "Search for products...",
 }: SearchBarProps) {
   const [query, setQuery] = useState("");
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const { user: clerkUser } = useUser();
+
+  // Get autocomplete suggestions
+  const suggestions = useQuery(
+    api.searchHistory.getAutocompleteSuggestions,
+    query.length >= 2 ? { clerkId: clerkUser?.id, prefix: query } : "skip"
+  );
 
   const handleSubmit = useCallback(
     (e: React.FormEvent) => {
       e.preventDefault();
       if (query.trim()) {
         onSearch(query.trim());
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
       }
     },
     [query, onSearch]
   );
 
+  const handleSelectSuggestion = useCallback(
+    (suggestion: string) => {
+      setQuery(suggestion);
+      onSearch(suggestion);
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
+    },
+    [onSearch]
+  );
+
+  const handleKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      if (!suggestions || suggestions.length === 0) return;
+
+      if (e.key === "ArrowDown") {
+        e.preventDefault();
+        setSelectedIndex((prev) =>
+          prev < suggestions.length - 1 ? prev + 1 : prev
+        );
+      } else if (e.key === "ArrowUp") {
+        e.preventDefault();
+        setSelectedIndex((prev) => (prev > 0 ? prev - 1 : -1));
+      } else if (e.key === "Enter" && selectedIndex >= 0) {
+        e.preventDefault();
+        handleSelectSuggestion(suggestions[selectedIndex].query);
+      } else if (e.key === "Escape") {
+        setShowSuggestions(false);
+        setSelectedIndex(-1);
+      }
+    },
+    [suggestions, selectedIndex, handleSelectSuggestion]
+  );
+
+  // Close suggestions when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (
+        suggestionsRef.current &&
+        !suggestionsRef.current.contains(e.target as Node) &&
+        inputRef.current &&
+        !inputRef.current.contains(e.target as Node)
+      ) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Reset selected index when suggestions change
+  useEffect(() => {
+    setSelectedIndex(-1);
+  }, [suggestions]);
+
+  const getTypeIcon = (type: "recent" | "popular" | "product") => {
+    switch (type) {
+      case "recent":
+        return (
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        );
+      case "popular":
+        return (
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+          </svg>
+        );
+      case "product":
+        return (
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z" />
+          </svg>
+        );
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="w-full">
       <div className="relative">
         <input
+          ref={inputRef}
           type="text"
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            setShowSuggestions(e.target.value.length >= 2);
+          }}
+          onFocus={() => query.length >= 2 && setShowSuggestions(true)}
+          onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="w-full rounded-full border border-zinc-200 bg-white px-6 py-4 pr-14 text-lg text-zinc-900 placeholder-zinc-400 shadow-sm transition-shadow focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"
           disabled={isLoading}
+          autoComplete="off"
         />
         <button
           type="submit"
           disabled={isLoading || !query.trim()}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-zinc-900 p-3 text-white transition-colors hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-emerald-800 p-3 text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-emerald-700 dark:hover:bg-emerald-600"
         >
           {isLoading ? (
             <svg
@@ -79,6 +181,33 @@ export function SearchBar({
             </svg>
           )}
         </button>
+
+        {/* Autocomplete Suggestions */}
+        {showSuggestions && suggestions && suggestions.length > 0 && (
+          <div
+            ref={suggestionsRef}
+            className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+          >
+            {suggestions.map((suggestion, index) => (
+              <button
+                key={`${suggestion.type}-${suggestion.query}-${index}`}
+                type="button"
+                onClick={() => handleSelectSuggestion(suggestion.query)}
+                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                  index === selectedIndex
+                    ? "bg-zinc-100 dark:bg-zinc-800"
+                    : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                }`}
+              >
+                <span className="text-zinc-400">{getTypeIcon(suggestion.type)}</span>
+                <span className="flex-1 text-zinc-900 dark:text-white">
+                  {suggestion.query}
+                </span>
+                <span className="text-xs text-zinc-400 capitalize">{suggestion.type}</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
       <p className="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
         Try: &quot;women&apos;s black leather boots size 8 under $200&quot;

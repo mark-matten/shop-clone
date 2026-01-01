@@ -146,4 +146,91 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_userId_createdAt", ["userId", "createdAt"]),
+
+  collections: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    description: v.optional(v.string()),
+    color: v.optional(v.string()),
+    isDefault: v.optional(v.boolean()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
+
+  collection_items: defineTable({
+    collectionId: v.id("collections"),
+    productId: v.id("products"),
+    addedAt: v.number(),
+    notes: v.optional(v.string()),
+  })
+    .index("by_collectionId", ["collectionId"])
+    .index("by_productId", ["productId"])
+    .index("by_collectionId_productId", ["collectionId", "productId"]),
+
+  analytics_events: defineTable({
+    clerkId: v.optional(v.string()),
+    sessionId: v.string(),
+    eventType: v.string(),
+    eventData: v.optional(v.any()),
+    page: v.optional(v.string()),
+    referrer: v.optional(v.string()),
+    userAgent: v.optional(v.string()),
+    timestamp: v.number(),
+  })
+    .index("by_clerkId", ["clerkId"])
+    .index("by_sessionId", ["sessionId"])
+    .index("by_eventType", ["eventType"])
+    .index("by_timestamp", ["timestamp"]),
+
+  referrals: defineTable({
+    referrerId: v.id("users"),
+    referralCode: v.string(),
+    referredUserId: v.optional(v.id("users")),
+    status: v.union(v.literal("pending"), v.literal("completed"), v.literal("expired")),
+    createdAt: v.number(),
+    completedAt: v.optional(v.number()),
+  })
+    .index("by_referrerId", ["referrerId"])
+    .index("by_referralCode", ["referralCode"])
+    .index("by_referredUserId", ["referredUserId"]),
+
+  coupons: defineTable({
+    code: v.string(),
+    description: v.string(),
+    platform: v.string(),
+    discountType: v.union(v.literal("percentage"), v.literal("fixed"), v.literal("free_shipping")),
+    discountValue: v.optional(v.number()),
+    minPurchase: v.optional(v.number()),
+    categories: v.optional(v.array(v.string())),
+    expiresAt: v.optional(v.number()),
+    isVerified: v.boolean(),
+    usageCount: v.number(),
+    successRate: v.optional(v.number()),
+    addedBy: v.optional(v.id("users")),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_platform", ["platform"])
+    .index("by_code", ["code"])
+    .index("by_expiresAt", ["expiresAt"])
+    .index("by_isVerified", ["isVerified"]),
+
+  coupon_reports: defineTable({
+    couponId: v.id("coupons"),
+    userId: v.id("users"),
+    worked: v.boolean(),
+    reportedAt: v.number(),
+  })
+    .index("by_couponId", ["couponId"])
+    .index("by_userId", ["userId"]),
+
+  user_saved_coupons: defineTable({
+    userId: v.id("users"),
+    couponId: v.id("coupons"),
+    savedAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_couponId", ["userId", "couponId"]),
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
@@ -8,6 +8,7 @@ import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
+import { useRecentlyViewed } from "@/components/search/RecentlyViewed";
 
 // Generate mock price history (will be replaced with real data later)
 function generatePriceHistory(basePrice: number) {
@@ -49,6 +50,39 @@ export default function ProductDetailPage() {
   const trackProduct = useMutation(api.tracking.trackProduct);
   const untrackProduct = useMutation(api.tracking.untrackProduct);
 
+  // Favorites
+  const favoriteIds = useQuery(
+    api.favorites.getFavoriteIds,
+    clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
+  );
+  const addFavorite = useMutation(api.favorites.addFavorite);
+  const removeFavorite = useMutation(api.favorites.removeFavorite);
+
+  const isFavorited = favoriteIds?.includes(productId as Id<"products">) ?? false;
+
+  const handleToggleFavorite = async () => {
+    if (!clerkUser?.id) {
+      alert("Please sign in to save favorites");
+      return;
+    }
+
+    try {
+      if (isFavorited) {
+        await removeFavorite({
+          clerkId: clerkUser.id,
+          productId: productId as Id<"products">,
+        });
+      } else {
+        await addFavorite({
+          clerkId: clerkUser.id,
+          productId: productId as Id<"products">,
+        });
+      }
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+    }
+  };
+
   // Get similar products
   const similarProducts = useQuery(
     api.recommendations.getSimilarProducts,
@@ -56,10 +90,43 @@ export default function ProductDetailPage() {
   );
 
   const [targetPrice, setTargetPrice] = useState("");
-  const [showShareToast, setShowShareToast] = useState(false);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
+  const [showCopied, setShowCopied] = useState(false);
+
+  const { addViewed } = useRecentlyViewed();
+  const addedViewRef = useRef<string | null>(null);
+
+  const handleCopyLink = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.href);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
+
+  const handleShare = async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: product ? `${product.brand} ${product.name}` : "Product",
+          text: product?.description,
+          url: window.location.href,
+        });
+      } catch (err) {
+        // User cancelled or error - fallback to copy
+        if ((err as Error).name !== "AbortError") {
+          handleCopyLink();
+        }
+      }
+    } else {
+      // Fallback for browsers that don't support native share
+      handleCopyLink();
+    }
+  };
 
   // Check if this product is being tracked
   const trackedItem = trackedItems?.find(
@@ -74,6 +141,20 @@ export default function ProductDetailPage() {
       setHasInitializedPrice(true);
     }
   }, [product, hasInitializedPrice]);
+
+  // Track product view - only run once per product
+  useEffect(() => {
+    if (product && productId && addedViewRef.current !== productId) {
+      addedViewRef.current = productId;
+      addViewed({
+        id: productId,
+        name: product.name,
+        brand: product.brand,
+        price: product.price,
+        imageUrl: product.imageUrl,
+      });
+    }
+  }, [product, productId, addViewed]);
 
   // Generate price history only when product is loaded
   const priceHistory = useMemo(
@@ -181,7 +262,7 @@ export default function ProductDetailPage() {
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       <Header />
 
-      <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+      <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <Link
           href="/"
           className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
@@ -226,7 +307,7 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
 
-            <div className="mt-4 flex items-baseline gap-4">
+            <div className="mt-4 flex items-center gap-4">
               <span className="text-3xl font-bold text-zinc-900 dark:text-white">
                 ${product.price.toFixed(2)}
               </span>
@@ -264,32 +345,48 @@ export default function ProductDetailPage() {
               )}
             </dl>
 
-            <div className="mt-8 flex gap-4">
+            <div className="mt-8 flex flex-wrap gap-3">
+              {/* View on Platform */}
               <a
                 href={product.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 rounded-xl bg-zinc-900 py-3 text-center font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="flex-1 rounded-xl bg-emerald-700 py-3 text-center font-medium text-white transition-colors hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-600"
               >
                 View on {product.sourcePlatform}
               </a>
+
+              {/* Favorite */}
               <button
-                onClick={() => {
-                  navigator.clipboard.writeText(window.location.href);
-                  setShowShareToast(true);
-                  setTimeout(() => setShowShareToast(false), 2000);
-                }}
-                className="flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-3 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                title="Copy link to share"
+                onClick={handleToggleFavorite}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-3 font-medium transition-colors ${
+                  isFavorited
+                    ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
+                    : "border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                }`}
+                title={isFavorited ? "Remove from favorites" : "Add to favorites"}
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                <svg
+                  className="h-5 w-5"
+                  fill={isFavorited ? "currentColor" : "none"}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                  />
                 </svg>
+                Favorite
               </button>
+
+              {/* Track */}
               {isTracking ? (
                 <button
                   onClick={handleUntrack}
-                  className="flex items-center gap-2 rounded-xl border border-green-600 px-6 py-3 font-medium text-green-600 transition-colors hover:bg-green-50 dark:border-green-500 dark:text-green-500 dark:hover:bg-green-950"
+                  className="flex items-center gap-2 rounded-xl border border-green-600 px-4 py-3 font-medium text-green-600 transition-colors hover:bg-green-50 dark:border-green-500 dark:text-green-500 dark:hover:bg-green-950"
                 >
                   <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
@@ -304,14 +401,44 @@ export default function ProductDetailPage() {
               ) : (
                 <button
                   onClick={() => setShowTrackingModal(true)}
-                  className="flex items-center gap-2 rounded-xl border border-zinc-300 px-6 py-3 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  className="flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-3 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                   </svg>
-                  Track Price
+                  Track
                 </button>
               )}
+
+              {/* Copy Link */}
+              <button
+                onClick={handleCopyLink}
+                className="flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-3 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                title="Copy link"
+              >
+                {showCopied ? (
+                  <svg className="h-5 w-5 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                ) : (
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+                  </svg>
+                )}
+                {showCopied ? "Copied!" : "Copy"}
+              </button>
+
+              {/* Share */}
+              <button
+                onClick={handleShare}
+                className="flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-3 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                title="Share"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+                Share
+              </button>
             </div>
           </div>
         </div>
@@ -507,18 +634,6 @@ export default function ProductDetailPage() {
                 {isSaving ? "Saving..." : "Start Tracking"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* Share Toast */}
-      {showShareToast && (
-        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 transform">
-          <div className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-3 text-white shadow-lg dark:bg-white dark:text-zinc-900">
-            <svg className="h-5 w-5 text-green-400 dark:text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-            </svg>
-            Link copied to clipboard!
           </div>
         </div>
       )}
