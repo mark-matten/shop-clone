@@ -235,6 +235,7 @@ export function ProductSearch() {
 
   // Search history
   const saveSearch = useMutation(api.searchHistory.saveSearch);
+  const clearSearchHistory = useMutation(api.searchHistory.clearSearchHistory);
   const recentSearches = useQuery(
     api.searchHistory.getRecentSearches,
     clerkUser?.id ? { clerkId: clerkUser.id, limit: 5 } : "skip"
@@ -870,7 +871,7 @@ export function ProductSearch() {
                 )}
               </>
             ) : (
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 py-16 text-center dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="rounded-xl border border-zinc-200 bg-zinc-50 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
               <svg
                 className="mx-auto h-12 w-12 text-zinc-400"
                 xmlns="http://www.w3.org/2000/svg"
@@ -882,15 +883,44 @@ export function ProductSearch() {
                   strokeLinecap="round"
                   strokeLinejoin="round"
                   strokeWidth={1.5}
-                  d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
                 />
               </svg>
-              <p className="mt-4 text-zinc-600 dark:text-zinc-400">
-                No products found matching your filters.
+              <p className="mt-4 text-lg font-medium text-zinc-700 dark:text-zinc-300">
+                No products found
               </p>
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-                Try adjusting your filters.
+                Try adjusting your search or removing some filters
               </p>
+
+              {/* Clear filters button */}
+              {(activeFilter && Object.keys(activeFilter).filter(k => k !== "query" && activeFilter[k as keyof SearchFilter] !== undefined).length > 0) && (
+                <button
+                  onClick={() => setActiveFilter({ query: activeFilter.query })}
+                  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                  Clear all filters
+                </button>
+              )}
+
+              {/* Search suggestions */}
+              <div className="mt-6">
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">Try searching for:</p>
+                <div className="mt-2 flex flex-wrap justify-center gap-2">
+                  {["women's shoes", "men's jacket", "vintage denim", "leather boots"].map((suggestion) => (
+                    <button
+                      key={suggestion}
+                      onClick={() => handleSearch(suggestion)}
+                      className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600"
+                    >
+                      {suggestion}
+                    </button>
+                  ))}
+                </div>
+              </div>
             </div>
             );
           })()}
@@ -903,9 +933,17 @@ export function ProductSearch() {
           {/* Recent Searches */}
           {recentSearches && recentSearches.length > 0 && (
             <div className="mx-auto max-w-2xl">
-              <h3 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Recent Searches
-              </h3>
+              <div className="mb-3 flex items-center justify-between">
+                <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Recent Searches
+                </h3>
+                <button
+                  onClick={() => clerkUser?.id && clearSearchHistory({ clerkId: clerkUser.id })}
+                  className="text-xs text-zinc-400 transition-colors hover:text-zinc-600 dark:hover:text-zinc-300"
+                >
+                  Clear all
+                </button>
+              </div>
               <div className="flex flex-wrap gap-2">
                 {recentSearches.map((search) => (
                   <button

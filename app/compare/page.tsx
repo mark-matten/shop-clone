@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Header } from "@/components/layout";
@@ -30,6 +30,37 @@ export default function ComparePage() {
     null,
   ]);
   const [showSelector, setShowSelector] = useState<number | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [showCopied, setShowCopied] = useState(false);
+
+  // Filter products based on search query
+  const filteredProducts = useMemo(() => {
+    if (!allProducts) return [];
+    if (!searchQuery.trim()) return allProducts;
+    const query = searchQuery.toLowerCase();
+    return allProducts.filter(
+      (p) =>
+        p.name.toLowerCase().includes(query) ||
+        p.brand.toLowerCase().includes(query) ||
+        p.category.toLowerCase().includes(query)
+    );
+  }, [allProducts, searchQuery]);
+
+  const handleShareComparison = async () => {
+    const productIds = selectedProducts
+      .filter((p): p is NonNullable<Product> => p !== null)
+      .map((p) => p._id);
+    if (productIds.length === 0) return;
+
+    const url = `${window.location.origin}/compare?ids=${productIds.join(",")}`;
+    try {
+      await navigator.clipboard.writeText(url);
+      setShowCopied(true);
+      setTimeout(() => setShowCopied(false), 2000);
+    } catch (err) {
+      console.error("Failed to copy:", err);
+    }
+  };
 
   const handleSelectProduct = (index: number, product: NonNullable<Product>) => {
     const newSelected = [...selectedProducts] as [Product, Product, Product];
@@ -55,6 +86,7 @@ export default function ComparePage() {
     { label: "Price", key: "price" as const },
     { label: "Material", key: "material" as const },
     { label: "Size", key: "size" as const },
+    { label: "Gender", key: "gender" as const },
     { label: "Condition", key: "condition" as const },
     { label: "Category", key: "category" as const },
     { label: "Platform", key: "sourcePlatform" as const },
@@ -86,13 +118,37 @@ export default function ComparePage() {
       <Header />
 
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-            Compare Products
-          </h1>
-          <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-            Select up to 3 products to compare side by side
-          </p>
+        <div className="mb-8 flex items-start justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+              Compare Products
+            </h1>
+            <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+              Select up to 3 products to compare side by side
+            </p>
+          </div>
+          {validProducts.length >= 2 && (
+            <button
+              onClick={handleShareComparison}
+              className="flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            >
+              {showCopied ? (
+                <>
+                  <svg className="h-4 w-4 text-green-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                  </svg>
+                  Copied!
+                </>
+              ) : (
+                <>
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                  </svg>
+                  Share Comparison
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {/* Quick Summary */}
@@ -216,6 +272,8 @@ export default function ComparePage() {
                   displayValue = `$${(value as number).toFixed(2)}`;
                 } else if (row.key === "condition") {
                   displayValue = conditionLabels[value as keyof typeof conditionLabels];
+                } else if (row.key === "gender") {
+                  displayValue = String(value).charAt(0).toUpperCase() + String(value).slice(1);
                 } else {
                   displayValue = String(value);
                 }
@@ -289,7 +347,10 @@ export default function ComparePage() {
                   Select a product
                 </h3>
                 <button
-                  onClick={() => setShowSelector(null)}
+                  onClick={() => {
+                    setShowSelector(null);
+                    setSearchQuery("");
+                  }}
                   className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
                 >
                   <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -297,9 +358,45 @@ export default function ComparePage() {
                   </svg>
                 </button>
               </div>
+              {/* Search Input */}
+              <div className="border-b border-zinc-200 px-4 py-3 dark:border-zinc-700">
+                <div className="relative">
+                  <svg
+                    className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                  </svg>
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="Search by name, brand, or category..."
+                    className="w-full rounded-lg border border-zinc-200 bg-white py-2 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-400 focus:border-zinc-400 focus:outline-none focus:ring-1 focus:ring-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    autoFocus
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery("")}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
+                </div>
+              </div>
               <div className="max-h-96 overflow-y-auto p-4">
+                {filteredProducts.length === 0 ? (
+                  <div className="py-8 text-center text-zinc-500 dark:text-zinc-400">
+                    No products found matching "{searchQuery}"
+                  </div>
+                ) : (
                 <div className="grid gap-3">
-                  {products.map((product) => (
+                  {filteredProducts.map((product) => (
                     <button
                       key={product._id}
                       onClick={() => handleSelectProduct(showSelector, product as NonNullable<Product>)}
@@ -334,6 +431,7 @@ export default function ComparePage() {
                     </button>
                   ))}
                 </div>
+                )}
               </div>
             </div>
           </div>

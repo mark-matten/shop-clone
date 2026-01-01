@@ -56,6 +56,17 @@ export function SearchBar({
 
   const handleKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (showSuggestions) {
+          setShowSuggestions(false);
+          setSelectedIndex(-1);
+        } else if (query) {
+          // Clear search on second Escape
+          setQuery("");
+        }
+        return;
+      }
+
       if (!suggestions || suggestions.length === 0) return;
 
       if (e.key === "ArrowDown") {
@@ -69,13 +80,23 @@ export function SearchBar({
       } else if (e.key === "Enter" && selectedIndex >= 0) {
         e.preventDefault();
         handleSelectSuggestion(suggestions[selectedIndex].query);
-      } else if (e.key === "Escape") {
-        setShowSuggestions(false);
-        setSelectedIndex(-1);
       }
     },
-    [suggestions, selectedIndex, handleSelectSuggestion]
+    [suggestions, selectedIndex, handleSelectSuggestion, showSuggestions, query]
   );
+
+  // Global keyboard shortcut: Cmd/Ctrl+K to focus search
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+
+    document.addEventListener("keydown", handleGlobalKeyDown);
+    return () => document.removeEventListener("keydown", handleGlobalKeyDown);
+  }, []);
 
   // Close suggestions when clicking outside
   useEffect(() => {
@@ -145,6 +166,32 @@ export function SearchBar({
           disabled={isLoading}
           autoComplete="off"
         />
+        {/* Clear button */}
+        {query && !isLoading && (
+          <button
+            type="button"
+            onClick={() => setQuery("")}
+            className="absolute right-16 top-1/2 -translate-y-1/2 rounded-full p-2 text-zinc-400 transition-colors hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
+            aria-label="Clear search"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
+
+        {/* Keyboard shortcut hint */}
+        {!query && (
+          <div className="absolute right-16 top-1/2 -translate-y-1/2 hidden items-center gap-1 text-xs text-zinc-400 sm:flex">
+            <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1.5 py-0.5 font-mono dark:border-zinc-600 dark:bg-zinc-800">
+              {typeof navigator !== "undefined" && /Mac/.test(navigator.platform) ? "⌘" : "Ctrl"}
+            </kbd>
+            <kbd className="rounded border border-zinc-300 bg-zinc-100 px-1.5 py-0.5 font-mono dark:border-zinc-600 dark:bg-zinc-800">
+              K
+            </kbd>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={isLoading || !query.trim()}

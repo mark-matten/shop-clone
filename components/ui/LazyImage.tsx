@@ -69,20 +69,40 @@ export function LazyImage({
 
   return (
     <div ref={imgRef} className={`relative ${className}`}>
-      {/* Placeholder/Loading state */}
+      {/* Placeholder/Loading state with shimmer effect */}
       {(!isLoaded || hasError) && (
         <div
-          className={`absolute inset-0 flex items-center justify-center bg-zinc-100 dark:bg-zinc-800 ${placeholderClassName} ${
+          className={`absolute inset-0 flex items-center justify-center ${placeholderClassName} ${
             isLoaded ? "opacity-0" : "opacity-100"
           } transition-opacity duration-300`}
         >
           {hasError ? (
-            fallbackIcon || defaultFallback
+            <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+              {fallbackIcon || defaultFallback}
+            </div>
           ) : (
-            <div className="h-8 w-8 animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-700" />
+            <div
+              className="h-full w-full"
+              style={{
+                background: "linear-gradient(90deg, #f4f4f5 0%, #e4e4e7 50%, #f4f4f5 100%)",
+                backgroundSize: "200% 100%",
+                animation: "shimmer 1.5s ease-in-out infinite",
+              }}
+            />
           )}
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes shimmer {
+          0% {
+            background-position: 200% 0;
+          }
+          100% {
+            background-position: -200% 0;
+          }
+        }
+      `}</style>
 
       {/* Actual image */}
       {isInView && !hasError && (

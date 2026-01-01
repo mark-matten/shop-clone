@@ -75,7 +75,9 @@ export default defineSchema({
     .index("by_category", ["category"])
     .index("by_price", ["price"])
     .index("by_condition", ["condition"])
-    .index("by_gender", ["gender"]),
+    .index("by_gender", ["gender"])
+    .index("by_gender_category", ["gender", "category"])
+    .index("by_sourcePlatform", ["sourcePlatform"]),
 
   tracked_items: defineTable({
     userId: v.id("users"),
@@ -118,7 +120,8 @@ export default defineSchema({
   })
     .index("by_clerkId", ["clerkId"])
     .index("by_userId", ["userId"])
-    .index("by_searchedAt", ["searchedAt"]),
+    .index("by_searchedAt", ["searchedAt"])
+    .index("by_clerkId_searchedAt", ["clerkId", "searchedAt"]),
 
   user_stats: defineTable({
     userId: v.id("users"),
