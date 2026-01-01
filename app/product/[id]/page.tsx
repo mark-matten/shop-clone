@@ -84,6 +84,33 @@ export default function ProductDetailPage() {
     }
   };
 
+  // Closet (I own this)
+  const isInCloset = useQuery(
+    api.closet.isInCloset,
+    clerkUser?.id ? { clerkId: clerkUser.id, productId: productId as Id<"products"> } : "skip"
+  );
+  const toggleCloset = useMutation(api.closet.toggleCloset);
+  const [isTogglingCloset, setIsTogglingCloset] = useState(false);
+
+  const handleToggleCloset = async () => {
+    if (!clerkUser?.id) {
+      alert("Please sign in to add items to your closet");
+      return;
+    }
+
+    setIsTogglingCloset(true);
+    try {
+      await toggleCloset({
+        clerkId: clerkUser.id,
+        productId: productId as Id<"products">,
+      });
+    } catch (error) {
+      console.error("Failed to toggle closet:", error);
+    } finally {
+      setIsTogglingCloset(false);
+    }
+  };
+
   // Get similar products
   const similarProducts = useQuery(
     api.recommendations.getSimilarProducts,
@@ -473,6 +500,33 @@ export default function ProductDetailPage() {
                   />
                 </svg>
                 Favorite
+              </button>
+
+              {/* I Own This */}
+              <button
+                onClick={handleToggleCloset}
+                disabled={isTogglingCloset}
+                className={`flex items-center gap-2 rounded-xl border px-4 py-3 font-medium transition-colors ${
+                  isInCloset
+                    ? "border-purple-300 bg-purple-50 text-purple-600 hover:bg-purple-100 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-400 dark:hover:bg-purple-900"
+                    : "border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                } ${isTogglingCloset ? "opacity-50 cursor-not-allowed" : ""}`}
+                title={isInCloset ? "Remove from My Closet" : "Add to My Closet"}
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill={isInCloset ? "currentColor" : "none"}
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"
+                  />
+                </svg>
+                {isInCloset ? "In My Closet" : "I Own This"}
               </button>
 
               {/* Track */}

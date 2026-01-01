@@ -122,6 +122,16 @@ export function Header() {
             Favorites
           </Link>
           <Link
+            href="/closet"
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+              pathname === "/closet"
+                ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+          >
+            My Closet
+          </Link>
+          <Link
             href="/dashboard"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
               pathname === "/dashboard"
@@ -382,6 +392,17 @@ export function Header() {
               }`}
             >
               Favorites
+            </Link>
+            <Link
+              href="/closet"
+              onClick={() => setShowMobileMenu(false)}
+              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+                pathname === "/closet"
+                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+              }`}
+            >
+              My Closet
             </Link>
             <Link
               href="/dashboard"

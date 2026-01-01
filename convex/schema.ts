@@ -89,6 +89,19 @@ export default defineSchema({
     .index("by_productId", ["productId"])
     .index("by_userId_productId", ["userId", "productId"]),
 
+  closet_items: defineTable({
+    userId: v.id("users"),
+    productId: v.id("products"),
+    addedAt: v.number(),
+    notes: v.optional(v.string()),
+    wornCount: v.optional(v.number()),
+    lastWorn: v.optional(v.number()),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_productId", ["productId"])
+    .index("by_userId_productId", ["userId", "productId"])
+    .index("by_userId_addedAt", ["userId", "addedAt"]),
+
   price_history: defineTable({
     productId: v.id("products"),
     price: v.number(),

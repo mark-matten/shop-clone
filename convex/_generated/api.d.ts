@@ -10,6 +10,7 @@
 
 import type * as alerts from "../alerts.js";
 import type * as analytics from "../analytics.js";
+import type * as closet from "../closet.js";
 import type * as collections from "../collections.js";
 import type * as coupons from "../coupons.js";
 import type * as crons from "../crons.js";
@@ -37,6 +38,7 @@ import type {
 declare const fullApi: ApiFromModules<{
   alerts: typeof alerts;
   analytics: typeof analytics;
+  closet: typeof closet;
   collections: typeof collections;
   coupons: typeof coupons;
   crons: typeof crons;
