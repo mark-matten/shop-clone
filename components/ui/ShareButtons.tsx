@@ -66,7 +66,7 @@ export function ShareButtons({ url, title, description, className = "", compact 
             </svg>
           )}
         </button>
-        {typeof navigator !== "undefined" && navigator.share && (
+        {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
           <button
             onClick={handleNativeShare}
             className="rounded-lg p-2 text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-300"
@@ -104,7 +104,7 @@ export function ShareButtons({ url, title, description, className = "", compact 
         )}
       </button>
 
-      {typeof navigator !== "undefined" && navigator.share && (
+      {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
         <button
           onClick={handleNativeShare}
           className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"

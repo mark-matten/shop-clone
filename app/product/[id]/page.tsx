@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -27,6 +27,7 @@ function generatePriceHistory(basePrice: number) {
 
 export default function ProductDetailPage() {
   const params = useParams();
+  const router = useRouter();
   const productId = params.id as string;
   const { user: clerkUser } = useUser();
 
@@ -238,15 +239,15 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-zinc-50 dark:bg-black">
         <Header />
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <Link
-            href="/"
+          <button
+            onClick={() => router.back()}
             className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
             Back to search
-          </Link>
+          </button>
           <div className="mt-16 text-center">
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Product not found</h1>
             <p className="mt-2 text-zinc-600 dark:text-zinc-400">
@@ -263,15 +264,15 @@ export default function ProductDetailPage() {
       <Header />
 
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <Link
-          href="/"
+        <button
+          onClick={() => router.back()}
           className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
           Back to search
-        </Link>
+        </button>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
           {/* Product Image */}

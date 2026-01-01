@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useAction, useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -65,7 +66,109 @@ function isSizeInRange(productSize: string, minSize: string | undefined, maxSize
   return productIndex >= (minIndex >= 0 ? minIndex : 0) && productIndex <= (maxIndex >= 0 ? maxIndex : sizeScale.length - 1);
 }
 
+// Category synonyms for client-side filtering (mirrors backend)
+const CATEGORY_SYNONYMS: Record<string, string[]> = {
+  shoe: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes", "shoe"],
+  shoes: ["boots", "sneakers", "sandals", "heels", "loafers", "shoe", "shoes"],
+  footwear: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes", "shoe"],
+  boot: ["boots", "boot"],
+  boots: ["boots", "boot"],
+  sneaker: ["sneakers", "sneaker"],
+  sneakers: ["sneakers", "sneaker"],
+  top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top"],
+  tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top"],
+  outerwear: ["jacket", "coat", "blazer"],
+  coats: ["coat", "jacket"],
+  jackets: ["jacket", "coat", "blazer"],
+  bottom: ["pants", "jeans", "shorts", "skirt"],
+  bottoms: ["pants", "jeans", "shorts", "skirt"],
+  bags: ["bag", "purse", "handbag"],
+  purse: ["bag", "handbag", "purse"],
+  handbag: ["bag", "purse", "handbag"],
+  dresses: ["dress"],
+  dress: ["dress", "dresses"],
+};
+
+function categoryMatches(productCategory: string, filterCategory: string): boolean {
+  const productCatLower = productCategory.toLowerCase();
+  const filterCatLower = filterCategory.toLowerCase();
+
+  // Direct match
+  if (productCatLower.includes(filterCatLower) || filterCatLower.includes(productCatLower)) {
+    return true;
+  }
+
+  // Check synonyms
+  const synonyms = CATEGORY_SYNONYMS[filterCatLower];
+  if (synonyms) {
+    return synonyms.some(syn => productCatLower.includes(syn) || syn.includes(productCatLower));
+  }
+
+  return false;
+}
+
+const SEARCH_STATE_KEY = "shopwatch_search_state";
+
+// Remove filter-related text from search query
+function removeFilterTextFromQuery(query: string, filterKey: string, filterValue: unknown): string {
+  let cleanedQuery = query;
+
+  switch (filterKey) {
+    case "maxPrice":
+      // Remove "under $X", "under X", "below $X", "less than $X", "max $X"
+      cleanedQuery = cleanedQuery.replace(/\s*(under|below|less than|max|maximum)\s*\$?\d+/gi, "");
+      break;
+    case "minPrice":
+      // Remove "over $X", "above $X", "more than $X", "min $X"
+      cleanedQuery = cleanedQuery.replace(/\s*(over|above|more than|min|minimum)\s*\$?\d+/gi, "");
+      break;
+    case "gender":
+      // Remove "men's", "mens", "women's", "womens", "men", "women", "unisex"
+      cleanedQuery = cleanedQuery.replace(/\b(women'?s?|men'?s?|unisex)\b/gi, "");
+      break;
+    case "category":
+      // Remove the category word
+      if (typeof filterValue === "string") {
+        const categoryRegex = new RegExp(`\\b${filterValue}\\b`, "gi");
+        cleanedQuery = cleanedQuery.replace(categoryRegex, "");
+      }
+      break;
+    case "brand":
+      // Remove the brand name
+      if (typeof filterValue === "string") {
+        const brandRegex = new RegExp(`\\b${filterValue}\\b`, "gi");
+        cleanedQuery = cleanedQuery.replace(brandRegex, "");
+      }
+      break;
+    case "condition":
+      // Remove "new", "used", "like new"
+      cleanedQuery = cleanedQuery.replace(/\b(like new|new|used)\b/gi, "");
+      break;
+    case "size":
+      // Remove "size X" or just the size value
+      if (typeof filterValue === "string") {
+        cleanedQuery = cleanedQuery.replace(new RegExp(`\\bsize\\s*${filterValue}\\b`, "gi"), "");
+        cleanedQuery = cleanedQuery.replace(new RegExp(`\\b${filterValue}\\b`, "gi"), "");
+      }
+      break;
+    case "material":
+      // Remove the material word
+      if (typeof filterValue === "string") {
+        const materialRegex = new RegExp(`\\b${filterValue}\\b`, "gi");
+        cleanedQuery = cleanedQuery.replace(materialRegex, "");
+      }
+      break;
+  }
+
+  // Clean up extra whitespace
+  return cleanedQuery.replace(/\s+/g, " ").trim();
+}
+
 export function ProductSearch() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const initialQuery = searchParams.get("q") || "";
+
   const [isLoading, setIsLoading] = useState(false);
   const [searchResult, setSearchResult] = useState<SearchResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -77,9 +180,13 @@ export function ProductSearch() {
   const [displayCount, setDisplayCount] = useState(20);
   const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
   const [saveSearchName, setSaveSearchName] = useState("");
-  const [currentSearchQuery, setCurrentSearchQuery] = useState("");
+  const [currentSearchQuery, setCurrentSearchQuery] = useState(initialQuery);
   const [showSavedSearchesDropdown, setShowSavedSearchesDropdown] = useState(false);
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid");
+  const lastRestoredQuery = useRef<string | null>(null);
+  const [activeFilter, setActiveFilter] = useState<SearchFilter | null>(null);
+  const hasRestoredFromStorage = useRef(false);
+  const isRestoringFromUrl = useRef(false);
 
   const { user: clerkUser } = useUser();
   const convexUser = useQuery(
@@ -211,9 +318,47 @@ export function ProductSearch() {
 
   const getFilteredAndSortedProducts = (): Product[] => {
     if (!searchResult) return [];
-    const filtered = applyFilters(searchResult.products, sidebarFilters);
+
+    let products = searchResult.products;
+
+    // Apply the active filter (parsed search filter with any removed filters)
+    const filterToApply = activeFilter || searchResult.filter;
+
+    products = products.filter((product) => {
+      // Gender filter
+      if (filterToApply.gender) {
+        if (filterToApply.gender === "men" && product.gender !== "men" && product.gender !== "unisex") return false;
+        if (filterToApply.gender === "women" && product.gender !== "women" && product.gender !== "unisex") return false;
+      }
+
+      // Condition filter
+      if (filterToApply.condition && product.condition !== filterToApply.condition) return false;
+
+      // Category filter with synonym expansion
+      if (filterToApply.category && !categoryMatches(product.category, filterToApply.category)) return false;
+
+      // Brand filter
+      if (filterToApply.brand && !product.brand.toLowerCase().includes(filterToApply.brand.toLowerCase())) return false;
+
+      // Material filter
+      if (filterToApply.material && product.material && !product.material.toLowerCase().includes(filterToApply.material.toLowerCase())) return false;
+
+      // Size filter
+      if (filterToApply.size && product.size && !product.size.toLowerCase().includes(filterToApply.size.toLowerCase())) return false;
+
+      // Price filters
+      if (filterToApply.minPrice !== undefined && product.price < filterToApply.minPrice) return false;
+      if (filterToApply.maxPrice !== undefined && product.price > filterToApply.maxPrice) return false;
+
+      return true;
+    });
+
+    const filtered = applyFilters(products, sidebarFilters);
     return sortProducts(filtered);
   };
+
+  // Get the current filter to display (activeFilter takes precedence)
+  const currentDisplayFilter = activeFilter || searchResult?.filter;
 
   const handleSaveSearch = async () => {
     if (!convexUser?._id || !currentSearchQuery.trim() || !saveSearchName.trim()) return;
@@ -256,12 +401,31 @@ export function ProductSearch() {
     handleSearch(search.query);
   };
 
-  const handleSearch = async (query: string) => {
+  const handleSearch = useCallback(async (query: string, updateUrl: boolean = true) => {
     setIsLoading(true);
     setError(null);
     setHasSearched(true);
     setDisplayCount(20); // Reset pagination
     setCurrentSearchQuery(query); // Track current query
+
+    // Only reset filters for new user-initiated searches, not URL restoration
+    if (updateUrl) {
+      setActiveFilter(null);
+      setSidebarFilters(null);
+      hasRestoredFromStorage.current = false;
+      isRestoringFromUrl.current = false;
+    }
+
+    // Update URL with search query
+    if (updateUrl) {
+      const params = new URLSearchParams(searchParams.toString());
+      if (query) {
+        params.set("q", query);
+      } else {
+        params.delete("q");
+      }
+      router.replace(`/?${params.toString()}`, { scroll: false });
+    }
 
     try {
       const result = await searchProducts({ searchText: query });
@@ -285,7 +449,95 @@ export function ProductSearch() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [searchParams, router, searchProducts, clerkUser?.id, saveSearch]);
+
+  // Handle removing a filter from the parsed search results
+  const handleRemoveFilter = useCallback((key: keyof SearchFilter) => {
+    const currentFilter = activeFilter || searchResult?.filter;
+    if (!currentFilter) return;
+
+    // Get the value being removed for text cleanup
+    const removedValue = currentFilter[key];
+
+    // Update the filter
+    const newFilter = { ...currentFilter };
+    delete newFilter[key];
+    setActiveFilter(newFilter);
+
+    // Update the search query text to remove the filter text
+    const newQuery = removeFilterTextFromQuery(currentSearchQuery, key, removedValue);
+    setCurrentSearchQuery(newQuery);
+
+    // Update the URL with the cleaned query
+    const params = new URLSearchParams(searchParams.toString());
+    if (newQuery) {
+      params.set("q", newQuery);
+    } else {
+      params.delete("q");
+    }
+    router.replace(`/?${params.toString()}`, { scroll: false });
+  }, [activeFilter, searchResult?.filter, currentSearchQuery, searchParams, router]);
+
+  // Restore search from URL when query changes (including on navigation back)
+  // Also clear everything when navigating to "/" without a query
+  useEffect(() => {
+    if (initialQuery && lastRestoredQuery.current !== initialQuery) {
+      lastRestoredQuery.current = initialQuery;
+      isRestoringFromUrl.current = true; // Mark that we're restoring
+      handleSearch(initialQuery, false);
+    } else if (!initialQuery && lastRestoredQuery.current) {
+      // Clear everything when URL query is removed (e.g., clicking logo)
+      lastRestoredQuery.current = null;
+      setSearchResult(null);
+      setHasSearched(false);
+      setActiveFilter(null);
+      setCurrentSearchQuery("");
+      setSidebarFilters(null);
+      // Clear sessionStorage too
+      sessionStorage.removeItem(SEARCH_STATE_KEY);
+    }
+  }, [initialQuery, handleSearch]);
+
+  // Save filter state to sessionStorage when it changes
+  // But NOT while we're restoring from URL/sessionStorage
+  useEffect(() => {
+    if (searchResult && hasSearched && !isRestoringFromUrl.current) {
+      const stateToSave = {
+        activeFilter,
+        originalFilter: searchResult.filter,
+        sidebarFilters,
+        query: currentSearchQuery,
+      };
+      sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(stateToSave));
+    }
+  }, [activeFilter, searchResult, sidebarFilters, currentSearchQuery, hasSearched]);
+
+  // Restore filter state from sessionStorage after search results load
+  useEffect(() => {
+    if (searchResult && !hasRestoredFromStorage.current && initialQuery && isRestoringFromUrl.current) {
+      hasRestoredFromStorage.current = true;
+      try {
+        const saved = sessionStorage.getItem(SEARCH_STATE_KEY);
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          // Only restore if it's the same query
+          if (parsed.query === initialQuery) {
+            if (parsed.activeFilter) {
+              setActiveFilter(parsed.activeFilter);
+            }
+            if (parsed.sidebarFilters) {
+              setSidebarFilters(parsed.sidebarFilters);
+            }
+          }
+        }
+      } catch (e) {
+        console.error("Failed to restore search state:", e);
+      } finally {
+        // Done restoring, allow saves again
+        isRestoringFromUrl.current = false;
+      }
+    }
+  }, [searchResult, initialQuery]);
 
   return (
     <div className="w-full">
@@ -294,6 +546,7 @@ export function ProductSearch() {
           onSearch={handleSearch}
           isLoading={isLoading}
           placeholder="Describe what you're looking for..."
+          initialValue={currentSearchQuery}
         />
       </div>
 
@@ -355,7 +608,9 @@ export function ProductSearch() {
               </p>
             </div>
             <div className="flex items-center gap-3">
-              <SearchFilters filter={searchResult.filter} />
+              {currentDisplayFilter && (
+                <SearchFilters filter={currentDisplayFilter} onRemoveFilter={handleRemoveFilter} />
+              )}
 
               {/* Saved Searches Dropdown */}
               {clerkUser && savedSearches && savedSearches.length > 0 && (

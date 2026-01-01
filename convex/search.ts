@@ -156,13 +156,10 @@ export const filterProducts = query({
 
     // Apply filters
     products = products.filter((product) => {
-      // Text search (name, description, brand)
+      // Text search with synonym expansion
       if (args.query) {
-        const searchText = args.query.toLowerCase();
         const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""}`.toLowerCase();
-
-        // Check if any word from query matches
-        const queryWords = searchText.split(/\s+/).filter(w => w.length > 2);
+        const queryWords = expandQueryWithSynonyms(args.query);
         const hasMatch = queryWords.some(word => productText.includes(word));
         if (!hasMatch && queryWords.length > 0) return false;
       }
@@ -175,8 +172,16 @@ export const filterProducts = query({
       }
       if (args.condition && product.condition !== args.condition) return false;
 
-      // Partial match filters
-      if (args.category && !product.category.toLowerCase().includes(args.category.toLowerCase())) return false;
+      // Category filter with synonym expansion
+      if (args.category) {
+        const categoryLower = args.category.toLowerCase();
+        const productCategoryLower = product.category.toLowerCase();
+        const expandedCategories = expandQueryWithSynonyms(categoryLower);
+        const categoryMatches = expandedCategories.some(cat =>
+          productCategoryLower.includes(cat) || cat.includes(productCategoryLower)
+        );
+        if (!categoryMatches) return false;
+      }
       if (args.brand && !product.brand.toLowerCase().includes(args.brand.toLowerCase())) return false;
       if (args.material && product.material && !product.material.toLowerCase().includes(args.material.toLowerCase())) return false;
       if (args.size && product.size && !product.size.toLowerCase().includes(args.size.toLowerCase())) return false;
@@ -203,20 +208,21 @@ export const searchProducts = action({
     filter: SearchFilter;
     totalResults: number;
   }> => {
-    const limit = args.limit ?? 20;
+    const limit = args.limit ?? 50; // Fetch more products for client-side filtering
 
     // Step 1: Parse search query with Claude
     const filter: SearchFilter = await ctx.runAction(internal.search.parseSearchQuery, {
       searchText: args.searchText,
     }) as SearchFilter;
 
-    // Step 2: Query products with parsed filters
+    // Step 2: Query products with ONLY the query text (not parsed filters)
+    // This allows client-side filter removal to show more products
     const products: any[] = await ctx.runQuery(internal.search.filterProductsInternal, {
-      ...filter,
+      query: filter.query,
       limit,
     });
 
-    // Return with search metadata
+    // Return products and filters (filters applied client-side)
     return {
       products,
       filter,

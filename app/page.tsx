@@ -1,5 +1,20 @@
+import { Suspense } from "react";
 import { Header } from "@/components/layout";
 import { ProductSearch } from "@/components/search";
+import { ProductGridSkeleton } from "@/components/search/ProductCardSkeleton";
+
+function SearchFallback() {
+  return (
+    <div className="w-full">
+      <div className="mx-auto max-w-2xl">
+        <div className="h-14 w-full animate-pulse rounded-full bg-zinc-200 dark:bg-zinc-700" />
+      </div>
+      <div className="mt-8">
+        <ProductGridSkeleton count={6} />
+      </div>
+    </div>
+  );
+}
 
 export default function Home() {
   return (
@@ -20,7 +35,9 @@ export default function Home() {
         </div>
 
         <div className="animate-fade-in-up">
-          <ProductSearch />
+          <Suspense fallback={<SearchFallback />}>
+            <ProductSearch />
+          </Suspense>
         </div>
       </main>
     </div>

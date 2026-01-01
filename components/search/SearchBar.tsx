@@ -9,14 +9,16 @@ interface SearchBarProps {
   onSearch: (query: string) => void;
   isLoading?: boolean;
   placeholder?: string;
+  initialValue?: string;
 }
 
 export function SearchBar({
   onSearch,
   isLoading = false,
   placeholder = "Search for products...",
+  initialValue = "",
 }: SearchBarProps) {
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(initialValue);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -96,6 +98,11 @@ export function SearchBar({
   useEffect(() => {
     setSelectedIndex(-1);
   }, [suggestions]);
+
+  // Sync query with initialValue when it changes (e.g., on navigation back)
+  useEffect(() => {
+    setQuery(initialValue);
+  }, [initialValue]);
 
   const getTypeIcon = (type: "recent" | "popular" | "product") => {
     switch (type) {
