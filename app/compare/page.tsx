@@ -1,20 +1,36 @@
 "use client";
 
 import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Header } from "@/components/layout";
-import { mockProducts } from "@/lib/mockData";
 
-type Product = (typeof mockProducts)[number] | null;
+type Product = {
+  _id: string;
+  name: string;
+  description: string;
+  brand: string;
+  price: number;
+  material?: string;
+  size?: string;
+  category: string;
+  gender?: "men" | "women" | "unisex";
+  condition: "new" | "used" | "like_new";
+  sourceUrl: string;
+  sourcePlatform: string;
+  imageUrl?: string;
+} | null;
 
 export default function ComparePage() {
+  const allProducts = useQuery(api.products.getAllProducts);
   const [selectedProducts, setSelectedProducts] = useState<[Product, Product, Product]>([
-    mockProducts[0],
-    mockProducts[2],
-    mockProducts[4],
+    null,
+    null,
+    null,
   ]);
   const [showSelector, setShowSelector] = useState<number | null>(null);
 
-  const handleSelectProduct = (index: number, product: (typeof mockProducts)[number]) => {
+  const handleSelectProduct = (index: number, product: NonNullable<Product>) => {
     const newSelected = [...selectedProducts] as [Product, Product, Product];
     newSelected[index] = product;
     setSelectedProducts(newSelected);
@@ -27,7 +43,7 @@ export default function ComparePage() {
     setSelectedProducts(newSelected);
   };
 
-  const conditionLabels = {
+  const conditionLabels: Record<string, string> = {
     new: "New",
     used: "Used",
     like_new: "Like New",
@@ -46,6 +62,23 @@ export default function ComparePage() {
   const validProducts = selectedProducts.filter((p): p is NonNullable<typeof p> => p !== null);
   const prices = validProducts.map((p) => p.price);
   const lowestPrice = prices.length > 0 ? Math.min(...prices) : 0;
+
+  // Loading state
+  if (allProducts === undefined) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <Header />
+        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="animate-pulse">
+            <div className="h-8 w-48 rounded bg-zinc-200 dark:bg-zinc-800" />
+            <div className="mt-8 h-96 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const products = allProducts || [];
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
@@ -232,10 +265,10 @@ export default function ComparePage() {
               </div>
               <div className="max-h-96 overflow-y-auto p-4">
                 <div className="grid gap-3">
-                  {mockProducts.map((product) => (
+                  {products.map((product) => (
                     <button
                       key={product._id}
-                      onClick={() => handleSelectProduct(showSelector, product)}
+                      onClick={() => handleSelectProduct(showSelector, product as NonNullable<Product>)}
                       className="flex items-center gap-4 rounded-lg border border-zinc-200 p-3 text-left transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
                     >
                       <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">

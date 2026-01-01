@@ -34,11 +34,17 @@ function simulatePriceFetch(currentPrice: number): number {
 // Main cron job action - checks all tracked prices
 export const checkAllTrackedPrices = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<{
+    checked: number;
+    updated: number;
+    unchanged: number;
+    alertsCreated: number;
+  }> => {
     console.log("Starting price check for all tracked items...");
 
     // Get all tracked products with current prices
-    const trackedProducts = await ctx.runQuery(internal.priceChecker.getTrackedProductIds);
+    const trackedProducts: Array<{ productId: any; currentPrice: number; sourceUrl: string }> =
+      await ctx.runQuery(internal.priceChecker.getTrackedProductIds);
 
     console.log(`Found ${trackedProducts.length} products to check`);
 
@@ -80,7 +86,7 @@ export const checkAllTrackedPrices = internalAction({
     );
 
     // Check for alerts after price updates
-    const alertResult = await ctx.runAction(internal.alerts.checkPricesAndAlert);
+    const alertResult = await ctx.runAction(internal.alerts.checkPricesAndAlert) as { alertsCreated: number };
 
     return {
       checked: trackedProducts.length,
@@ -94,7 +100,17 @@ export const checkAllTrackedPrices = internalAction({
 // Manual trigger for testing
 export const triggerPriceCheck = internalAction({
   args: {},
-  handler: async (ctx) => {
-    return await ctx.runAction(internal.priceChecker.checkAllTrackedPrices);
+  handler: async (ctx): Promise<{
+    checked: number;
+    updated: number;
+    unchanged: number;
+    alertsCreated: number;
+  }> => {
+    return await ctx.runAction(internal.priceChecker.checkAllTrackedPrices) as {
+      checked: number;
+      updated: number;
+      unchanged: number;
+      alertsCreated: number;
+    };
   },
 });

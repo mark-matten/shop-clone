@@ -1,12 +1,13 @@
 "use client";
 
 import { useState } from "react";
+import { useAction } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { SearchBar } from "./SearchBar";
 import { ProductCard } from "./ProductCard";
 import { ProductGridSkeleton } from "./ProductCardSkeleton";
 import { SearchFilters } from "./SearchFilters";
 import { FilterSidebar, FilterState } from "./FilterSidebar";
-import { mockSearch } from "@/lib/mockData";
 
 interface Product {
   _id: string;
@@ -50,6 +51,8 @@ export function ProductSearch() {
   const [showFilters, setShowFilters] = useState(false);
   const [sidebarFilters, setSidebarFilters] = useState<FilterState | null>(null);
 
+  const searchProducts = useAction(api.search.searchProducts);
+
   const applyFilters = (products: Product[], filters: FilterState | null): Product[] => {
     if (!filters) return products;
 
@@ -84,12 +87,10 @@ export function ProductSearch() {
     setHasSearched(true);
 
     try {
-      // Simulate network delay
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const result = mockSearch(query);
+      const result = await searchProducts({ searchText: query });
       setSearchResult({
-        products: result.products as Product[],
-        filter: { query, ...result.filter } as SearchFilter,
+        products: result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[],
+        filter: result.filter as SearchFilter,
         totalResults: result.totalResults,
       });
     } catch (err) {

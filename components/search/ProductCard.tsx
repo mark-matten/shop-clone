@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useMutation } from "convex/react";
+import { useUser } from "@clerk/nextjs";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface Product {
   _id: string;
@@ -36,8 +40,12 @@ const conditionColors = {
 };
 
 export function ProductCard({ product }: ProductCardProps) {
+  const { user } = useUser();
   const [isTracked, setIsTracked] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const toggleFavorite = useMutation(api.favorites.toggleFavorite);
 
   const handleTrackClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -45,10 +53,23 @@ export function ProductCard({ product }: ProductCardProps) {
     setIsTracked(!isTracked);
   };
 
-  const handleFavoriteClick = (e: React.MouseEvent) => {
+  const handleFavoriteClick = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsFavorite(!isFavorite);
+    if (!user?.id || isLoading) return;
+
+    setIsLoading(true);
+    try {
+      const result = await toggleFavorite({
+        clerkId: user.id,
+        productId: product._id as Id<"products">,
+      });
+      setIsFavorite(result.isFavorite);
+    } catch (error) {
+      console.error("Failed to toggle favorite:", error);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

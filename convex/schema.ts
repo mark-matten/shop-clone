@@ -15,6 +15,15 @@ export default defineSchema({
     .index("by_clerkId", ["clerkId"])
     .index("by_phoneNumber", ["phoneNumber"]),
 
+  favorites: defineTable({
+    userId: v.id("users"),
+    productId: v.id("products"),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_productId", ["productId"])
+    .index("by_userId_productId", ["userId", "productId"]),
+
   products: defineTable({
     name: v.string(),
     description: v.string(),
@@ -28,17 +37,12 @@ export default defineSchema({
     sourceUrl: v.string(),
     sourcePlatform: v.string(),
     imageUrl: v.optional(v.string()),
-    embedding: v.optional(v.array(v.float64())),
   })
     .index("by_brand", ["brand"])
     .index("by_category", ["category"])
     .index("by_price", ["price"])
     .index("by_condition", ["condition"])
-    .vectorIndex("by_embedding", {
-      vectorField: "embedding",
-      dimensions: 1536,
-      filterFields: ["brand", "category", "condition", "gender"],
-    }),
+    .index("by_gender", ["gender"]),
 
   tracked_items: defineTable({
     userId: v.id("users"),

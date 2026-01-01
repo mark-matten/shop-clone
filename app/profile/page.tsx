@@ -1,28 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useQuery, useMutation } from "convex/react";
+import { useUser } from "@clerk/nextjs";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
-import { mockProducts } from "@/lib/mockData";
-
-// Mock user data for preview
-const mockUser = {
-  phoneNumber: "+1 (555) 123-4567",
-  preferences: {
-    shoeSize: "8",
-    topSize: "M",
-    bottomSize: "28",
-    dressSize: "6",
-  },
-};
-
-// Mock tracked items
-const mockTrackedItems = mockProducts.slice(0, 3).map((product, index) => ({
-  ...product,
-  targetPrice: product.price * 0.8,
-  trackedAt: Date.now() - index * 86400000,
-  priceChange: index === 0 ? -12.5 : index === 1 ? 5.2 : 0,
-}));
 
 const sizeOptions = {
   shoeSize: ["5", "5.5", "6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12"],
@@ -32,18 +16,102 @@ const sizeOptions = {
 };
 
 export default function ProfilePage() {
-  const [preferences, setPreferences] = useState(mockUser.preferences);
+  const { user: clerkUser, isLoaded } = useUser();
+  const convexUser = useQuery(
+    api.users.getUserByClerkId,
+    clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
+  );
+  const trackedItems = useQuery(
+    api.tracking.getTrackedItems,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
+
+  const updatePreferences = useMutation(api.users.updateUserPreferences);
+  const untrackProduct = useMutation(api.tracking.untrackProduct);
+
+  const [preferences, setPreferences] = useState({
+    shoeSize: "",
+    topSize: "",
+    bottomSize: "",
+    dressSize: "",
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
 
+  // Update preferences when user data loads
+  useEffect(() => {
+    if (convexUser?.preferences) {
+      setPreferences({
+        shoeSize: convexUser.preferences.shoeSize || "",
+        topSize: convexUser.preferences.topSize || "",
+        bottomSize: convexUser.preferences.bottomSize || "",
+        dressSize: convexUser.preferences.dressSize || "",
+      });
+    }
+  }, [convexUser]);
+
   const handleSave = async () => {
+    if (!clerkUser?.id) return;
     setIsSaving(true);
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    setSaveMessage("Preferences saved!");
-    setIsSaving(false);
-    setTimeout(() => setSaveMessage(null), 3000);
+    try {
+      await updatePreferences({
+        clerkId: clerkUser.id,
+        preferences,
+      });
+      setSaveMessage("Preferences saved!");
+      setTimeout(() => setSaveMessage(null), 3000);
+    } catch (error) {
+      console.error("Failed to save preferences:", error);
+      setSaveMessage("Failed to save");
+    } finally {
+      setIsSaving(false);
+    }
   };
+
+  const handleUntrack = async (productId: Id<"products">) => {
+    if (!convexUser?._id) return;
+    await untrackProduct({ userId: convexUser._id, productId });
+  };
+
+  // Loading state
+  if (!isLoaded || (clerkUser && convexUser === undefined)) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <Header />
+        <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="animate-pulse">
+            <div className="h-8 w-32 rounded bg-zinc-200 dark:bg-zinc-800" />
+            <div className="mt-8 space-y-4">
+              <div className="h-40 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-40 rounded-xl bg-zinc-200 dark:bg-zinc-800" />
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Not signed in
+  if (!clerkUser) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <Header />
+        <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="rounded-xl border border-zinc-200 bg-white py-16 text-center dark:border-zinc-800 dark:bg-zinc-900">
+            <p className="text-zinc-600 dark:text-zinc-400">Sign in to view your profile</p>
+            <Link
+              href="/sign-in"
+              className="mt-4 inline-block rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Sign in
+            </Link>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  const items = trackedItems || [];
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
@@ -54,7 +122,7 @@ export default function ProfilePage() {
           Your Profile
         </h1>
         <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-          {mockUser.phoneNumber}
+          {convexUser?.phoneNumber || clerkUser.primaryPhoneNumber?.phoneNumber || "No phone number"}
         </p>
 
         {/* Size Preferences */}
@@ -124,82 +192,83 @@ export default function ProfilePage() {
                 Tracked Items
               </h2>
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                {mockTrackedItems.length} items being tracked
+                {items.length} items being tracked
               </p>
             </div>
           </div>
 
-          <div className="mt-4 space-y-4">
-            {mockTrackedItems.map((item) => (
-              <div
-                key={item._id}
-                className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-              >
-                <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                  {item.imageUrl ? (
-                    <img
-                      src={item.imageUrl}
-                      alt={item.name}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                      <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                      </svg>
-                    </div>
-                  )}
-                </div>
+          {items.length === 0 ? (
+            <div className="mt-4 rounded-xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+              <p className="text-zinc-500 dark:text-zinc-400">No tracked items yet</p>
+              <p className="mt-1 text-sm text-zinc-400">Click "Track Price" on products to start tracking</p>
+            </div>
+          ) : (
+            <div className="mt-4 space-y-4">
+              {items.map((item) => item.product && (
+                <div
+                  key={item._id}
+                  className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                    {item.product.imageUrl ? (
+                      <img
+                        src={item.product.imageUrl}
+                        alt={item.product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
 
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
-                        {item.brand}
-                      </p>
-                      <h3 className="font-medium text-zinc-900 dark:text-white truncate">
-                        {item.name}
-                      </h3>
-                      <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                        {item.sourcePlatform}
-                      </p>
-                    </div>
-                    <div className="text-right flex-shrink-0">
-                      <p className="text-lg font-semibold text-zinc-900 dark:text-white">
-                        ${item.price.toFixed(2)}
-                      </p>
-                      {item.priceChange !== 0 && (
-                        <p
-                          className={`text-sm font-medium ${
-                            item.priceChange < 0
-                              ? "text-green-600 dark:text-green-400"
-                              : "text-red-600 dark:text-red-400"
-                          }`}
-                        >
-                          {item.priceChange < 0 ? "↓" : "↑"} {Math.abs(item.priceChange).toFixed(1)}%
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+                          {item.product.brand}
                         </p>
-                      )}
-                      <p className="text-xs text-zinc-400">
-                        Target: ${item.targetPrice.toFixed(2)}
-                      </p>
+                        <h3 className="font-medium text-zinc-900 dark:text-white truncate">
+                          {item.product.name}
+                        </h3>
+                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                          {item.product.sourcePlatform}
+                        </p>
+                      </div>
+                      <div className="text-right flex-shrink-0">
+                        <p className="text-lg font-semibold text-zinc-900 dark:text-white">
+                          ${item.product.price.toFixed(2)}
+                        </p>
+                        {item.targetPrice && (
+                          <p className="text-xs text-zinc-400">
+                            Target: ${item.targetPrice.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex flex-shrink-0 gap-2">
-                  <Link
-                    href={`/product/${item._id}`}
-                    className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  >
-                    View
-                  </Link>
-                  <button className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950">
-                    Untrack
-                  </button>
+                  <div className="flex flex-shrink-0 gap-2">
+                    <Link
+                      href={`/product/${item.productId}`}
+                      className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      View
+                    </Link>
+                    <button
+                      onClick={() => handleUntrack(item.productId)}
+                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
+                    >
+                      Untrack
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* Price Alerts */}

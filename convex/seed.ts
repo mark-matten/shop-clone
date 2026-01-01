@@ -1,5 +1,4 @@
-import { internalMutation, internalAction } from "./_generated/server";
-import { internal } from "./_generated/api";
+import { mutation, internalMutation } from "./_generated/server";
 import { v } from "convex/values";
 
 // Sample product data for seeding
@@ -16,6 +15,7 @@ const sampleProducts = [
     condition: "new" as const,
     sourceUrl: "https://poshmark.com/listing/sam-edelman-boots",
     sourcePlatform: "Poshmark",
+    imageUrl: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&h=400&fit=crop",
   },
   {
     name: "Vintage Levi's 501 Denim Jacket",
@@ -29,6 +29,7 @@ const sampleProducts = [
     condition: "used" as const,
     sourceUrl: "https://ebay.com/itm/levis-vintage-jacket",
     sourcePlatform: "eBay",
+    imageUrl: "https://images.unsplash.com/photo-1576995853123-5a10305d93c0?w=400&h=400&fit=crop",
   },
   {
     name: "Gucci Marmont Shoulder Bag",
@@ -41,6 +42,7 @@ const sampleProducts = [
     condition: "like_new" as const,
     sourceUrl: "https://therealreal.com/products/gucci-marmont",
     sourcePlatform: "TheRealReal",
+    imageUrl: "https://images.unsplash.com/photo-1584917865442-de89df76afd3?w=400&h=400&fit=crop",
   },
   {
     name: "Nike Air Max 90 Running Shoes",
@@ -54,6 +56,7 @@ const sampleProducts = [
     condition: "new" as const,
     sourceUrl: "https://ebay.com/itm/nike-air-max-90",
     sourcePlatform: "eBay",
+    imageUrl: "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=400&h=400&fit=crop",
   },
   {
     name: "Cashmere Crewneck Sweater",
@@ -67,6 +70,7 @@ const sampleProducts = [
     condition: "new" as const,
     sourceUrl: "https://poshmark.com/listing/everlane-cashmere",
     sourcePlatform: "Poshmark",
+    imageUrl: "https://images.unsplash.com/photo-1620799140408-edc6dcb6d633?w=400&h=400&fit=crop",
   },
   {
     name: "Reformation Midi Dress",
@@ -80,6 +84,7 @@ const sampleProducts = [
     condition: "like_new" as const,
     sourceUrl: "https://therealreal.com/products/reformation-dress",
     sourcePlatform: "TheRealReal",
+    imageUrl: "https://images.unsplash.com/photo-1595777457583-95e059d581b8?w=400&h=400&fit=crop",
   },
   {
     name: "Chanel Classic Flap Bag",
@@ -92,6 +97,7 @@ const sampleProducts = [
     condition: "used" as const,
     sourceUrl: "https://therealreal.com/products/chanel-flap",
     sourcePlatform: "TheRealReal",
+    imageUrl: "https://images.unsplash.com/photo-1548036328-c9fa89d128fa?w=400&h=400&fit=crop",
   },
   {
     name: "Adidas Ultraboost 22",
@@ -105,6 +111,7 @@ const sampleProducts = [
     condition: "new" as const,
     sourceUrl: "https://ebay.com/itm/adidas-ultraboost",
     sourcePlatform: "eBay",
+    imageUrl: "https://images.unsplash.com/photo-1587563871167-1ee9c731aefb?w=400&h=400&fit=crop",
   },
   {
     name: "Patagonia Better Sweater Fleece",
@@ -118,6 +125,7 @@ const sampleProducts = [
     condition: "like_new" as const,
     sourceUrl: "https://poshmark.com/listing/patagonia-fleece",
     sourcePlatform: "Poshmark",
+    imageUrl: "https://images.unsplash.com/photo-1591047139829-d91aecb6caea?w=400&h=400&fit=crop",
   },
   {
     name: "Stuart Weitzman Over-the-Knee Boots",
@@ -131,6 +139,7 @@ const sampleProducts = [
     condition: "used" as const,
     sourceUrl: "https://therealreal.com/products/stuart-weitzman-5050",
     sourcePlatform: "TheRealReal",
+    imageUrl: "https://images.unsplash.com/photo-1543163521-1bf539c55dd2?w=400&h=400&fit=crop",
   },
   {
     name: "Madewell High-Rise Skinny Jeans",
@@ -144,6 +153,7 @@ const sampleProducts = [
     condition: "new" as const,
     sourceUrl: "https://poshmark.com/listing/madewell-jeans",
     sourcePlatform: "Poshmark",
+    imageUrl: "https://images.unsplash.com/photo-1541099649105-f69ad21f3246?w=400&h=400&fit=crop",
   },
   {
     name: "Burberry Vintage Check Scarf",
@@ -156,6 +166,7 @@ const sampleProducts = [
     condition: "like_new" as const,
     sourceUrl: "https://therealreal.com/products/burberry-scarf",
     sourcePlatform: "TheRealReal",
+    imageUrl: "https://images.unsplash.com/photo-1520903920243-00d872a2d1c9?w=400&h=400&fit=crop",
   },
   {
     name: "Allbirds Wool Runners",
@@ -169,6 +180,7 @@ const sampleProducts = [
     condition: "used" as const,
     sourceUrl: "https://ebay.com/itm/allbirds-wool-runners",
     sourcePlatform: "eBay",
+    imageUrl: "https://images.unsplash.com/photo-1560769629-975ec94e6a86?w=400&h=400&fit=crop",
   },
   {
     name: "Tory Burch Miller Sandals",
@@ -182,6 +194,7 @@ const sampleProducts = [
     condition: "new" as const,
     sourceUrl: "https://poshmark.com/listing/tory-burch-miller",
     sourcePlatform: "Poshmark",
+    imageUrl: "https://images.unsplash.com/photo-1603487742131-4160ec999306?w=400&h=400&fit=crop",
   },
   {
     name: "Ralph Lauren Oxford Shirt",
@@ -195,96 +208,20 @@ const sampleProducts = [
     condition: "like_new" as const,
     sourceUrl: "https://ebay.com/itm/ralph-lauren-oxford",
     sourcePlatform: "eBay",
+    imageUrl: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=400&h=400&fit=crop",
   },
 ];
 
-// Insert a single product without embedding (for testing)
-export const insertProductWithoutEmbedding = internalMutation({
-  args: {
-    name: v.string(),
-    description: v.string(),
-    brand: v.string(),
-    price: v.number(),
-    material: v.optional(v.string()),
-    size: v.optional(v.string()),
-    category: v.string(),
-    gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
-    condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
-    sourceUrl: v.string(),
-    sourcePlatform: v.string(),
-  },
-  handler: async (ctx, args) => {
-    return await ctx.db.insert("products", {
-      ...args,
-      embedding: undefined,
-    });
-  },
-});
-
-// Seed database with sample products (without embeddings - for quick testing)
-export const seedProductsQuick = internalAction({
+// Seed database with sample products
+export const seedProducts = mutation({
   args: {},
   handler: async (ctx) => {
-    console.log("Seeding database with sample products (no embeddings)...");
-
     const results = [];
     for (const product of sampleProducts) {
-      try {
-        const id = await ctx.runMutation(internal.seed.insertProductWithoutEmbedding, product);
-        results.push({ success: true, id, name: product.name });
-        console.log(`Added: ${product.name}`);
-      } catch (error) {
-        results.push({ success: false, name: product.name, error: String(error) });
-        console.error(`Failed: ${product.name}`, error);
-      }
+      const id = await ctx.db.insert("products", product);
+      results.push({ id, name: product.name });
     }
-
-    console.log(`Seeding complete. Added ${results.filter((r) => r.success).length} products.`);
-    return results;
-  },
-});
-
-// Seed database with sample products (with embeddings - requires OpenAI API key)
-export const seedProductsWithEmbeddings = internalAction({
-  args: {},
-  handler: async (ctx) => {
-    console.log("Seeding database with sample products (with embeddings)...");
-
-    const results = [];
-    for (const product of sampleProducts) {
-      try {
-        // Generate embedding
-        const textForEmbedding = [
-          product.name,
-          product.description,
-          product.brand,
-          product.category,
-          product.material,
-          product.gender,
-          product.condition,
-        ]
-          .filter(Boolean)
-          .join(" ");
-
-        const embedding = await ctx.runAction(internal.search.generateEmbedding, {
-          text: textForEmbedding,
-        });
-
-        const id = await ctx.runMutation(internal.products.insertProduct, {
-          ...product,
-          embedding,
-        });
-
-        results.push({ success: true, id, name: product.name });
-        console.log(`Added with embedding: ${product.name}`);
-      } catch (error) {
-        results.push({ success: false, name: product.name, error: String(error) });
-        console.error(`Failed: ${product.name}`, error);
-      }
-    }
-
-    console.log(`Seeding complete. Added ${results.filter((r) => r.success).length} products.`);
-    return results;
+    return { added: results.length, products: results };
   },
 });
 
@@ -296,7 +233,15 @@ export const clearAllProducts = internalMutation({
     for (const product of products) {
       await ctx.db.delete(product._id);
     }
-    console.log(`Deleted ${products.length} products.`);
     return { deleted: products.length };
+  },
+});
+
+// Check if products exist
+export const hasProducts = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const count = await ctx.db.query("products").collect();
+    return { count: count.length };
   },
 });

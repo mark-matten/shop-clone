@@ -1,12 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
-import { mockProducts } from "@/lib/mockData";
 
-// Generate mock price history
+// Generate mock price history (will be replaced with real data later)
 function generatePriceHistory(basePrice: number) {
   const history = [];
   const now = Date.now();
@@ -25,31 +27,91 @@ export default function ProductDetailPage() {
   const params = useParams();
   const productId = params.id as string;
 
-  // Find product from mock data
-  const product = mockProducts.find((p) => p._id === productId) || mockProducts[0];
-  const priceHistory = generatePriceHistory(product.price);
+  // Fetch product from Convex
+  const product = useQuery(api.products.getProduct, {
+    id: productId as Id<"products">,
+  });
 
   const [isTracking, setIsTracking] = useState(false);
-  const [targetPrice, setTargetPrice] = useState(
-    Math.round(product.price * 0.85).toString()
-  );
+  const [targetPrice, setTargetPrice] = useState("");
   const [showTrackingModal, setShowTrackingModal] = useState(false);
 
-  const lowestPrice = Math.min(...priceHistory.map((p) => p.price));
-  const highestPrice = Math.max(...priceHistory.map((p) => p.price));
-  const avgPrice =
-    priceHistory.reduce((sum, p) => sum + p.price, 0) / priceHistory.length;
+  // Generate price history only when product is loaded
+  const priceHistory = useMemo(
+    () => (product ? generatePriceHistory(product.price) : []),
+    [product]
+  );
+
+  const lowestPrice = priceHistory.length > 0 ? Math.min(...priceHistory.map((p) => p.price)) : 0;
+  const highestPrice = priceHistory.length > 0 ? Math.max(...priceHistory.map((p) => p.price)) : 0;
+  const avgPrice = priceHistory.length > 0
+    ? priceHistory.reduce((sum, p) => sum + p.price, 0) / priceHistory.length
+    : 0;
 
   const handleTrack = () => {
     setIsTracking(true);
     setShowTrackingModal(false);
   };
 
-  const conditionLabels = {
+  const conditionLabels: Record<string, string> = {
     new: "New",
     used: "Used",
     like_new: "Like New",
   };
+
+  // Loading state
+  if (product === undefined) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <Header />
+        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          <div className="animate-pulse">
+            <div className="h-4 w-24 rounded bg-zinc-200 dark:bg-zinc-800" />
+            <div className="mt-6 grid gap-8 lg:grid-cols-2">
+              <div className="aspect-square rounded-2xl bg-zinc-200 dark:bg-zinc-800" />
+              <div className="space-y-4">
+                <div className="h-4 w-32 rounded bg-zinc-200 dark:bg-zinc-800" />
+                <div className="h-8 w-3/4 rounded bg-zinc-200 dark:bg-zinc-800" />
+                <div className="h-10 w-40 rounded bg-zinc-200 dark:bg-zinc-800" />
+                <div className="h-20 w-full rounded bg-zinc-200 dark:bg-zinc-800" />
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Not found state
+  if (product === null) {
+    return (
+      <div className="min-h-screen bg-zinc-50 dark:bg-black">
+        <Header />
+        <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to search
+          </Link>
+          <div className="mt-16 text-center">
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Product not found</h1>
+            <p className="mt-2 text-zinc-600 dark:text-zinc-400">
+              This product may have been removed or the link is incorrect.
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
+  // Set default target price when product loads
+  if (targetPrice === "" && product) {
+    setTargetPrice(Math.round(product.price * 0.85).toString());
+  }
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">

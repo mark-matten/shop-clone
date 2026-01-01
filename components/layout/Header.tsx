@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { SignOutButton } from "@clerk/nextjs";
 
 // Mock alerts for preview
 const mockAlerts = [
@@ -232,19 +233,17 @@ export function Header() {
                   Settings
                 </Link>
                 <div className="border-t border-zinc-200 dark:border-zinc-700">
-                  <button
-                    className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                    onClick={() => {
-                      setShowUserMenu(false);
-                      // In production: signOut()
-                      alert("Sign out (mock mode)");
-                    }}
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                    </svg>
-                    Sign out
-                  </button>
+                  <SignOutButton redirectUrl="/">
+                    <button
+                      className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+                      onClick={() => setShowUserMenu(false)}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                      </svg>
+                      Sign out
+                    </button>
+                  </SignOutButton>
                 </div>
               </div>
             )}
@@ -311,15 +310,14 @@ export function Header() {
             >
               Profile
             </Link>
-            <button
-              onClick={() => {
-                setShowMobileMenu(false);
-                alert("Sign out (mock mode)");
-              }}
-              className="rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-            >
-              Sign out
-            </button>
+            <SignOutButton redirectUrl="/">
+              <button
+                onClick={() => setShowMobileMenu(false)}
+                className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+              >
+                Sign out
+              </button>
+            </SignOutButton>
           </nav>
         </div>
       )}
