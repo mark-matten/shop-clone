@@ -98,6 +98,65 @@ export default function ProductDetailPage() {
 
   const { addViewed } = useRecentlyViewed();
   const addedViewRef = useRef<string | null>(null);
+  const [previousProductId, setPreviousProductId] = useState<string | null>(null);
+  const [previousProductName, setPreviousProductName] = useState<string | null>(null);
+
+  // Track navigation history for back links
+  useEffect(() => {
+    if (!productId) return;
+
+    // Get the current navigation stack from sessionStorage
+    const navStackStr = sessionStorage.getItem("product_nav_stack");
+    const navStack: { id: string; name: string }[] = navStackStr ? JSON.parse(navStackStr) : [];
+
+    // Check if the previous page was a product page
+    if (navStack.length > 0) {
+      const lastProduct = navStack[navStack.length - 1];
+      // Only show previous product link if it's not the current product
+      if (lastProduct.id !== productId) {
+        setPreviousProductId(lastProduct.id);
+        setPreviousProductName(lastProduct.name);
+      }
+    }
+
+    // Add current product to stack when we have product data
+    // This will be done after product loads
+  }, [productId]);
+
+  // Add to nav stack once product loads
+  useEffect(() => {
+    if (!product || !productId) return;
+
+    const navStackStr = sessionStorage.getItem("product_nav_stack");
+    const navStack: { id: string; name: string }[] = navStackStr ? JSON.parse(navStackStr) : [];
+
+    // Don't add if it's already the last item
+    if (navStack.length > 0 && navStack[navStack.length - 1].id === productId) {
+      return;
+    }
+
+    // Add current product to the stack
+    navStack.push({ id: productId, name: product.name });
+
+    // Keep only last 10 products
+    if (navStack.length > 10) {
+      navStack.shift();
+    }
+
+    sessionStorage.setItem("product_nav_stack", JSON.stringify(navStack));
+  }, [product, productId]);
+
+  const handleBackToPreviousProduct = () => {
+    if (!previousProductId) return;
+
+    // Pop the current product from the stack before navigating
+    const navStackStr = sessionStorage.getItem("product_nav_stack");
+    const navStack: { id: string; name: string }[] = navStackStr ? JSON.parse(navStackStr) : [];
+    navStack.pop(); // Remove current product
+    sessionStorage.setItem("product_nav_stack", JSON.stringify(navStack));
+
+    router.push(`/product/${previousProductId}`);
+  };
 
   const handleCopyLink = async () => {
     try {
@@ -239,15 +298,15 @@ export default function ProductDetailPage() {
       <div className="min-h-screen bg-zinc-50 dark:bg-black">
         <Header />
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-          <button
-            onClick={() => router.back()}
+          <Link
+            href="/"
             className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
             </svg>
             Back to search
-          </button>
+          </Link>
           <div className="mt-16 text-center">
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Product not found</h1>
             <p className="mt-2 text-zinc-600 dark:text-zinc-400">
@@ -264,15 +323,31 @@ export default function ProductDetailPage() {
       <Header />
 
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <button
-          onClick={() => router.back()}
-          className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-        >
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to search
-        </button>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+            </svg>
+            Back to search
+          </Link>
+          {previousProductId && previousProductName && (
+            <>
+              <span className="text-zinc-300 dark:text-zinc-600">|</span>
+              <button
+                onClick={handleBackToPreviousProduct}
+                className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+                Back to {previousProductName.length > 25 ? previousProductName.slice(0, 25) + "..." : previousProductName}
+              </button>
+            </>
+          )}
+        </div>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
           {/* Product Image */}
