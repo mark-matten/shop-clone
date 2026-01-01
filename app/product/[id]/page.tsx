@@ -100,61 +100,68 @@ export default function ProductDetailPage() {
   const addedViewRef = useRef<string | null>(null);
   const [previousProductId, setPreviousProductId] = useState<string | null>(null);
   const [previousProductName, setPreviousProductName] = useState<string | null>(null);
+  const hasAddedToStack = useRef(false);
 
   // Track navigation history for back links
   useEffect(() => {
     if (!productId) return;
 
+    // Reset the flag when product changes
+    hasAddedToStack.current = false;
+
     // Get the current navigation stack from sessionStorage
     const navStackStr = sessionStorage.getItem("product_nav_stack");
     const navStack: { id: string; name: string }[] = navStackStr ? JSON.parse(navStackStr) : [];
 
-    // Check if the previous page was a product page
-    if (navStack.length > 0) {
-      const lastProduct = navStack[navStack.length - 1];
-      // Only show previous product link if it's not the current product
-      if (lastProduct.id !== productId) {
-        setPreviousProductId(lastProduct.id);
-        setPreviousProductName(lastProduct.name);
-      }
-    }
+    // Find current product's position in the stack
+    const currentIndex = navStack.findIndex(p => p.id === productId);
 
-    // Add current product to stack when we have product data
-    // This will be done after product loads
+    if (currentIndex > 0) {
+      // Current product is in stack and has a predecessor
+      const prevProduct = navStack[currentIndex - 1];
+      setPreviousProductId(prevProduct.id);
+      setPreviousProductName(prevProduct.name);
+    } else if (currentIndex === -1 && navStack.length > 0) {
+      // Current product is not in stack yet - previous is the last item
+      const lastProduct = navStack[navStack.length - 1];
+      setPreviousProductId(lastProduct.id);
+      setPreviousProductName(lastProduct.name);
+    } else {
+      // No previous product (first in chain or empty stack)
+      setPreviousProductId(null);
+      setPreviousProductName(null);
+    }
   }, [productId]);
 
   // Add to nav stack once product loads
   useEffect(() => {
-    if (!product || !productId) return;
+    if (!product || !productId || hasAddedToStack.current) return;
 
     const navStackStr = sessionStorage.getItem("product_nav_stack");
-    const navStack: { id: string; name: string }[] = navStackStr ? JSON.parse(navStackStr) : [];
+    let navStack: { id: string; name: string }[] = navStackStr ? JSON.parse(navStackStr) : [];
 
-    // Don't add if it's already the last item
-    if (navStack.length > 0 && navStack[navStack.length - 1].id === productId) {
-      return;
-    }
+    // Check if product is already in the stack
+    const existingIndex = navStack.findIndex(p => p.id === productId);
 
-    // Add current product to the stack
-    navStack.push({ id: productId, name: product.name });
+    if (existingIndex !== -1) {
+      // Product exists in stack - trim everything after it (we navigated back)
+      navStack = navStack.slice(0, existingIndex + 1);
+    } else {
+      // New product - add to stack
+      navStack.push({ id: productId, name: product.name });
 
-    // Keep only last 10 products
-    if (navStack.length > 10) {
-      navStack.shift();
+      // Keep only last 10 products
+      if (navStack.length > 10) {
+        navStack.shift();
+      }
     }
 
     sessionStorage.setItem("product_nav_stack", JSON.stringify(navStack));
+    hasAddedToStack.current = true;
   }, [product, productId]);
 
   const handleBackToPreviousProduct = () => {
     if (!previousProductId) return;
-
-    // Pop the current product from the stack before navigating
-    const navStackStr = sessionStorage.getItem("product_nav_stack");
-    const navStack: { id: string; name: string }[] = navStackStr ? JSON.parse(navStackStr) : [];
-    navStack.pop(); // Remove current product
-    sessionStorage.setItem("product_nav_stack", JSON.stringify(navStack));
-
     router.push(`/product/${previousProductId}`);
   };
 
