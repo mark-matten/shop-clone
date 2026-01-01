@@ -100,7 +100,23 @@ export default function ProductDetailPage() {
   const addedViewRef = useRef<string | null>(null);
   const [previousProductId, setPreviousProductId] = useState<string | null>(null);
   const [previousProductName, setPreviousProductName] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const processedProductId = useRef<string | null>(null);
+
+  // Get the cached search query on mount
+  useEffect(() => {
+    try {
+      const savedState = sessionStorage.getItem("shopwatch_search_state");
+      if (savedState) {
+        const parsed = JSON.parse(savedState);
+        if (parsed.query) {
+          setSearchQuery(parsed.query);
+        }
+      }
+    } catch (e) {
+      // Ignore parsing errors
+    }
+  }, []);
 
   // Track navigation history for back links - single effect to avoid race conditions
   useEffect(() => {
@@ -300,13 +316,13 @@ export default function ProductDetailPage() {
         <Header />
         <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
           <Link
-            href="/"
+            href={searchQuery ? `/?q=${encodeURIComponent(searchQuery)}` : "/"}
             className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to search
+            Back to search{searchQuery ? ` results` : ""}
           </Link>
           <div className="mt-16 text-center">
             <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Product not found</h1>
@@ -326,13 +342,13 @@ export default function ProductDetailPage() {
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
           <Link
-            href="/"
+            href={searchQuery ? `/?q=${encodeURIComponent(searchQuery)}` : "/"}
             className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Back to search
+            Back to search{searchQuery ? ` results` : ""}
           </Link>
           {previousProductId && previousProductName && (
             <>
