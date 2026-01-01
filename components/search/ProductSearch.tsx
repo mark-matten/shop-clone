@@ -9,6 +9,7 @@ import { ProductCard } from "./ProductCard";
 import { ProductGridSkeleton } from "./ProductCardSkeleton";
 import { SearchFilters } from "./SearchFilters";
 import { FilterDropdown, FilterState } from "./FilterSidebar";
+import { Id } from "@/convex/_generated/dataModel";
 
 interface Product {
   _id: string;
@@ -70,6 +71,12 @@ export function ProductSearch() {
   const [showFilters, setShowFilters] = useState(false);
   const [sidebarFilters, setSidebarFilters] = useState<FilterState | null>(null);
   const [showMySizesOnly, setShowMySizesOnly] = useState(false);
+  const [sortBy, setSortBy] = useState<"relevance" | "price_low" | "price_high" | "newest">("relevance");
+  const [displayCount, setDisplayCount] = useState(20);
+  const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
+  const [saveSearchName, setSaveSearchName] = useState("");
+  const [currentSearchQuery, setCurrentSearchQuery] = useState("");
+  const [showSavedSearchesDropdown, setShowSavedSearchesDropdown] = useState(false);
 
   const { user: clerkUser } = useUser();
   const convexUser = useQuery(
@@ -95,6 +102,14 @@ export function ProductSearch() {
     api.searchHistory.getSuggestedSearches,
     clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
   );
+
+  // Saved searches
+  const savedSearches = useQuery(
+    api.savedSearches.getSavedSearches,
+    convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
+  const saveSearchMutation = useMutation(api.savedSearches.saveSearch);
+  const deleteSavedSearch = useMutation(api.savedSearches.deleteSavedSearch);
 
   const applyFilters = (products: Product[], filters: FilterState | null): Product[] => {
     let filtered = products;
@@ -175,10 +190,75 @@ export function ProductSearch() {
     setShowFilters(false);
   };
 
+  const sortProducts = (products: Product[]): Product[] => {
+    const sorted = [...products];
+    switch (sortBy) {
+      case "price_low":
+        return sorted.sort((a, b) => a.price - b.price);
+      case "price_high":
+        return sorted.sort((a, b) => b.price - a.price);
+      case "newest":
+        // Sort by _id as a proxy for newest (Convex IDs are time-based)
+        return sorted.sort((a, b) => b._id.localeCompare(a._id));
+      case "relevance":
+      default:
+        return sorted; // Keep original order from search
+    }
+  };
+
+  const getFilteredAndSortedProducts = (): Product[] => {
+    if (!searchResult) return [];
+    const filtered = applyFilters(searchResult.products, sidebarFilters);
+    return sortProducts(filtered);
+  };
+
+  const handleSaveSearch = async () => {
+    if (!convexUser?._id || !currentSearchQuery.trim() || !saveSearchName.trim()) return;
+
+    try {
+      await saveSearchMutation({
+        userId: convexUser._id,
+        name: saveSearchName.trim(),
+        query: currentSearchQuery.trim(),
+        filters: sidebarFilters ? {
+          brands: sidebarFilters.brands,
+          conditions: sidebarFilters.conditions,
+          priceMin: sidebarFilters.priceMin || undefined,
+          priceMax: sidebarFilters.priceMax || undefined,
+          sizes: sidebarFilters.sizes,
+          platforms: sidebarFilters.platforms,
+        } : undefined,
+      });
+      setShowSaveSearchModal(false);
+      setSaveSearchName("");
+    } catch (err) {
+      console.error("Failed to save search:", err);
+    }
+  };
+
+  const handleLoadSavedSearch = (search: NonNullable<typeof savedSearches>[0]) => {
+    setShowSavedSearchesDropdown(false);
+    // Apply the saved filters if any
+    if (search.filters) {
+      setSidebarFilters({
+        brands: search.filters.brands || [],
+        conditions: search.filters.conditions || [],
+        priceMin: search.filters.priceMin || "",
+        priceMax: search.filters.priceMax || "",
+        sizes: search.filters.sizes || [],
+        platforms: search.filters.platforms || [],
+      });
+    }
+    // Run the search
+    handleSearch(search.query);
+  };
+
   const handleSearch = async (query: string) => {
     setIsLoading(true);
     setError(null);
     setHasSearched(true);
+    setDisplayCount(20); // Reset pagination
+    setCurrentSearchQuery(query); // Track current query
 
     try {
       const result = await searchProducts({ searchText: query });
@@ -266,12 +346,92 @@ export function ProductSearch() {
               <p className="text-sm text-zinc-600 dark:text-zinc-400">
                 Found{" "}
                 <span className="font-medium text-zinc-900 dark:text-white">
-                  {applyFilters(searchResult.products, sidebarFilters).length}
+                  {getFilteredAndSortedProducts().length}
                 </span>{" "}
-                {applyFilters(searchResult.products, sidebarFilters).length === 1 ? "product" : "products"}
+                {getFilteredAndSortedProducts().length === 1 ? "product" : "products"}
               </p>
             </div>
-            <SearchFilters filter={searchResult.filter} />
+            <div className="flex items-center gap-3">
+              <SearchFilters filter={searchResult.filter} />
+
+              {/* Saved Searches Dropdown */}
+              {clerkUser && savedSearches && savedSearches.length > 0 && (
+                <div className="relative">
+                  <button
+                    onClick={() => setShowSavedSearchesDropdown(!showSavedSearchesDropdown)}
+                    className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                    </svg>
+                    Saved
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+                  {showSavedSearchesDropdown && (
+                    <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
+                      <div className="max-h-64 overflow-y-auto p-2">
+                        {savedSearches.map((search) => (
+                          <div
+                            key={search._id}
+                            className="group flex items-center justify-between rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700"
+                          >
+                            <button
+                              onClick={() => handleLoadSavedSearch(search)}
+                              className="flex-1 text-left"
+                            >
+                              <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                                {search.name}
+                              </p>
+                              <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                                {search.query}
+                              </p>
+                            </button>
+                            <button
+                              onClick={() => deleteSavedSearch({ searchId: search._id, userId: convexUser!._id })}
+                              className="ml-2 p-1 text-zinc-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
+                            >
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Save Search Button */}
+              {clerkUser && currentSearchQuery && (
+                <button
+                  onClick={() => {
+                    setSaveSearchName(currentSearchQuery);
+                    setShowSaveSearchModal(true);
+                  }}
+                  className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  title="Save this search"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  </svg>
+                  Save
+                </button>
+              )}
+
+              <select
+                value={sortBy}
+                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+              >
+                <option value="relevance">Sort: Relevance</option>
+                <option value="price_low">Price: Low to High</option>
+                <option value="price_high">Price: High to Low</option>
+                <option value="newest">Newest First</option>
+              </select>
+            </div>
           </div>
 
           <FilterDropdown
@@ -281,17 +441,34 @@ export function ProductSearch() {
             initialFilters={sidebarFilters || undefined}
           />
 
-          {applyFilters(searchResult.products, sidebarFilters).length > 0 ? (
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {applyFilters(searchResult.products, sidebarFilters).map((product) => (
-                <ProductCard
-                  key={product._id}
-                  product={product}
-                  isFavorited={favoriteIds?.includes(product._id as any) ?? false}
-                />
-              ))}
-            </div>
-          ) : (
+          {(() => {
+            const allProducts = getFilteredAndSortedProducts();
+            const displayedProducts = allProducts.slice(0, displayCount);
+            const hasMore = allProducts.length > displayCount;
+
+            return allProducts.length > 0 ? (
+              <>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  {displayedProducts.map((product) => (
+                    <ProductCard
+                      key={product._id}
+                      product={product}
+                      isFavorited={favoriteIds?.includes(product._id as any) ?? false}
+                    />
+                  ))}
+                </div>
+                {hasMore && (
+                  <div className="mt-8 text-center">
+                    <button
+                      onClick={() => setDisplayCount((prev) => prev + 20)}
+                      className="rounded-lg border border-zinc-200 bg-white px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    >
+                      Load More ({allProducts.length - displayCount} remaining)
+                    </button>
+                  </div>
+                )}
+              </>
+            ) : (
             <div className="rounded-xl border border-zinc-200 bg-zinc-50 py-16 text-center dark:border-zinc-800 dark:bg-zinc-900">
               <svg
                 className="mx-auto h-12 w-12 text-zinc-400"
@@ -314,7 +491,8 @@ export function ProductSearch() {
                 Try adjusting your filters.
               </p>
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
@@ -394,6 +572,62 @@ export function ProductSearch() {
                 &quot;{example}&quot;
               </button>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Save Search Modal */}
+      {showSaveSearchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+              Save this search
+            </h3>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              Give your search a name to quickly access it later.
+            </p>
+
+            <div className="mt-4">
+              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Search Name
+              </label>
+              <input
+                type="text"
+                value={saveSearchName}
+                onChange={(e) => setSaveSearchName(e.target.value)}
+                placeholder="e.g., Winter jacket deals"
+                className="mt-1 block w-full rounded-lg border border-zinc-300 bg-white py-2 px-3 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+
+            <div className="mt-3 rounded-lg bg-zinc-100 p-3 dark:bg-zinc-800">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Search query:</p>
+              <p className="mt-1 text-sm text-zinc-700 dark:text-zinc-300">&quot;{currentSearchQuery}&quot;</p>
+              {sidebarFilters && (sidebarFilters.brands.length > 0 || sidebarFilters.conditions.length > 0 || sidebarFilters.priceMin || sidebarFilters.priceMax) && (
+                <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+                  + filters will be saved
+                </p>
+              )}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setShowSaveSearchModal(false);
+                  setSaveSearchName("");
+                }}
+                className="flex-1 rounded-lg border border-zinc-300 py-2 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveSearch}
+                disabled={!saveSearchName.trim()}
+                className="flex-1 rounded-lg bg-zinc-900 py-2 font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                Save Search
+              </button>
+            </div>
           </div>
         </div>
       )}

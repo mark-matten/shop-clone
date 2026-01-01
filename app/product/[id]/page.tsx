@@ -49,7 +49,14 @@ export default function ProductDetailPage() {
   const trackProduct = useMutation(api.tracking.trackProduct);
   const untrackProduct = useMutation(api.tracking.untrackProduct);
 
+  // Get similar products
+  const similarProducts = useQuery(
+    api.recommendations.getSimilarProducts,
+    productId ? { productId: productId as Id<"products">, limit: 6 } : "skip"
+  );
+
   const [targetPrice, setTargetPrice] = useState("");
+  const [showShareToast, setShowShareToast] = useState(false);
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
@@ -266,6 +273,19 @@ export default function ProductDetailPage() {
               >
                 View on {product.sourcePlatform}
               </a>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(window.location.href);
+                  setShowShareToast(true);
+                  setTimeout(() => setShowShareToast(false), 2000);
+                }}
+                className="flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-3 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                title="Copy link to share"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                </svg>
+              </button>
               {isTracking ? (
                 <button
                   onClick={handleUntrack}
@@ -384,6 +404,55 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </section>
+
+        {/* Similar Products */}
+        {similarProducts && similarProducts.length > 0 && (
+          <section className="mt-12">
+            <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+              Similar Products
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              You might also like these items
+            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
+              {similarProducts.map((item) => (
+                <Link
+                  key={item._id}
+                  href={`/product/${item._id}`}
+                  className="group rounded-xl border border-zinc-200 bg-white p-3 transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+                >
+                  <div className="aspect-square overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                    {item.imageUrl ? (
+                      <img
+                        src={item.imageUrl}
+                        alt={item.name}
+                        className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="mt-2">
+                    <p className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                      {item.brand}
+                    </p>
+                    <p className="mt-0.5 text-sm font-medium text-zinc-900 line-clamp-2 dark:text-white">
+                      {item.name}
+                    </p>
+                    <p className="mt-1 font-semibold text-zinc-900 dark:text-white">
+                      ${item.price.toFixed(2)}
+                    </p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
       </main>
 
       {/* Tracking Modal */}
@@ -438,6 +507,18 @@ export default function ProductDetailPage() {
                 {isSaving ? "Saving..." : "Start Tracking"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Share Toast */}
+      {showShareToast && (
+        <div className="fixed bottom-6 left-1/2 z-50 -translate-x-1/2 transform">
+          <div className="flex items-center gap-2 rounded-lg bg-zinc-900 px-4 py-3 text-white shadow-lg dark:bg-white dark:text-zinc-900">
+            <svg className="h-5 w-5 text-green-400 dark:text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+            </svg>
+            Link copied to clipboard!
           </div>
         </div>
       )}

@@ -5,6 +5,7 @@ export default defineSchema({
   users: defineTable({
     clerkId: v.string(),
     phoneNumber: v.string(),
+    email: v.optional(v.string()),
     preferences: v.object({
       // Gender preferences (at least one required)
       shopsMen: v.optional(v.boolean()),
@@ -37,6 +38,11 @@ export default defineSchema({
       topSize: v.optional(v.string()),
       bottomSize: v.optional(v.string()),
       dressSize: v.optional(v.string()),
+      // Notification preferences
+      emailNotifications: v.optional(v.boolean()),
+      emailPriceDrops: v.optional(v.boolean()),
+      emailTargetReached: v.optional(v.boolean()),
+      emailWeeklyDigest: v.optional(v.boolean()),
     }),
   })
     .index("by_clerkId", ["clerkId"])
@@ -123,4 +129,21 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index("by_userId", ["userId"]),
+
+  saved_searches: defineTable({
+    userId: v.id("users"),
+    name: v.string(),
+    query: v.string(),
+    filters: v.optional(v.object({
+      brands: v.optional(v.array(v.string())),
+      conditions: v.optional(v.array(v.string())),
+      priceMin: v.optional(v.string()),
+      priceMax: v.optional(v.string()),
+      sizes: v.optional(v.array(v.string())),
+      platforms: v.optional(v.array(v.string())),
+    })),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
 });

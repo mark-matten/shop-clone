@@ -121,11 +121,21 @@ export default function ProfilePage() {
 
   const updatePreferences = useMutation(api.users.updateUserPreferences);
   const untrackProduct = useMutation(api.tracking.untrackProduct);
+  const updateEmailSettings = useMutation(api.users.updateEmailSettings);
 
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
   const [isSaving, setIsSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
+
+  // Email notification settings
+  const [email, setEmail] = useState("");
+  const [emailNotifications, setEmailNotifications] = useState(false);
+  const [emailPriceDrops, setEmailPriceDrops] = useState(true);
+  const [emailTargetReached, setEmailTargetReached] = useState(true);
+  const [emailWeeklyDigest, setEmailWeeklyDigest] = useState(false);
+  const [isEmailSaving, setIsEmailSaving] = useState(false);
+  const [emailSaveMessage, setEmailSaveMessage] = useState<string | null>(null);
 
   // Update preferences when user data loads
   useEffect(() => {
@@ -149,6 +159,14 @@ export default function ProfilePage() {
         menBottomSizeMin: prefs.menBottomSizeMin ?? "",
         menBottomSizeMax: prefs.menBottomSizeMax ?? "",
       });
+      // Load email notification settings
+      setEmailNotifications(prefs.emailNotifications ?? false);
+      setEmailPriceDrops(prefs.emailPriceDrops ?? true);
+      setEmailTargetReached(prefs.emailTargetReached ?? true);
+      setEmailWeeklyDigest(prefs.emailWeeklyDigest ?? false);
+    }
+    if (convexUser?.email) {
+      setEmail(convexUser.email);
     }
   }, [convexUser]);
 
@@ -190,6 +208,29 @@ export default function ProfilePage() {
   const handleUntrack = async (productId: Id<"products">) => {
     if (!convexUser?._id) return;
     await untrackProduct({ userId: convexUser._id, productId });
+  };
+
+  const handleEmailSettingsSave = async () => {
+    if (!clerkUser?.id) return;
+
+    setIsEmailSaving(true);
+    try {
+      await updateEmailSettings({
+        clerkId: clerkUser.id,
+        email: email || undefined,
+        emailNotifications,
+        emailPriceDrops,
+        emailTargetReached,
+        emailWeeklyDigest,
+      });
+      setEmailSaveMessage("Email settings saved!");
+      setTimeout(() => setEmailSaveMessage(null), 3000);
+    } catch (error) {
+      console.error("Failed to save email settings:", error);
+      setEmailSaveMessage("Failed to save");
+    } finally {
+      setIsEmailSaving(false);
+    }
   };
 
   // Loading state
@@ -473,15 +514,16 @@ export default function ProfilePage() {
           )}
         </section>
 
-        {/* Price Alerts */}
+        {/* Notification Settings */}
         <section className="mt-12">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-            Price Alerts
+            Notification Settings
           </h2>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Get notified when prices drop
+            Choose how you want to be notified about price changes
           </p>
 
+          {/* SMS Alerts */}
           <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
             <div className="flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
@@ -498,6 +540,103 @@ export default function ProfilePage() {
                 </p>
               </div>
             </div>
+          </div>
+
+          {/* Email Notifications */}
+          <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
+                  <svg className="h-5 w-5 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium text-zinc-900 dark:text-white">
+                    Email Notifications
+                  </p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    Receive email alerts for price drops and updates
+                  </p>
+                </div>
+              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={emailNotifications}
+                  onChange={(e) => setEmailNotifications(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="h-6 w-11 rounded-full bg-zinc-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-zinc-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-zinc-900 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-zinc-500 dark:bg-zinc-700 dark:peer-checked:bg-white"></div>
+              </label>
+            </div>
+
+            {emailNotifications && (
+              <div className="mt-6 space-y-4 border-t border-zinc-200 pt-6 dark:border-zinc-700">
+                {/* Email Address */}
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                    Email Address
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="your@email.com"
+                    className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
+                  />
+                </div>
+
+                {/* Notification Types */}
+                <div className="space-y-3">
+                  <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Notify me about:
+                  </p>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={emailPriceDrops}
+                      onChange={(e) => setEmailPriceDrops(e.target.checked)}
+                      className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                    />
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">Price drops on tracked items</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={emailTargetReached}
+                      onChange={(e) => setEmailTargetReached(e.target.checked)}
+                      className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                    />
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">Target price reached</span>
+                  </label>
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={emailWeeklyDigest}
+                      onChange={(e) => setEmailWeeklyDigest(e.target.checked)}
+                      className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                    />
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">Weekly price digest</span>
+                  </label>
+                </div>
+
+                <div className="flex items-center gap-4 pt-2">
+                  <button
+                    onClick={handleEmailSettingsSave}
+                    disabled={isEmailSaving || !email}
+                    className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  >
+                    {isEmailSaving ? "Saving..." : "Save Email Settings"}
+                  </button>
+                  {emailSaveMessage && (
+                    <span className={`text-sm ${emailSaveMessage.includes("Failed") ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                      {emailSaveMessage}
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </section>
       </main>

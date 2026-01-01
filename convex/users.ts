@@ -80,3 +80,41 @@ export const updateUserPreferences = mutation({
     });
   },
 });
+
+export const updateEmailSettings = mutation({
+  args: {
+    clerkId: v.string(),
+    email: v.optional(v.string()),
+    emailNotifications: v.optional(v.boolean()),
+    emailPriceDrops: v.optional(v.boolean()),
+    emailTargetReached: v.optional(v.boolean()),
+    emailWeeklyDigest: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Update email if provided
+    const updates: { email?: string; preferences: typeof user.preferences } = {
+      preferences: {
+        ...user.preferences,
+        emailNotifications: args.emailNotifications ?? user.preferences.emailNotifications,
+        emailPriceDrops: args.emailPriceDrops ?? user.preferences.emailPriceDrops,
+        emailTargetReached: args.emailTargetReached ?? user.preferences.emailTargetReached,
+        emailWeeklyDigest: args.emailWeeklyDigest ?? user.preferences.emailWeeklyDigest,
+      },
+    };
+
+    if (args.email !== undefined) {
+      updates.email = args.email;
+    }
+
+    return await ctx.db.patch(user._id, updates);
+  },
+});
