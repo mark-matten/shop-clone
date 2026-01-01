@@ -45,7 +45,7 @@ export function Header() {
     <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="text-xl font-bold text-zinc-900 dark:text-white">
-          ShopClone
+          ShopWatch
         </Link>
 
         {/* Mobile menu button */}
@@ -94,6 +94,16 @@ export function Header() {
             }`}
           >
             Favorites
+          </Link>
+          <Link
+            href="/dashboard"
+            className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+              pathname === "/dashboard"
+                ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+          >
+            Dashboard
           </Link>
 
           {/* Notifications */}
@@ -298,6 +308,17 @@ export function Header() {
               }`}
             >
               Favorites
+            </Link>
+            <Link
+              href="/dashboard"
+              onClick={() => setShowMobileMenu(false)}
+              className={`rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
+                pathname === "/dashboard"
+                  ? "bg-zinc-100 text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                  : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+              }`}
+            >
+              Dashboard
             </Link>
             <Link
               href="/profile"

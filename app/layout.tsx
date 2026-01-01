@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ShopClone",
+  title: "ShopWatch",
   description: "Price tracking and comparison shopping",
 };
 

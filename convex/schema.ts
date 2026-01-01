@@ -102,4 +102,25 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_userId_unread", ["userId", "sentAt"]),
+
+  search_history: defineTable({
+    userId: v.optional(v.id("users")),
+    clerkId: v.optional(v.string()),
+    query: v.string(),
+    resultCount: v.number(),
+    searchedAt: v.number(),
+  })
+    .index("by_clerkId", ["clerkId"])
+    .index("by_userId", ["userId"])
+    .index("by_searchedAt", ["searchedAt"]),
+
+  user_stats: defineTable({
+    userId: v.id("users"),
+    totalSavings: v.number(),
+    itemsTracked: v.number(),
+    alertsReceived: v.number(),
+    favoriteCount: v.number(),
+    updatedAt: v.number(),
+  })
+    .index("by_userId", ["userId"]),
 });

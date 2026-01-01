@@ -1,11 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
-interface FilterSidebarProps {
-  onFilterChange: (filters: FilterState) => void;
+interface FilterDropdownProps {
+  onApply: (filters: FilterState) => void;
   isOpen: boolean;
   onClose: () => void;
+  initialFilters?: FilterState;
 }
 
 export interface FilterState {
@@ -22,15 +23,24 @@ const conditionOptions = ["new", "like_new", "used"];
 const sizeOptions = ["XS", "S", "M", "L", "XL", "6", "7", "8", "9", "10", "11"];
 const platformOptions = ["Poshmark", "eBay", "TheRealReal"];
 
-export function FilterSidebar({ onFilterChange, isOpen, onClose }: FilterSidebarProps) {
-  const [filters, setFilters] = useState<FilterState>({
-    brands: [],
-    conditions: [],
-    priceMin: "",
-    priceMax: "",
-    sizes: [],
-    platforms: [],
-  });
+const emptyFilters: FilterState = {
+  brands: [],
+  conditions: [],
+  priceMin: "",
+  priceMax: "",
+  sizes: [],
+  platforms: [],
+};
+
+export function FilterDropdown({ onApply, isOpen, onClose, initialFilters }: FilterDropdownProps) {
+  const [filters, setFilters] = useState<FilterState>(initialFilters || emptyFilters);
+
+  // Sync with initial filters when they change
+  useEffect(() => {
+    if (initialFilters) {
+      setFilters(initialFilters);
+    }
+  }, [initialFilters]);
 
   const handleToggleFilter = (
     category: "brands" | "conditions" | "sizes" | "platforms",
@@ -44,26 +54,19 @@ export function FilterSidebar({ onFilterChange, isOpen, onClose }: FilterSidebar
       newFilters[category] = newFilters[category].filter((v) => v !== value);
     }
     setFilters(newFilters);
-    onFilterChange(newFilters);
   };
 
   const handlePriceChange = (field: "priceMin" | "priceMax", value: string) => {
-    const newFilters = { ...filters, [field]: value };
-    setFilters(newFilters);
-    onFilterChange(newFilters);
+    setFilters({ ...filters, [field]: value });
   };
 
   const handleClearAll = () => {
-    const clearedFilters: FilterState = {
-      brands: [],
-      conditions: [],
-      priceMin: "",
-      priceMax: "",
-      sizes: [],
-      platforms: [],
-    };
-    setFilters(clearedFilters);
-    onFilterChange(clearedFilters);
+    setFilters(emptyFilters);
+  };
+
+  const handleApply = () => {
+    onApply(filters);
+    onClose();
   };
 
   const activeFilterCount =
@@ -80,58 +83,14 @@ export function FilterSidebar({ onFilterChange, isOpen, onClose }: FilterSidebar
     used: "Used",
   };
 
+  if (!isOpen) return null;
+
   return (
-    <>
-      {/* Mobile overlay */}
-      {isOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden"
-          onClick={onClose}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`fixed left-0 top-0 z-50 h-full w-80 transform overflow-y-auto bg-white transition-transform dark:bg-zinc-900 lg:static lg:z-auto lg:translate-x-0 ${
-          isOpen ? "translate-x-0" : "-translate-x-full"
-        }`}
-      >
-        <div className="sticky top-0 flex items-center justify-between border-b border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900 lg:hidden">
-          <h2 className="font-semibold text-zinc-900 dark:text-white">Filters</h2>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
-          >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="p-4">
-          {/* Header */}
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="font-semibold text-zinc-900 dark:text-white">
-              Filters
-              {activeFilterCount > 0 && (
-                <span className="ml-2 rounded-full bg-zinc-900 px-2 py-0.5 text-xs text-white dark:bg-white dark:text-zinc-900">
-                  {activeFilterCount}
-                </span>
-              )}
-            </h2>
-            {activeFilterCount > 0 && (
-              <button
-                onClick={handleClearAll}
-                className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-              >
-                Clear all
-              </button>
-            )}
-          </div>
-
+    <div className="mb-6 w-full rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
           {/* Price Range */}
-          <div className="mb-6">
-            <h3 className="mb-3 text-sm font-medium text-zinc-900 dark:text-white">
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-white">
               Price Range
             </h3>
             <div className="flex items-center gap-2">
@@ -159,56 +118,53 @@ export function FilterSidebar({ onFilterChange, isOpen, onClose }: FilterSidebar
             </div>
           </div>
 
-          {/* Condition */}
-          <div className="mb-6">
-            <h3 className="mb-3 text-sm font-medium text-zinc-900 dark:text-white">
-              Condition
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {conditionOptions.map((condition) => (
-                <button
-                  key={condition}
-                  onClick={() => handleToggleFilter("conditions", condition)}
-                  className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
-                    filters.conditions.includes(condition)
-                      ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                      : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                  }`}
-                >
-                  {conditionLabels[condition]}
-                </button>
-              ))}
+          {/* Condition & Platform */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-white">
+                Condition
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {conditionOptions.map((condition) => (
+                  <button
+                    key={condition}
+                    onClick={() => handleToggleFilter("conditions", condition)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                      filters.conditions.includes(condition)
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                        : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    {conditionLabels[condition]}
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-
-          {/* Brands */}
-          <div className="mb-6">
-            <h3 className="mb-3 text-sm font-medium text-zinc-900 dark:text-white">
-              Brand
-            </h3>
-            <div className="max-h-48 space-y-2 overflow-y-auto">
-              {brandOptions.map((brand) => (
-                <label
-                  key={brand}
-                  className="flex cursor-pointer items-center gap-2"
-                >
-                  <input
-                    type="checkbox"
-                    checked={filters.brands.includes(brand)}
-                    onChange={() => handleToggleFilter("brands", brand)}
-                    className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
-                  />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                    {brand}
-                  </span>
-                </label>
-              ))}
+            <div>
+              <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-white">
+                Platform
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {platformOptions.map((platform) => (
+                  <button
+                    key={platform}
+                    onClick={() => handleToggleFilter("platforms", platform)}
+                    className={`rounded-full px-3 py-1.5 text-sm font-medium transition-colors ${
+                      filters.platforms.includes(platform)
+                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                        : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    {platform}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Size */}
-          <div className="mb-6">
-            <h3 className="mb-3 text-sm font-medium text-zinc-900 dark:text-white">
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-white">
               Size
             </h3>
             <div className="flex flex-wrap gap-2">
@@ -216,7 +172,7 @@ export function FilterSidebar({ onFilterChange, isOpen, onClose }: FilterSidebar
                 <button
                   key={size}
                   onClick={() => handleToggleFilter("sizes", size)}
-                  className={`min-w-[40px] rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                  className={`min-w-[36px] rounded-lg px-2 py-1 text-sm font-medium transition-colors ${
                     filters.sizes.includes(size)
                       ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
                       : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
@@ -228,32 +184,61 @@ export function FilterSidebar({ onFilterChange, isOpen, onClose }: FilterSidebar
             </div>
           </div>
 
-          {/* Platform */}
-          <div className="mb-6">
-            <h3 className="mb-3 text-sm font-medium text-zinc-900 dark:text-white">
-              Platform
+          {/* Brands */}
+          <div>
+            <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-white">
+              Brand
             </h3>
-            <div className="space-y-2">
-              {platformOptions.map((platform) => (
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1.5 max-h-36 overflow-y-auto">
+              {brandOptions.map((brand) => (
                 <label
-                  key={platform}
+                  key={brand}
                   className="flex cursor-pointer items-center gap-2"
                 >
                   <input
                     type="checkbox"
-                    checked={filters.platforms.includes(platform)}
-                    onChange={() => handleToggleFilter("platforms", platform)}
+                    checked={filters.brands.includes(brand)}
+                    onChange={() => handleToggleFilter("brands", brand)}
                     className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
                   />
-                  <span className="text-sm text-zinc-700 dark:text-zinc-300">
-                    {platform}
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300 truncate">
+                    {brand}
                   </span>
                 </label>
               ))}
             </div>
           </div>
         </div>
-      </aside>
-    </>
+
+        {/* Footer */}
+        <div className="mt-4 flex items-center justify-between border-t border-zinc-200 pt-4 dark:border-zinc-700">
+          <button
+            onClick={handleClearAll}
+            className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+          >
+            Clear all
+            {activeFilterCount > 0 && (
+              <span className="ml-1 text-zinc-400">({activeFilterCount})</span>
+            )}
+          </button>
+          <div className="flex gap-2">
+            <button
+              onClick={onClose}
+              className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleApply}
+              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Apply Filters
+            </button>
+          </div>
+        </div>
+      </div>
   );
 }
+
+// Keep the old export name for backwards compatibility
+export { FilterDropdown as FilterSidebar };

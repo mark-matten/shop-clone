@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
@@ -13,6 +13,7 @@ interface Product {
   description: string;
   brand: string;
   price: number;
+  originalPrice?: number; // For showing price drops
   material?: string;
   size?: string;
   category: string;
@@ -25,6 +26,7 @@ interface Product {
 
 interface ProductCardProps {
   product: Product;
+  isFavorited?: boolean;
 }
 
 const conditionLabels = {
@@ -39,13 +41,23 @@ const conditionColors = {
   like_new: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
 };
 
-export function ProductCard({ product }: ProductCardProps) {
+export function ProductCard({ product, isFavorited = false }: ProductCardProps) {
   const { user } = useUser();
   const [isTracked, setIsTracked] = useState(false);
-  const [isFavorite, setIsFavorite] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(isFavorited);
   const [isLoading, setIsLoading] = useState(false);
 
   const toggleFavorite = useMutation(api.favorites.toggleFavorite);
+
+  // Calculate price drop percentage if originalPrice exists
+  const priceDropPercent = product.originalPrice && product.originalPrice > product.price
+    ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
+    : null;
+
+  // Sync favorite state with prop
+  useEffect(() => {
+    setIsFavorite(isFavorited);
+  }, [isFavorited]);
 
   const handleTrackClick = (e: React.MouseEvent) => {
     e.preventDefault();
@@ -135,9 +147,21 @@ export function ProductCard({ product }: ProductCardProps) {
           </div>
 
           <div className="mt-auto flex items-center justify-between">
-            <span className="text-lg font-semibold text-zinc-900 dark:text-white">
-              ${product.price.toFixed(2)}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-semibold text-zinc-900 dark:text-white">
+                ${product.price.toFixed(2)}
+              </span>
+              {product.originalPrice && product.originalPrice > product.price && (
+                <span className="text-sm text-zinc-400 line-through">
+                  ${product.originalPrice.toFixed(2)}
+                </span>
+              )}
+            </div>
+            {priceDropPercent && priceDropPercent >= 5 && (
+              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                -{priceDropPercent}%
+              </span>
+            )}
           </div>
         </div>
       </Link>

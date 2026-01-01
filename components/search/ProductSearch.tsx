@@ -1,14 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { useAction, useQuery } from "convex/react";
+import { useAction, useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { SearchBar } from "./SearchBar";
 import { ProductCard } from "./ProductCard";
 import { ProductGridSkeleton } from "./ProductCardSkeleton";
 import { SearchFilters } from "./SearchFilters";
-import { FilterSidebar, FilterState } from "./FilterSidebar";
+import { FilterDropdown, FilterState } from "./FilterSidebar";
 
 interface Product {
   _id: string;
@@ -78,6 +78,23 @@ export function ProductSearch() {
   );
 
   const searchProducts = useAction(api.search.searchProducts);
+
+  // Fetch user's favorites for showing heart state
+  const favoriteIds = useQuery(
+    api.favorites.getFavoriteIds,
+    clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
+  );
+
+  // Search history
+  const saveSearch = useMutation(api.searchHistory.saveSearch);
+  const recentSearches = useQuery(
+    api.searchHistory.getRecentSearches,
+    clerkUser?.id ? { clerkId: clerkUser.id, limit: 5 } : "skip"
+  );
+  const suggestedSearches = useQuery(
+    api.searchHistory.getSuggestedSearches,
+    clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
+  );
 
   const applyFilters = (products: Product[], filters: FilterState | null): Product[] => {
     let filtered = products;
@@ -153,8 +170,9 @@ export function ProductSearch() {
     return filtered;
   };
 
-  const handleFilterChange = (filters: FilterState) => {
+  const handleApplyFilters = (filters: FilterState) => {
     setSidebarFilters(filters);
+    setShowFilters(false);
   };
 
   const handleSearch = async (query: string) => {
@@ -169,6 +187,15 @@ export function ProductSearch() {
         filter: result.filter as SearchFilter,
         totalResults: result.totalResults,
       });
+
+      // Save to search history
+      if (clerkUser?.id) {
+        saveSearch({
+          clerkId: clerkUser.id,
+          query,
+          resultCount: result.totalResults,
+        });
+      }
     } catch (err) {
       console.error("Search error:", err);
       setError("Failed to search products. Please try again.");
@@ -208,14 +235,23 @@ export function ProductSearch() {
           <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-3">
               <button
-                onClick={() => setShowFilters(true)}
-                className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                </svg>
-                Filters
-              </button>
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    showFilters || (sidebarFilters && (sidebarFilters.brands.length > 0 || sidebarFilters.conditions.length > 0 || sidebarFilters.sizes.length > 0 || sidebarFilters.platforms.length > 0 || sidebarFilters.priceMin || sidebarFilters.priceMax))
+                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
+                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  }`}
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
+                  </svg>
+                  Filters
+                  {sidebarFilters && (sidebarFilters.brands.length + sidebarFilters.conditions.length + sidebarFilters.sizes.length + sidebarFilters.platforms.length + (sidebarFilters.priceMin ? 1 : 0) + (sidebarFilters.priceMax ? 1 : 0)) > 0 && (
+                    <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-900 dark:text-white">
+                      {sidebarFilters.brands.length + sidebarFilters.conditions.length + sidebarFilters.sizes.length + sidebarFilters.platforms.length + (sidebarFilters.priceMin ? 1 : 0) + (sidebarFilters.priceMax ? 1 : 0)}
+                    </span>
+                  )}
+                </button>
               {clerkUser && convexUser?.preferences && (
                 <label className="flex items-center gap-2 text-sm">
                   <input
@@ -238,10 +274,21 @@ export function ProductSearch() {
             <SearchFilters filter={searchResult.filter} />
           </div>
 
+          <FilterDropdown
+            isOpen={showFilters}
+            onClose={() => setShowFilters(false)}
+            onApply={handleApplyFilters}
+            initialFilters={sidebarFilters || undefined}
+          />
+
           {applyFilters(searchResult.products, sidebarFilters).length > 0 ? (
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {applyFilters(searchResult.products, sidebarFilters).map((product) => (
-                <ProductCard key={product._id} product={product} />
+                <ProductCard
+                  key={product._id}
+                  product={product}
+                  isFavorited={favoriteIds?.includes(product._id as any) ?? false}
+                />
               ))}
             </div>
           ) : (
@@ -271,12 +318,7 @@ export function ProductSearch() {
         </div>
       )}
 
-      <FilterSidebar
-        isOpen={showFilters}
-        onClose={() => setShowFilters(false)}
-        onFilterChange={handleFilterChange}
-      />
-
+      
       {!hasSearched && (
         <div className="mt-16 text-center">
           <h2 className="text-lg font-medium text-zinc-900 dark:text-white">
@@ -286,7 +328,58 @@ export function ProductSearch() {
             Search using everyday language. Describe the style, size, price
             range, or any other details you&apos;re looking for.
           </p>
+
+          {/* Recent Searches */}
+          {recentSearches && recentSearches.length > 0 && (
+            <div className="mx-auto mt-8 max-w-lg">
+              <h3 className="mb-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Recent Searches
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {recentSearches.map((search) => (
+                  <button
+                    key={search._id}
+                    onClick={() => handleSearch(search.query)}
+                    className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    {search.query}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Suggested Searches */}
+          {suggestedSearches && suggestedSearches.length > 0 && (
+            <div className="mx-auto mt-6 max-w-lg">
+              <h3 className="mb-3 text-left text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                Suggested for You
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {suggestedSearches.map((suggestion, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSearch(suggestion)}
+                    className="flex items-center gap-2 rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm text-blue-700 transition-colors hover:border-blue-300 hover:bg-blue-100 dark:border-blue-800 dark:bg-blue-900/30 dark:text-blue-300 dark:hover:border-blue-700"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                    </svg>
+                    {suggestion}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Example Searches */}
           <div className="mx-auto mt-6 grid max-w-lg gap-3 text-left">
+            <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+              Try these examples
+            </h3>
             {[
               "vintage Levi's denim jacket size M",
               "women's running shoes under $150",

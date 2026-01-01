@@ -132,7 +132,41 @@ export const checkPricesAndAlert = internalAction({
     }
 
     console.log(`Created ${alertsCreated} alerts`);
+
+    // Send SMS for new alerts
+    if (alertsCreated > 0) {
+      await ctx.runAction(internal.alerts.sendUnsentAlerts);
+    }
+
     return { alertsCreated };
+  },
+});
+
+// Send SMS for all unsent alerts
+export const sendUnsentAlerts = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const unsentAlerts = await ctx.runQuery(internal.alerts.getUnsentAlerts);
+
+    let sent = 0;
+    for (const alert of unsentAlerts) {
+      const result = await ctx.runAction(internal.alerts.sendSMSAlert, { alertId: alert._id });
+      if (result.success) sent++;
+    }
+
+    console.log(`Sent ${sent} SMS alerts`);
+    return { sent };
+  },
+});
+
+// Get unsent alerts
+export const getUnsentAlerts = internalQuery({
+  args: {},
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("price_alerts")
+      .filter((q) => q.eq(q.field("sentAt"), undefined))
+      .collect();
   },
 });
 
@@ -165,7 +199,7 @@ export const getTrackedItemsWithPrices = internalQuery({
   },
 });
 
-// Simulate sending SMS alert (in production, integrate with Twilio/Clerk)
+// Send SMS alert via Twilio
 export const sendSMSAlert = internalAction({
   args: {
     alertId: v.id("price_alerts"),
@@ -175,11 +209,52 @@ export const sendSMSAlert = internalAction({
     if (!alert) return { success: false, error: "Alert not found" };
 
     const user = await ctx.runQuery(internal.alerts.getUserById, { userId: alert.userId });
-    if (!user) return { success: false, error: "User not found" };
+    if (!user || !user.phoneNumber) return { success: false, error: "User or phone not found" };
 
-    // In production, send actual SMS via Twilio or Clerk
-    console.log(`[SMS SIMULATION] To: ${user.phoneNumber}`);
-    console.log(`Price Alert! ${alert.product?.name} is now $${alert.newPrice} (was $${alert.previousPrice})`);
+    const twilioSid = process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuth = process.env.TWILIO_AUTH_TOKEN;
+    const twilioPhone = process.env.TWILIO_PHONE_NUMBER;
+
+    // Build message
+    const savings = (alert.previousPrice - alert.newPrice).toFixed(2);
+    const message = alert.alertType === "target_reached"
+      ? `ShopWatch Alert: ${alert.product?.name} hit your target price! Now $${alert.newPrice} (was $${alert.previousPrice}). Save $${savings}!`
+      : `ShopWatch Alert: Price drop on ${alert.product?.name}! Now $${alert.newPrice} (was $${alert.previousPrice}). Save $${savings}!`;
+
+    if (twilioSid && twilioAuth && twilioPhone) {
+      try {
+        const response = await fetch(
+          `https://api.twilio.com/2010-04-01/Accounts/${twilioSid}/Messages.json`,
+          {
+            method: "POST",
+            headers: {
+              "Authorization": `Basic ${btoa(`${twilioSid}:${twilioAuth}`)}`,
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              To: user.phoneNumber,
+              From: twilioPhone,
+              Body: message,
+            }),
+          }
+        );
+
+        if (!response.ok) {
+          const error = await response.text();
+          console.error("Twilio error:", error);
+          return { success: false, error: "SMS send failed" };
+        }
+
+        console.log(`SMS sent to ${user.phoneNumber}: ${message}`);
+      } catch (error) {
+        console.error("Failed to send SMS:", error);
+        return { success: false, error: "SMS send failed" };
+      }
+    } else {
+      // Fallback: log to console if Twilio not configured
+      console.log(`[SMS - Twilio not configured] To: ${user.phoneNumber}`);
+      console.log(`Message: ${message}`);
+    }
 
     // Mark as sent
     await ctx.runMutation(internal.alerts.markAlertSentInternal, { alertId: args.alertId });

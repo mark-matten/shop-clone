@@ -127,6 +127,28 @@ export const isFavorite = query({
   },
 });
 
+// Get all favorite product IDs for a user (for efficient batch checking)
+export const getFavoriteIds = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      return [];
+    }
+
+    const favorites = await ctx.db
+      .query("favorites")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+
+    return favorites.map((f) => f.productId);
+  },
+});
+
 // Toggle favorite status
 export const toggleFavorite = mutation({
   args: {

@@ -1,4 +1,4 @@
-# ShopClone Project Rules
+# ShopWatch Project Rules
 
 ## Stack
 - Next.js (App Router)
