@@ -285,14 +285,31 @@ export function ProductSearch() {
       });
     }
 
-    // Apply "My sizes only" filter
+    // Apply "My sizes only" filter (includes gender filtering)
     if (showMySizesOnly && convexUser?.preferences && products.length > 0) {
       const prefs = convexUser.preferences;
       filtered = filtered.filter((product) => {
+        const gender = product.gender;
+
+        // Filter by gender based on user's shopping preferences
+        const shopsWomen = prefs.shopsWomen ?? false;
+        const shopsMen = prefs.shopsMen ?? false;
+
+        // If user has gender preferences set, filter accordingly
+        if (shopsWomen || shopsMen) {
+          // Unisex products are always included if user shops either gender
+          if (gender === "unisex") {
+            // Include unisex
+          } else if (gender === "women" && !shopsWomen) {
+            return false; // User doesn't shop women's
+          } else if (gender === "men" && !shopsMen) {
+            return false; // User doesn't shop men's
+          }
+        }
+
         if (!product.size) return true; // No size info, include it
 
         const category = product.category.toLowerCase();
-        const gender = product.gender;
         const size = product.size;
 
         // Determine which size preferences to use based on product gender/category
