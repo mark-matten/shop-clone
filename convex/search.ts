@@ -309,6 +309,14 @@ export const filterProducts = query({
   },
 });
 
+// Check if a product is sold out (all variants unavailable)
+function isProductSoldOut(product: any): boolean {
+  if (!product.variants || product.variants.length === 0) {
+    return false; // No variants means we assume it's available
+  }
+  return product.variants.every((v: any) => !v.available);
+}
+
 // Group products by colorGroupId and pick the best representative
 function groupByColor(
   products: any[],
@@ -339,21 +347,33 @@ function groupByColor(
     // Count total colors in this group
     const colorVariantCount = groupProducts.length;
 
+    // Separate in-stock and sold-out products
+    const inStockProducts = groupProducts.filter(p => !isProductSoldOut(p));
+    const candidateProducts = inStockProducts.length > 0 ? inStockProducts : groupProducts;
+
     // Pick the best representative
     let representative: any;
 
     if (searchedColor) {
-      // User searched for a specific color - find matching variant
+      // User searched for a specific color - find matching variant (prefer in-stock)
       const searchColorLower = searchedColor.toLowerCase();
-      representative = groupProducts.find((p) => {
+      representative = candidateProducts.find((p) => {
         const colorName = (p.colorName || "").toLowerCase();
         return colorName.includes(searchColorLower) || searchColorLower.includes(colorName);
       });
+
+      // If the searched color is sold out, still show it but from all products
+      if (!representative) {
+        representative = groupProducts.find((p) => {
+          const colorName = (p.colorName || "").toLowerCase();
+          return colorName.includes(searchColorLower) || searchColorLower.includes(colorName);
+        });
+      }
     }
 
-    // If no color match or no search color, pick first one (or lowest price)
+    // If no color match or no search color, pick lowest price from in-stock products
     if (!representative) {
-      representative = groupProducts.sort((a, b) => a.price - b.price)[0];
+      representative = candidateProducts.sort((a, b) => a.price - b.price)[0];
     }
 
     // Add color variant count to the representative
