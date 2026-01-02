@@ -24,7 +24,7 @@ export default function Home() {
       <main id="main-content" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
         <div className="mb-8 text-center animate-fade-in-down">
           <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            <span className="text-zinc-700 dark:text-zinc-300">Shop</span><span className="text-yellow-600 dark:text-yellow-500">Watch</span>
+            <span className="text-zinc-700 dark:text-zinc-300">Shop</span><span className="text-[#D4AF37] dark:text-[#E5C158]">Watch</span>
           </h1>
           <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-400">
             Find the best deals for new and used clothing across thousands of brands and marketplaces.
