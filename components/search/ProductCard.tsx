@@ -137,18 +137,15 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
     return 0;
   };
 
-  // Count colors from options
+  // Count colors from options (only show if we have multiple colors)
   const getColorCount = (): number => {
     const colorOption = product.options?.find(opt =>
       opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
     );
-    if (colorOption) {
+    if (colorOption && colorOption.values.length > 1) {
       return colorOption.values.length;
     }
-    // If product has colorName, it's one of potentially multiple colors
-    if (product.colorName) {
-      return 1; // At least this color exists, but we don't know about others without colorGroupId query
-    }
+    // Don't show "1 color" - it's not useful information
     return 0;
   };
 

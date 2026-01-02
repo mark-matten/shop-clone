@@ -119,17 +119,15 @@ export function ProductListItem({ product, isFavorited, onFavoriteClick }: Produ
     return 0;
   };
 
-  // Count colors from options
+  // Count colors from options (only show if we have multiple colors)
   const getColorCount = (): number => {
     const colorOption = product.options?.find(opt =>
       opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
     );
-    if (colorOption) {
+    if (colorOption && colorOption.values.length > 1) {
       return colorOption.values.length;
     }
-    if (product.colorName) {
-      return 1;
-    }
+    // Don't show "1 color" - it's not useful information
     return 0;
   };
 
