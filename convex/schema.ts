@@ -62,14 +62,35 @@ export default defineSchema({
     description: v.string(),
     brand: v.string(),
     price: v.number(),
+    originalPrice: v.optional(v.number()), // For sale items - the original/compare-at price
     material: v.optional(v.string()),
     size: v.optional(v.string()),
+    sizes: v.optional(v.array(v.string())), // All available sizes (legacy)
+    // Variant data for color/size selection
+    variants: v.optional(v.array(v.object({
+      id: v.string(),
+      title: v.string(), // e.g., "31 / 28" or "M"
+      available: v.boolean(),
+      price: v.optional(v.number()),
+      option1: v.optional(v.string()), // e.g., waist size "31"
+      option2: v.optional(v.string()), // e.g., length "28"
+      option3: v.optional(v.string()),
+    }))),
+    options: v.optional(v.array(v.object({
+      name: v.string(), // e.g., "Waist", "Length", "Size"
+      values: v.array(v.string()), // e.g., ["28", "29", "30", ...]
+    }))),
+    // Color grouping
+    colorGroupId: v.optional(v.string()), // YGroup ID to link related colors
+    colorName: v.optional(v.string()), // e.g., "Graphite", "Black"
+    colorHex: v.optional(v.string()), // e.g., "#4a4a4a"
     category: v.string(),
     gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
     condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
     sourceUrl: v.string(),
     sourcePlatform: v.string(),
     imageUrl: v.optional(v.string()),
+    imageUrls: v.optional(v.array(v.string())),
   })
     .index("by_brand", ["brand"])
     .index("by_category", ["category"])
@@ -77,7 +98,8 @@ export default defineSchema({
     .index("by_condition", ["condition"])
     .index("by_gender", ["gender"])
     .index("by_gender_category", ["gender", "category"])
-    .index("by_sourcePlatform", ["sourcePlatform"]),
+    .index("by_sourcePlatform", ["sourcePlatform"])
+    .index("by_colorGroupId", ["colorGroupId"]),
 
   tracked_items: defineTable({
     userId: v.id("users"),

@@ -8,6 +8,12 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { LazyImage } from "@/components/ui/LazyImage";
 
+interface ProductVariant {
+  id: string;
+  title: string;
+  available: boolean;
+}
+
 interface Product {
   _id: string;
   name: string;
@@ -23,6 +29,7 @@ interface Product {
   sourceUrl: string;
   sourcePlatform: string;
   imageUrl?: string;
+  variants?: ProductVariant[];
 }
 
 interface ProductCardProps {
@@ -60,6 +67,11 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
   const priceDropPercent = product.originalPrice && product.originalPrice > product.price
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : null;
+
+  // Check if all variants are sold out
+  const isSoldOut = product.variants && product.variants.length > 0
+    ? product.variants.every(v => !v.available)
+    : false;
 
   // Sync favorite state with prop
   useEffect(() => {
@@ -140,6 +152,13 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
           >
             {conditionLabels[product.condition]}
           </span>
+          {isSoldOut && (
+            <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+              <span className="rounded-full bg-red-600 px-3 py-1.5 text-sm font-bold text-white">
+                Sold Out
+              </span>
+            </div>
+          )}
         </div>
 
         <div className="flex flex-1 flex-col p-4">

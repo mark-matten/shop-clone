@@ -1,10 +1,12 @@
 import { scrapePoshmark } from "./poshmark";
 import { scrapeTheRealReal } from "./therealreal";
 import { scrapeBrands } from "./brands";
+import { scrapeJCrew } from "./jcrew";
+import { scrapeEverlane } from "./everlane";
 import type { ScrapedProduct, ScraperResult } from "./types";
 
 interface ScrapeOptions {
-  sources?: ("poshmark" | "therealreal" | "brands")[];
+  sources?: ("poshmark" | "therealreal" | "brands" | "jcrew" | "everlane")[];
   maxProductsPerSource?: number;
 }
 
@@ -34,6 +36,12 @@ export async function scrapeAll(options: ScrapeOptions = {}): Promise<ScrapedPro
           break;
         case "brands":
           result = await scrapeBrands({ maxProducts });
+          break;
+        case "jcrew":
+          result = await scrapeJCrew({ maxProducts });
+          break;
+        case "everlane":
+          result = await scrapeEverlane({ maxProducts });
           break;
         default:
           continue;
@@ -66,4 +74,6 @@ export async function scrapeAll(options: ScrapeOptions = {}): Promise<ScrapedPro
 export { scrapePoshmark } from "./poshmark";
 export { scrapeTheRealReal } from "./therealreal";
 export { scrapeBrands } from "./brands";
+export { scrapeJCrew } from "./jcrew";
+export { scrapeEverlane } from "./everlane";
 export type { ScrapedProduct, ScraperResult, ScraperConfig } from "./types";

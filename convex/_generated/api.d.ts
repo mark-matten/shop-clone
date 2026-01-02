@@ -25,7 +25,6 @@ import type * as savedSearches from "../savedSearches.js";
 import type * as scraper from "../scraper.js";
 import type * as search from "../search.js";
 import type * as searchHistory from "../searchHistory.js";
-import type * as seed from "../seed.js";
 import type * as tracking from "../tracking.js";
 import type * as users from "../users.js";
 
@@ -53,7 +52,6 @@ declare const fullApi: ApiFromModules<{
   scraper: typeof scraper;
   search: typeof search;
   searchHistory: typeof searchHistory;
-  seed: typeof seed;
   tracking: typeof tracking;
   users: typeof users;
 }>;

@@ -15,7 +15,9 @@
     "scrape": "npx tsx scripts/import-products.ts",
     "scrape:brands": "npx tsx scripts/import-products.ts --brands",
     "scrape:poshmark": "npx tsx scripts/import-products.ts --poshmark",
-    "scrape:therealreal": "npx tsx scripts/import-products.ts --therealreal"
+    "scrape:therealreal": "npx tsx scripts/import-products.ts --therealreal",
+    "scrape:jcrew": "npx tsx scripts/import-products.ts --jcrew",
+    "scrape:everlane": "npx tsx scripts/import-products.ts --everlane"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.36.5",

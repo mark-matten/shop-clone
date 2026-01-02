@@ -44,17 +44,19 @@ export const parseSearchQuery = internalAction({
     const systemPrompt = `You are a search query parser for a fashion/clothing e-commerce platform.
 Parse the user's natural language search into a structured JSON object.
 
-Extract these fields when present:
+Extract these fields ONLY when EXPLICITLY mentioned by the user:
 - query: the core search terms (always required)
-- gender: "men", "women", or "unisex"
-- category: product type (e.g., "boots", "jacket", "dress", "sneakers", "bag", "sweater", "shoes")
-- brand: brand name if mentioned (e.g., "Nike", "Gucci", "Levi's")
+- gender: ONLY set if user explicitly says "men's", "women's", "mens", "womens", "for men", "for women". Do NOT infer gender.
+- category: product type (e.g., "boots", "jacket", "dress", "sneakers", "bag", "sweater", "shoes", "shirt", "top", "pants")
+- brand: brand name if mentioned (e.g., "Nike", "Gucci", "Levi's", "Everlane")
 - material: material type (e.g., "leather", "cotton", "silk", "denim", "cashmere", "suede", "wool")
 - color: color if mentioned (e.g., "black", "white", "red", "blue", "brown", "navy", "beige")
 - size: size mentioned (e.g., "8", "M", "32", "XL")
 - condition: "new", "used", or "like_new"
 - minPrice: minimum price as number (extract from phrases like "over $100")
 - maxPrice: maximum price as number (extract from phrases like "under $200")
+
+IMPORTANT: Do NOT include fields that aren't explicitly mentioned. Do NOT guess or infer values.
 
 Return ONLY valid JSON, no explanation or markdown.`;
 
@@ -164,7 +166,7 @@ export const filterProducts = query({
     products = products.filter((product) => {
       // Text search with synonym expansion
       if (args.query) {
-        const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""}`.toLowerCase();
+        const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""} ${product.colorName || ""}`.toLowerCase();
         const queryWords = expandQueryWithSynonyms(args.query);
         // Filter out gender words from text search since they're handled by gender filter
         const nonGenderWords = queryWords.filter(word => !genderWords.includes(word.toLowerCase()));
@@ -246,6 +248,16 @@ export const searchProducts = action({
 
 // Synonym expansion for common search terms
 const SYNONYMS: Record<string, string[]> = {
+  // Colors
+  white: ["white", "off-white", "ivory", "cream"],
+  black: ["black", "charcoal", "onyx"],
+  blue: ["blue", "navy", "indigo", "denim", "cobalt", "sky"],
+  grey: ["grey", "gray", "charcoal", "heather", "slate"],
+  gray: ["grey", "gray", "charcoal", "heather", "slate"],
+  brown: ["brown", "tan", "camel", "cognac", "chocolate", "espresso"],
+  green: ["green", "olive", "sage", "forest", "hunter", "moss"],
+  red: ["red", "burgundy", "wine", "maroon", "crimson"],
+  pink: ["pink", "blush", "rose", "coral"],
   // Footwear
   shoe: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes", "shoe"],
   shoes: ["boots", "sneakers", "sandals", "heels", "loafers", "shoe", "shoes"],
@@ -255,15 +267,22 @@ const SYNONYMS: Record<string, string[]> = {
   sneaker: ["sneakers", "sneaker"],
   sneakers: ["sneakers", "sneaker"],
   // Tops
-  top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan"],
-  tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan"],
+  top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "tops", "tee"],
+  tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top", "tee"],
+  shirt: ["shirt", "blouse", "top", "tops", "tee", "button-down"],
+  shirts: ["shirt", "blouse", "top", "tops", "tee", "button-down"],
+  blouse: ["blouse", "shirt", "top"],
+  tee: ["t-shirt", "tee", "shirt", "top"],
   // Outerwear
   outerwear: ["jacket", "coat", "blazer"],
   coats: ["coat", "jacket"],
   jackets: ["jacket", "coat", "blazer"],
   // Bottoms
-  bottom: ["pants", "jeans", "shorts", "skirt"],
-  bottoms: ["pants", "jeans", "shorts", "skirt"],
+  bottom: ["pants", "jeans", "shorts", "skirt", "chino", "trouser"],
+  bottoms: ["pants", "jeans", "shorts", "skirt", "chino", "trouser"],
+  pants: ["pants", "jeans", "chino", "trouser", "pant"],
+  chinos: ["chino", "pants", "trouser"],
+  trousers: ["trouser", "pants", "chino"],
   // Bags
   bags: ["bag", "purse", "handbag"],
   purse: ["bag", "handbag"],
@@ -297,6 +316,65 @@ function expandQueryWithSynonyms(query: string): string[] {
 // Internal version of filterProducts for use in actions
 import { internalQuery } from "./_generated/server";
 
+// Calculate relevance score for a product given query words
+function calculateRelevanceScore(
+  product: {
+    name: string;
+    description: string;
+    brand: string;
+    category: string;
+    material?: string;
+    colorName?: string;
+  },
+  queryWords: string[]
+): number {
+  let score = 0;
+  const nameLower = product.name.toLowerCase();
+  const categoryLower = product.category.toLowerCase();
+  const brandLower = product.brand.toLowerCase();
+  const descLower = product.description.toLowerCase();
+  const materialLower = (product.material || "").toLowerCase();
+  const colorLower = (product.colorName || "").toLowerCase();
+
+  // Common color words to detect if user is searching for a color
+  const colorWords = ["white", "black", "blue", "navy", "grey", "gray", "brown", "tan", "green", "red", "pink", "cream", "ivory", "beige", "olive", "burgundy"];
+  const isColorSearch = queryWords.some(w => colorWords.includes(w));
+
+  for (const word of queryWords) {
+    // Check if this word is a color-related term
+    const isColorWord = colorWords.includes(word) ||
+      ["off-white", "charcoal", "heather", "slate", "camel", "cognac", "sage", "moss", "coral", "blush"].includes(word);
+
+    if (isColorWord) {
+      // Color matches are highest priority when user searches for a color
+      if (colorLower.includes(word)) {
+        score += 25;  // Strong boost for matching color
+      }
+    } else {
+      // Non-color word scoring
+      if (categoryLower.includes(word) || nameLower.includes(word)) {
+        score += 10;
+      } else if (materialLower.includes(word)) {
+        score += 5;
+      } else if (brandLower.includes(word)) {
+        score += 3;
+      } else if (descLower.includes(word)) {
+        score += 2;
+      }
+    }
+  }
+
+  // Penalty for non-matching color when user explicitly searched for a color
+  if (isColorSearch && colorLower) {
+    const matchesSearchedColor = queryWords.some(w => colorLower.includes(w));
+    if (!matchesSearchedColor) {
+      score -= 15;  // Penalize products that don't match the searched color
+    }
+  }
+
+  return score;
+}
+
 export const filterProductsInternal = internalQuery({
   args: {
     query: v.optional(v.string()),
@@ -318,46 +396,61 @@ export const filterProductsInternal = internalQuery({
     // Words that are handled by specific filters and shouldn't require text matching
     const genderWords = ["women", "womens", "women's", "men", "mens", "men's", "unisex"];
 
-    products = products.filter((product) => {
-      if (args.query) {
-        const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""}`.toLowerCase();
-        const queryWords = expandQueryWithSynonyms(args.query);
-        // Filter out gender words from text search since they're handled by gender filter
-        const nonGenderWords = queryWords.filter(word => !genderWords.includes(word.toLowerCase()));
-        // Only require text match if there are non-gender search terms
-        if (nonGenderWords.length > 0) {
+    // Get query words for scoring
+    const queryWords = args.query ? expandQueryWithSynonyms(args.query) : [];
+    const nonGenderWords = queryWords.filter(word => !genderWords.includes(word.toLowerCase()));
+
+    // Filter and score products
+    const scoredProducts = products
+      .map((product) => {
+        // Exclude gift cards from search results
+        if (product.name.toLowerCase().includes('gift card')) return null;
+
+        // Apply filters first
+        if (args.query && nonGenderWords.length > 0) {
+          const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""} ${product.colorName || ""}`.toLowerCase();
           const hasMatch = nonGenderWords.some(word => productText.includes(word));
-          if (!hasMatch) return false;
+          if (!hasMatch) return null;
         }
-      }
 
-      // Gender filter: include unisex products in men's or women's searches
-      if (args.gender) {
-        if (args.gender === "men" && product.gender !== "men" && product.gender !== "unisex") return false;
-        if (args.gender === "women" && product.gender !== "women" && product.gender !== "unisex") return false;
-        if (args.gender === "unisex" && product.gender !== "unisex") return false;
-      }
-      if (args.condition && product.condition !== args.condition) return false;
+        // Gender filter: include unisex products in men's or women's searches
+        if (args.gender) {
+          // Normalize gender value (handle "mens", "men's", "womens", "women's")
+          const normalizedGender = args.gender.toLowerCase().replace(/['s]+$/, '');
+          if (normalizedGender === "men" && product.gender !== "men" && product.gender !== "unisex") return null;
+          if (normalizedGender === "women" && product.gender !== "women" && product.gender !== "unisex") return null;
+          if (normalizedGender === "unisex" && product.gender !== "unisex") return null;
+        }
+        if (args.condition && product.condition !== args.condition) return null;
 
-      // Category filter with synonym expansion (e.g., "shoes" matches "boots", "sneakers", etc.)
-      if (args.category) {
-        const categoryLower = args.category.toLowerCase();
-        const productCategoryLower = product.category.toLowerCase();
-        const expandedCategories = expandQueryWithSynonyms(categoryLower);
-        const categoryMatches = expandedCategories.some(cat =>
-          productCategoryLower.includes(cat) || cat.includes(productCategoryLower)
-        );
-        if (!categoryMatches) return false;
-      }
-      if (args.brand && !product.brand.toLowerCase().includes(args.brand.toLowerCase())) return false;
-      if (args.material && product.material && !product.material.toLowerCase().includes(args.material.toLowerCase())) return false;
-      if (args.size && product.size && !product.size.toLowerCase().includes(args.size.toLowerCase())) return false;
-      if (args.minPrice !== undefined && product.price < args.minPrice) return false;
-      if (args.maxPrice !== undefined && product.price > args.maxPrice) return false;
+        // Category filter with synonym expansion
+        if (args.category) {
+          const categoryLower = args.category.toLowerCase();
+          const productCategoryLower = product.category.toLowerCase();
+          const expandedCategories = expandQueryWithSynonyms(categoryLower);
+          const categoryMatches = expandedCategories.some(cat =>
+            productCategoryLower.includes(cat) || cat.includes(productCategoryLower)
+          );
+          if (!categoryMatches) return null;
+        }
+        if (args.brand && !product.brand.toLowerCase().includes(args.brand.toLowerCase())) return null;
+        if (args.material && product.material && !product.material.toLowerCase().includes(args.material.toLowerCase())) return null;
+        if (args.size && product.size && !product.size.toLowerCase().includes(args.size.toLowerCase())) return null;
+        if (args.minPrice !== undefined && product.price < args.minPrice) return null;
+        if (args.maxPrice !== undefined && product.price > args.maxPrice) return null;
 
-      return true;
-    });
+        // Calculate relevance score
+        const score = nonGenderWords.length > 0
+          ? calculateRelevanceScore(product, nonGenderWords)
+          : 0;
 
-    return products.slice(0, limit);
+        return { product, score };
+      })
+      .filter((item): item is { product: typeof products[0]; score: number } => item !== null);
+
+    // Sort by relevance score (highest first)
+    scoredProducts.sort((a, b) => b.score - a.score);
+
+    return scoredProducts.slice(0, limit).map(item => item.product);
   },
 });

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
@@ -9,21 +9,8 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
 import { useRecentlyViewed } from "@/components/search/RecentlyViewed";
-
-// Generate mock price history (will be replaced with real data later)
-function generatePriceHistory(basePrice: number) {
-  const history = [];
-  const now = Date.now();
-  for (let i = 30; i >= 0; i--) {
-    const fluctuation = (Math.random() - 0.5) * 0.15;
-    const price = basePrice * (1 + fluctuation);
-    history.push({
-      date: new Date(now - i * 86400000).toISOString().split("T")[0],
-      price: Math.round(price * 100) / 100,
-    });
-  }
-  return history;
-}
+import { ImageCarousel } from "@/components/ui/ImageCarousel";
+import { VariantSelector } from "@/components/ui/VariantSelector";
 
 export default function ProductDetailPage() {
   const params = useParams();
@@ -115,6 +102,12 @@ export default function ProductDetailPage() {
   const similarProducts = useQuery(
     api.recommendations.getSimilarProducts,
     productId ? { productId: productId as Id<"products">, limit: 6 } : "skip"
+  );
+
+  // Get color variants for this product
+  const colorVariants = useQuery(
+    api.products.getColorVariants,
+    product?.colorGroupId ? { colorGroupId: product.colorGroupId } : "skip"
   );
 
   const [targetPrice, setTargetPrice] = useState("");
@@ -260,18 +253,6 @@ export default function ProductDetailPage() {
     }
   }, [product, productId, addViewed]);
 
-  // Generate price history only when product is loaded
-  const priceHistory = useMemo(
-    () => (product ? generatePriceHistory(product.price) : []),
-    [product]
-  );
-
-  const lowestPrice = priceHistory.length > 0 ? Math.min(...priceHistory.map((p) => p.price)) : 0;
-  const highestPrice = priceHistory.length > 0 ? Math.max(...priceHistory.map((p) => p.price)) : 0;
-  const avgPrice = priceHistory.length > 0
-    ? priceHistory.reduce((sum, p) => sum + p.price, 0) / priceHistory.length
-    : 0;
-
   const handleTrack = async () => {
     if (!convexUser?._id) {
       alert("Please sign in to track prices");
@@ -394,21 +375,17 @@ export default function ProductDetailPage() {
         </div>
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
-          {/* Product Image */}
+          {/* Product Images Carousel */}
           <div className="aspect-square overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-            {product.imageUrl ? (
-              <img
-                src={product.imageUrl}
-                alt={product.name}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                <svg className="h-24 w-24" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                </svg>
-              </div>
-            )}
+            <ImageCarousel
+              images={product.imageUrls && product.imageUrls.length > 0
+                ? product.imageUrls
+                : product.imageUrl
+                  ? [product.imageUrl]
+                  : []
+              }
+              alt={product.name}
+            />
           </div>
 
           {/* Product Info */}
@@ -427,10 +404,20 @@ export default function ProductDetailPage() {
               {product.name}
             </h1>
 
-            <div className="mt-4 flex items-center gap-4">
+            <div className="mt-4 flex flex-wrap items-center gap-3">
               <span className="text-3xl font-bold text-zinc-900 dark:text-white">
                 ${product.price.toFixed(2)}
               </span>
+              {product.originalPrice && product.originalPrice > product.price && (
+                <>
+                  <span className="text-xl text-zinc-400 line-through dark:text-zinc-500">
+                    ${product.originalPrice.toFixed(2)}
+                  </span>
+                  <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-bold text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                    {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
+                  </span>
+                </>
+              )}
               <span className="rounded-full bg-green-100 px-3 py-1 text-sm font-medium text-green-800 dark:bg-green-900/30 dark:text-green-400">
                 {conditionLabels[product.condition]}
               </span>
@@ -439,6 +426,23 @@ export default function ProductDetailPage() {
             <p className="mt-4 text-zinc-600 dark:text-zinc-400">
               {product.description}
             </p>
+
+            {/* Color & Size Selector */}
+            <div className="mt-6">
+              <VariantSelector
+                variants={product.variants}
+                options={product.options}
+                colorName={product.colorName}
+                colorHex={product.colorHex}
+                colorVariants={colorVariants?.map((v) => ({
+                  _id: v._id,
+                  colorName: v.colorName,
+                  colorHex: v.colorHex,
+                  imageUrl: v.imageUrl,
+                })) ?? []}
+                currentProductId={productId}
+              />
+            </div>
 
             <dl className="mt-6 grid grid-cols-2 gap-4">
               {product.size && (
@@ -589,96 +593,6 @@ export default function ProductDetailPage() {
             </div>
           </div>
         </div>
-
-        {/* Price History */}
-        <section className="mt-12">
-          <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
-            Price History
-          </h2>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Last 30 days
-          </p>
-
-          {/* Stats */}
-          <div className="mt-4 grid grid-cols-3 gap-4">
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Lowest</p>
-              <p className="text-xl font-bold text-green-600 dark:text-green-400">
-                ${lowestPrice.toFixed(2)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Average</p>
-              <p className="text-xl font-bold text-zinc-900 dark:text-white">
-                ${avgPrice.toFixed(2)}
-              </p>
-            </div>
-            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">Highest</p>
-              <p className="text-xl font-bold text-red-600 dark:text-red-400">
-                ${highestPrice.toFixed(2)}
-              </p>
-            </div>
-          </div>
-
-          {/* Chart */}
-          <div className="mt-6 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="relative h-64">
-              {/* Y-axis labels */}
-              <div className="absolute left-0 top-0 bottom-0 flex flex-col justify-between text-xs text-zinc-400">
-                <span>${highestPrice.toFixed(0)}</span>
-                <span>${avgPrice.toFixed(0)}</span>
-                <span>${lowestPrice.toFixed(0)}</span>
-              </div>
-
-              {/* Chart area */}
-              <div className="ml-12 h-full">
-                <svg className="h-full w-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-                  {/* Grid lines */}
-                  <line x1="0" y1="0" x2="100" y2="0" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-                  <line x1="0" y1="50" x2="100" y2="50" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" strokeDasharray="4" vectorEffect="non-scaling-stroke" />
-                  <line x1="0" y1="100" x2="100" y2="100" stroke="currentColor" className="text-zinc-200 dark:text-zinc-700" strokeWidth="1" vectorEffect="non-scaling-stroke" />
-
-                  {/* Price line */}
-                  <polyline
-                    fill="none"
-                    stroke="currentColor"
-                    className="text-blue-500"
-                    strokeWidth="2"
-                    vectorEffect="non-scaling-stroke"
-                    points={priceHistory
-                      .map((p, i) => {
-                        const x = (i / (priceHistory.length - 1)) * 100;
-                        const y = 100 - ((p.price - lowestPrice) / (highestPrice - lowestPrice)) * 100;
-                        return `${x},${y}`;
-                      })
-                      .join(" ")}
-                  />
-
-                  {/* Area fill */}
-                  <polygon
-                    fill="currentColor"
-                    className="text-blue-500/10"
-                    points={`0,100 ${priceHistory
-                      .map((p, i) => {
-                        const x = (i / (priceHistory.length - 1)) * 100;
-                        const y = 100 - ((p.price - lowestPrice) / (highestPrice - lowestPrice)) * 100;
-                        return `${x},${y}`;
-                      })
-                      .join(" ")} 100,100`}
-                  />
-                </svg>
-              </div>
-            </div>
-
-            {/* X-axis labels */}
-            <div className="ml-12 mt-2 flex justify-between text-xs text-zinc-400">
-              <span>{priceHistory[0]?.date}</span>
-              <span>{priceHistory[Math.floor(priceHistory.length / 2)]?.date}</span>
-              <span>{priceHistory[priceHistory.length - 1]?.date}</span>
-            </div>
-          </div>
-        </section>
 
         {/* Similar Products */}
         {similarProducts && similarProducts.length > 0 && (

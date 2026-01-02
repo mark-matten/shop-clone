@@ -8,14 +8,33 @@ export const addProduct = mutation({
     description: v.string(),
     brand: v.string(),
     price: v.number(),
+    originalPrice: v.optional(v.number()),
     material: v.optional(v.string()),
     size: v.optional(v.string()),
+    sizes: v.optional(v.array(v.string())),
+    variants: v.optional(v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+      available: v.boolean(),
+      price: v.optional(v.number()),
+      option1: v.optional(v.string()),
+      option2: v.optional(v.string()),
+      option3: v.optional(v.string()),
+    }))),
+    options: v.optional(v.array(v.object({
+      name: v.string(),
+      values: v.array(v.string()),
+    }))),
+    colorGroupId: v.optional(v.string()),
+    colorName: v.optional(v.string()),
+    colorHex: v.optional(v.string()),
     category: v.string(),
     gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
     condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
     sourceUrl: v.string(),
     sourcePlatform: v.string(),
     imageUrl: v.optional(v.string()),
+    imageUrls: v.optional(v.array(v.string())),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("products", args);
@@ -64,6 +83,17 @@ export const getAllProducts = query({
   },
 });
 
+// Get related color variants by colorGroupId
+export const getColorVariants = query({
+  args: { colorGroupId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_colorGroupId", (q) => q.eq("colorGroupId", args.colorGroupId))
+      .collect();
+  },
+});
+
 // Update product price (for price tracking)
 export const updatePrice = mutation({
   args: {
@@ -84,14 +114,17 @@ export const bulkAddProducts = mutation({
         description: v.string(),
         brand: v.string(),
         price: v.number(),
+        originalPrice: v.optional(v.number()),
         material: v.optional(v.string()),
         size: v.optional(v.string()),
+        sizes: v.optional(v.array(v.string())),
         category: v.string(),
         gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
         condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
         sourceUrl: v.string(),
         sourcePlatform: v.string(),
         imageUrl: v.optional(v.string()),
+        imageUrls: v.optional(v.array(v.string())),
       })
     ),
   },
@@ -110,5 +143,22 @@ export const deleteProduct = mutation({
   args: { id: v.id("products") },
   handler: async (ctx, args) => {
     await ctx.db.delete(args.id);
+  },
+});
+
+// Delete all products from a specific platform
+export const deleteByPlatform = mutation({
+  args: { platform: v.string() },
+  handler: async (ctx, args) => {
+    const products = await ctx.db
+      .query("products")
+      .withIndex("by_sourcePlatform", (q) => q.eq("sourcePlatform", args.platform))
+      .collect();
+
+    for (const product of products) {
+      await ctx.db.delete(product._id);
+    }
+
+    return products.length;
   },
 });

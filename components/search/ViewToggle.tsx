@@ -50,11 +50,13 @@ interface ProductListItemProps {
     description: string;
     brand: string;
     price: number;
+    originalPrice?: number;
     size?: string;
     gender?: "men" | "women" | "unisex";
     condition: string;
     sourcePlatform: string;
     imageUrl?: string;
+    variants?: Array<{ id: string; title: string; available: boolean }>;
   };
   isFavorited?: boolean;
   onFavoriteClick?: () => void;
@@ -67,9 +69,14 @@ const genderLabels = {
 };
 
 export function ProductListItem({ product, isFavorited, onFavoriteClick }: ProductListItemProps) {
+  // Check if all variants are sold out
+  const isSoldOut = product.variants && product.variants.length > 0
+    ? product.variants.every(v => !v.available)
+    : false;
+
   return (
     <div className="flex gap-4 rounded-xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
-      <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+      <div className="relative h-24 w-24 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
         {product.imageUrl ? (
           <img
             src={product.imageUrl}
@@ -81,6 +88,13 @@ export function ProductListItem({ product, isFavorited, onFavoriteClick }: Produ
             <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
+          </div>
+        )}
+        {isSoldOut && (
+          <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+            <span className="rounded bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
+              Sold Out
+            </span>
           </div>
         )}
       </div>
@@ -95,9 +109,21 @@ export function ProductListItem({ product, isFavorited, onFavoriteClick }: Produ
               {product.name}
             </h3>
           </div>
-          <p className="text-lg font-bold text-zinc-900 dark:text-white">
-            ${product.price.toFixed(2)}
-          </p>
+          <div className="flex items-center gap-2">
+            <p className="text-lg font-bold text-zinc-900 dark:text-white">
+              ${product.price.toFixed(2)}
+            </p>
+            {product.originalPrice && product.originalPrice > product.price && (
+              <>
+                <span className="text-sm text-zinc-400 line-through">
+                  ${product.originalPrice.toFixed(2)}
+                </span>
+                <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700 dark:bg-red-900/50 dark:text-red-300">
+                  -{Math.round((1 - product.price / product.originalPrice) * 100)}%
+                </span>
+              </>
+            )}
+          </div>
         </div>
 
         <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">

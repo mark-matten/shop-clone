@@ -20,8 +20,10 @@ interface Product {
   description: string;
   brand: string;
   price: number;
+  originalPrice?: number;
   material?: string;
   size?: string;
+  sizes?: string[];
   category: string;
   gender?: "men" | "women" | "unisex";
   condition: "new" | "used" | "like_new";
@@ -76,8 +78,12 @@ const CATEGORY_SYNONYMS: Record<string, string[]> = {
   boots: ["boots", "boot"],
   sneaker: ["sneakers", "sneaker"],
   sneakers: ["sneakers", "sneaker"],
-  top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top"],
-  tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top"],
+  top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top", "tops", "clothing"],
+  tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top", "tops", "clothing"],
+  shirt: ["tops", "top", "shirt", "blouse", "t-shirt", "clothing"],
+  shirts: ["tops", "top", "shirt", "blouse", "t-shirt", "clothing"],
+  tee: ["tops", "top", "t-shirt", "shirt", "clothing"],
+  blouse: ["tops", "top", "blouse", "shirt", "clothing"],
   outerwear: ["jacket", "coat", "blazer"],
   coats: ["coat", "jacket"],
   jackets: ["jacket", "coat", "blazer"],
@@ -484,31 +490,59 @@ export function ProductSearch() {
   }, [searchParams, router, searchProducts, clerkUser?.id, saveSearch]);
 
   // Handle removing a filter from the parsed search results
-  const handleRemoveFilter = useCallback((key: keyof SearchFilter) => {
+  const handleRemoveFilter = useCallback(async (key: keyof SearchFilter) => {
     const currentFilter = activeFilter || searchResult?.filter;
     if (!currentFilter) return;
 
     // Get the value being removed for text cleanup
     const removedValue = currentFilter[key];
 
-    // Update the filter
+    // Build the new filter with the key removed
     const newFilter = { ...currentFilter };
     delete newFilter[key];
-    setActiveFilter(newFilter);
 
     // Update the search query text to remove the filter text
     const newQuery = removeFilterTextFromQuery(currentSearchQuery, key, removedValue);
-    setCurrentSearchQuery(newQuery);
 
-    // Update the URL with the cleaned query
-    const params = new URLSearchParams(searchParams.toString());
-    if (newQuery) {
+    // Trigger a new search with the cleaned query
+    if (newQuery.trim()) {
+      setIsLoading(true);
+      setCurrentSearchQuery(newQuery);
+
+      // Update URL
+      const params = new URLSearchParams(searchParams.toString());
       params.set("q", newQuery);
+      router.replace(`/?${params.toString()}`, { scroll: false });
+
+      try {
+        const result = await searchProducts({ searchText: newQuery });
+        setSearchResult({
+          products: result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[],
+          filter: result.filter as SearchFilter,
+          totalResults: result.totalResults,
+        });
+        // Preserve the remaining filters (don't let LLM re-parse override them)
+        // Merge the new search filter with our explicitly kept filters
+        const mergedFilter = { ...result.filter, ...newFilter };
+        // Remove the key we explicitly deleted
+        delete mergedFilter[key];
+        setActiveFilter(mergedFilter);
+      } catch (err) {
+        console.error("Search error:", err);
+      } finally {
+        setIsLoading(false);
+      }
     } else {
+      // If query is empty after removing filter, clear results
+      setActiveFilter(null);
+      setSearchResult(null);
+      setCurrentSearchQuery("");
+      setHasSearched(false);
+      const params = new URLSearchParams(searchParams.toString());
       params.delete("q");
+      router.replace(`/?${params.toString()}`, { scroll: false });
     }
-    router.replace(`/?${params.toString()}`, { scroll: false });
-  }, [activeFilter, searchResult?.filter, currentSearchQuery, searchParams, router]);
+  }, [activeFilter, searchResult?.filter, currentSearchQuery, searchParams, router, searchProducts]);
 
   // Handle back navigation via pageshow event (fires when page is restored from bfcache)
   useEffect(() => {
