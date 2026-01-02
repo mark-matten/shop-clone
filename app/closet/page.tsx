@@ -64,6 +64,22 @@ function getColorFromName(colorName: string): string {
   return '#6b7280';
 }
 
+// Helper to check if a color is light (needs dark text)
+function isLightColor(hex: string): boolean {
+  // Convert hex to RGB
+  const r = parseInt(hex.slice(1, 3), 16);
+  const g = parseInt(hex.slice(3, 5), 16);
+  const b = parseInt(hex.slice(5, 7), 16);
+  // Calculate relative luminance
+  const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+  return luminance > 0.6;
+}
+
+// Get text color for a color badge (dark text for light colors)
+function getColorBadgeTextColor(hex: string): string {
+  return isLightColor(hex) ? '#374151' : hex;
+}
+
 interface CombinedItem {
   productId: Id<"products">;
   product: {
@@ -143,12 +159,22 @@ function ListItem({
               {product.name}
             </h3>
             <div className="mt-1 flex flex-wrap items-center gap-1">
-              {selectedColor && (
+              {selectedColor && colorHex && (
                 <span
-                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium"
-                  style={{ backgroundColor: `${colorHex}20`, color: colorHex || '#6b7280' }}
+                  className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium"
+                  style={{
+                    backgroundColor: `${colorHex}20`,
+                    color: getColorBadgeTextColor(colorHex),
+                    borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+                  }}
                 >
-                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colorHex || '#6b7280' }} />
+                  <span
+                    className="h-2 w-2 rounded-full border"
+                    style={{
+                      backgroundColor: colorHex,
+                      borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+                    }}
+                  />
                   {selectedColor}
                 </span>
               )}
@@ -281,11 +307,22 @@ function SortableItem({
             {product.name}
           </h3>
           <div className="mt-2 flex flex-wrap gap-1">
-            {selectedColor && (
+            {selectedColor && colorHex && (
               <span
-                className="rounded px-2 py-0.5 text-xs font-medium"
-                style={{ backgroundColor: `${colorHex}20`, color: colorHex || '#6b7280' }}
+                className="inline-flex items-center gap-1 rounded border px-2 py-0.5 text-xs font-medium"
+                style={{
+                  backgroundColor: `${colorHex}20`,
+                  color: getColorBadgeTextColor(colorHex),
+                  borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+                }}
               >
+                <span
+                  className="h-2 w-2 rounded-full border"
+                  style={{
+                    backgroundColor: colorHex,
+                    borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+                  }}
+                />
                 {selectedColor}
               </span>
             )}
