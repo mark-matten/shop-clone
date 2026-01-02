@@ -272,7 +272,7 @@ export function SearchBar({
             setQuery(exampleQuery);
             onSearch(exampleQuery);
           }}
-          className="text-purple-600 hover:text-purple-700 hover:underline dark:text-purple-400 dark:hover:text-purple-300"
+          className="text-indigo-700 hover:text-indigo-800 hover:underline dark:text-indigo-300 dark:hover:text-indigo-200"
         >
           &quot;women&apos;s black leather boots size 8 under $200&quot;
         </button>
