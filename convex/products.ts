@@ -282,14 +282,25 @@ export const upsertProduct = mutation({
       .first();
 
     if (existing) {
-      // Update only price, originalPrice, variants (availability), and images
-      await ctx.db.patch(existing._id, {
+      // Update price, originalPrice, variants (availability), images, and color info
+      const updates: Record<string, unknown> = {
         price: args.price,
         originalPrice: args.originalPrice,
         variants: args.variants,
         imageUrl: args.imageUrl,
         imageUrls: args.imageUrls,
-      });
+      };
+      // Only update color fields if provided
+      if (args.colorHex !== undefined) {
+        updates.colorHex = args.colorHex;
+      }
+      if (args.colorName !== undefined) {
+        updates.colorName = args.colorName;
+      }
+      if (args.colorGroupId !== undefined) {
+        updates.colorGroupId = args.colorGroupId;
+      }
+      await ctx.db.patch(existing._id, updates);
       return { id: existing._id, action: "updated" as const };
     } else {
       // Insert new product

@@ -222,10 +222,76 @@ export const upsertProduct = internalMutation({
   },
 });
 
+// Color name to hex mapping for common colors
+const COLOR_HEX_MAP: Record<string, string> = {
+  // Neutrals
+  black: "#000000",
+  white: "#FFFFFF",
+  ivory: "#FFFFF0",
+  cream: "#FFFDD0",
+  bone: "#E3DAC9",
+  beige: "#F5F5DC",
+  tan: "#D2B48C",
+  taupe: "#483C32",
+  grey: "#808080",
+  gray: "#808080",
+  charcoal: "#36454F",
+  heather: "#9E9E9E",
+  // Browns
+  brown: "#8B4513",
+  "dark brown": "#5C4033",
+  chocolate: "#7B3F00",
+  cognac: "#9A463D",
+  camel: "#C19A6B",
+  espresso: "#3C2415",
+  // Reds/Pinks
+  red: "#FF0000",
+  burgundy: "#800020",
+  wine: "#722F37",
+  maroon: "#800000",
+  pink: "#FFC0CB",
+  blush: "#DE5D83",
+  rose: "#FF007F",
+  coral: "#FF7F50",
+  // Blues
+  blue: "#0000FF",
+  navy: "#000080",
+  "navy blue": "#000080",
+  cobalt: "#0047AB",
+  indigo: "#4B0082",
+  teal: "#008080",
+  // Greens
+  green: "#008000",
+  olive: "#808000",
+  sage: "#BCB88A",
+  forest: "#228B22",
+  hunter: "#355E3B",
+  moss: "#8A9A5B",
+  // Yellows/Oranges
+  yellow: "#FFFF00",
+  gold: "#FFD700",
+  mustard: "#FFDB58",
+  orange: "#FFA500",
+  rust: "#B7410E",
+  // Purples
+  purple: "#800080",
+  violet: "#EE82EE",
+  lavender: "#E6E6FA",
+  plum: "#DDA0DD",
+};
+
+// Get hex color from color name
+function getColorHex(colorName: string | undefined): string | undefined {
+  if (!colorName) return undefined;
+  const normalized = colorName.toLowerCase().trim();
+  return COLOR_HEX_MAP[normalized];
+}
+
 // Interface for color variant data
 interface ColorVariantData {
   handle: string;
   colorName: string;
+  colorHex?: string;
   colorGroupId: string;
   name: string;
   description: string;
@@ -277,6 +343,7 @@ function parseEverlaneProductJson(product: any, availabilityMap?: Map<number, bo
   description: string;
   colorGroupId: string | undefined;
   colorName: string | undefined;
+  colorHex: string | undefined;
   imageUrl: string | undefined;
   variants: RefreshedProductData['variants'];
   options: RefreshedProductData['options'];
@@ -314,6 +381,9 @@ function parseEverlaneProductJson(product: any, availabilityMap?: Map<number, bo
   const titleParts = (product.title || "").split("|");
   const colorName = titleParts.length > 1 ? titleParts[1].trim() : undefined;
 
+  // Get color hex from color name
+  const colorHex = getColorHex(colorName);
+
   // Get main image
   const imageUrl = product.images?.[0]?.src;
 
@@ -342,6 +412,7 @@ function parseEverlaneProductJson(product: any, availabilityMap?: Map<number, bo
     description,
     colorGroupId,
     colorName,
+    colorHex,
     imageUrl,
     variants,
     options: options?.length > 0 ? options : undefined,
@@ -385,6 +456,7 @@ async function fetchEverlaneColorVariants(colorGroupId: string, currentHandle: s
           colorVariants.push({
             handle: product.handle,
             colorName: parsed.colorName,
+            colorHex: parsed.colorHex,
             colorGroupId,
             name,
             description: parsed.description,
@@ -621,6 +693,7 @@ export const refreshProductFromSource = action({
           imageUrl: variant.imageUrl,
           colorGroupId: variant.colorGroupId,
           colorName: variant.colorName,
+          colorHex: variant.colorHex,
           variants: variant.variants,
           options: variant.options,
         });
@@ -732,6 +805,7 @@ export const upsertColorVariant = internalMutation({
     imageUrl: v.optional(v.string()),
     colorGroupId: v.string(),
     colorName: v.string(),
+    colorHex: v.optional(v.string()),
     variants: v.array(v.object({
       id: v.string(),
       title: v.string(),
@@ -764,6 +838,7 @@ export const upsertColorVariant = internalMutation({
         options: args.options,
         colorGroupId: args.colorGroupId,
         colorName: args.colorName,
+        colorHex: args.colorHex,
       });
       return { id: existing._id, isNew: false };
     } else {
@@ -782,6 +857,7 @@ export const upsertColorVariant = internalMutation({
         imageUrl: args.imageUrl,
         colorGroupId: args.colorGroupId,
         colorName: args.colorName,
+        colorHex: args.colorHex,
         variants: args.variants,
         options: args.options,
       });
