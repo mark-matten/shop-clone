@@ -75,6 +75,7 @@ interface ProductListItemProps {
     options?: ProductOption[];
     colorGroupId?: string;
     colorName?: string;
+    colorVariantCount?: number; // Number of color variants from backend grouping
   };
   isFavorited?: boolean;
   onFavoriteClick?: () => void;
@@ -119,8 +120,13 @@ export function ProductListItem({ product, isFavorited, onFavoriteClick }: Produ
     return 0;
   };
 
-  // Count colors from options (only show if we have multiple colors)
+  // Get color count from backend grouping (preferred) or fall back to options
   const getColorCount = (): number => {
+    // Use backend colorVariantCount if available (from search grouping)
+    if (product.colorVariantCount && product.colorVariantCount > 1) {
+      return product.colorVariantCount;
+    }
+    // Fall back to options-based calculation for non-grouped products
     const colorOption = product.options?.find(opt =>
       opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
     );

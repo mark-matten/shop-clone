@@ -42,6 +42,7 @@ interface Product {
   options?: ProductOption[];
   colorGroupId?: string;
   colorName?: string;
+  colorVariantCount?: number; // Number of color variants from backend grouping
   category: string;
   gender?: "men" | "women" | "unisex";
   condition: "new" | "used" | "like_new";

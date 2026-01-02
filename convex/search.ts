@@ -309,6 +309,71 @@ export const filterProducts = query({
   },
 });
 
+// Group products by colorGroupId and pick the best representative
+function groupByColor(
+  products: any[],
+  searchedColor: string | undefined
+): any[] {
+  // Map to store: colorGroupId -> array of products
+  const colorGroups = new Map<string, any[]>();
+  // Products without colorGroupId are their own group
+  const ungroupedProducts: any[] = [];
+
+  for (const product of products) {
+    if (product.colorGroupId) {
+      const existing = colorGroups.get(product.colorGroupId);
+      if (existing) {
+        existing.push(product);
+      } else {
+        colorGroups.set(product.colorGroupId, [product]);
+      }
+    } else {
+      ungroupedProducts.push(product);
+    }
+  }
+
+  const result: any[] = [];
+
+  // Process each color group
+  for (const [groupId, groupProducts] of colorGroups) {
+    // Count total colors in this group
+    const colorVariantCount = groupProducts.length;
+
+    // Pick the best representative
+    let representative: any;
+
+    if (searchedColor) {
+      // User searched for a specific color - find matching variant
+      const searchColorLower = searchedColor.toLowerCase();
+      representative = groupProducts.find((p) => {
+        const colorName = (p.colorName || "").toLowerCase();
+        return colorName.includes(searchColorLower) || searchColorLower.includes(colorName);
+      });
+    }
+
+    // If no color match or no search color, pick first one (or lowest price)
+    if (!representative) {
+      representative = groupProducts.sort((a, b) => a.price - b.price)[0];
+    }
+
+    // Add color variant count to the representative
+    result.push({
+      ...representative,
+      colorVariantCount,
+    });
+  }
+
+  // Add ungrouped products (they're their own color variant)
+  for (const product of ungroupedProducts) {
+    result.push({
+      ...product,
+      colorVariantCount: 1,
+    });
+  }
+
+  return result;
+}
+
 // Main search action combining LLM parsing + database filtering
 export const searchProducts = action({
   args: {
@@ -321,7 +386,7 @@ export const searchProducts = action({
     totalResults: number;
     partialMatches?: any[];
   }> => {
-    const limit = args.limit ?? 50; // Fetch more products for client-side filtering
+    const limit = args.limit ?? 100; // Fetch more products before grouping
 
     // Step 1: Parse search query with Claude
     const filter: SearchFilter = await ctx.runAction(internal.search.parseSearchQuery, {
@@ -337,20 +402,25 @@ export const searchProducts = action({
       limit,
     });
 
-    // Step 3: If no exact matches, get partial matches based on name similarity
+    // Step 3: Group products by color and pick best representative
+    const groupedProducts = groupByColor(products, filter.color);
+
+    // Step 4: If no exact matches, get partial matches based on name similarity
     let partialMatches: any[] | undefined;
-    if (products.length === 0) {
-      partialMatches = await ctx.runQuery(internal.search.getPartialMatches, {
+    if (groupedProducts.length === 0) {
+      const rawPartialMatches = await ctx.runQuery(internal.search.getPartialMatches, {
         searchText: args.searchText,
-        limit: 10,
+        limit: 20,
       });
+      // Also group partial matches
+      partialMatches = groupByColor(rawPartialMatches, filter.color).slice(0, 10);
     }
 
     // Return products and filters (filters applied client-side)
     return {
-      products,
+      products: groupedProducts,
       filter,
-      totalResults: products.length,
+      totalResults: groupedProducts.length,
       partialMatches,
     };
   },
