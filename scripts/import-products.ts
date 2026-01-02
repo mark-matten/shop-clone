@@ -15,21 +15,23 @@ if (!CONVEX_URL) {
 
 const client = new ConvexHttpClient(CONVEX_URL);
 
-async function importProducts(products: ScrapedProduct[]): Promise<number> {
-  console.log(`\nImporting ${products.length} products to Convex...`);
+async function importProducts(products: ScrapedProduct[]): Promise<{ inserted: number; updated: number; errors: number }> {
+  console.log(`\nImporting ${products.length} products to Convex (upsert mode)...`);
 
-  let imported = 0;
+  let inserted = 0;
+  let updated = 0;
   let errors = 0;
 
-  // Import in batches to avoid rate limits
-  const batchSize = 10;
+  // Import in parallel batches for speed
+  const batchSize = 20;
 
   for (let i = 0; i < products.length; i += batchSize) {
     const batch = products.slice(i, i + batchSize);
 
-    for (const product of batch) {
-      try {
-        const result = await client.mutation(api.products.addProduct, {
+    // Process batch in parallel
+    const results = await Promise.allSettled(
+      batch.map(async (product) => {
+        const result = await client.mutation(api.products.upsertProduct, {
           name: product.name,
           description: product.description,
           brand: product.brand,
@@ -51,55 +53,75 @@ async function importProducts(products: ScrapedProduct[]): Promise<number> {
           imageUrl: product.imageUrl,
           imageUrls: product.imageUrls,
         });
-        if (result) {
-          imported++;
-        } else {
-          errors++;
-          console.error(`No result returned for "${product.name}"`);
-        }
-      } catch (error) {
+        return result;
+      })
+    );
+
+    for (const result of results) {
+      if (result.status === "fulfilled") {
+        if (result.value.action === "inserted") inserted++;
+        else updated++;
+      } else {
         errors++;
-        console.error(`Failed to import "${product.name}":`, error);
       }
     }
 
-    // Progress update
-    console.log(`  Imported ${Math.min(i + batchSize, products.length)}/${products.length}`);
+    // Progress update every 100 products
+    if ((i + batchSize) % 100 === 0 || i + batchSize >= products.length) {
+      console.log(`  Progress: ${Math.min(i + batchSize, products.length)}/${products.length} (${inserted} new, ${updated} updated, ${errors} errors)`);
+    }
 
-    // Rate limiting
-    await new Promise((r) => setTimeout(r, 100));
+    // Small delay to avoid overwhelming the server
+    await new Promise((r) => setTimeout(r, 50));
   }
 
-  console.log(`\nImport complete: ${imported} added, ${errors} errors`);
+  console.log(`\nImport complete: ${inserted} inserted, ${updated} updated, ${errors} errors`);
 
-  // Verify by querying the database
-  try {
-    const allProducts = await client.query(api.products.getAllProducts, {});
-    const everlaneProducts = allProducts.filter((p: { sourcePlatform: string }) => p.sourcePlatform === "Everlane");
-    console.log(`Verification: Found ${everlaneProducts.length} Everlane products in database`);
-  } catch (e) {
-    console.error("Verification failed:", e);
-  }
-
-  return imported;
+  return { inserted, updated, errors };
 }
+
+// All available scraper sources
+type ScraperSource =
+  | "poshmark" | "therealreal" | "brands" | "jcrew" | "everlane"
+  | "shopify-brands" | "major-retailers" | "marketplaces"
+  | "gymshark" | "allbirds" | "alo-yoga" | "outdoor-voices" | "bombas"
+  | "quince" | "buck-mason" | "taylor-stitch" | "good-american" | "figs"
+  | "rebecca-minkoff" | "clare-v" | "pura-vida"
+  | "carhartt" | "levis" | "dickies" | "uniqlo" | "patagonia" | "llbean"
+  | "depop" | "grailed" | "stockx" | "backcountry" | "zappos";
+
+const ALL_SOURCES: ScraperSource[] = [
+  "everlane", "jcrew", "poshmark", "therealreal", "brands",
+  "outdoor-voices", "allbirds", "taylor-stitch",
+  "rebecca-minkoff", "clare-v", "pura-vida",
+  "carhartt", "levis", "dickies", "uniqlo", "patagonia", "llbean",
+  "depop", "grailed", "stockx", "backcountry", "zappos"
+];
 
 async function main() {
   const args = process.argv.slice(2);
 
   // Parse command line options
-  const sources: ("poshmark" | "therealreal" | "brands" | "jcrew" | "everlane")[] = [];
-  let maxProducts = 50;
+  const sources: ScraperSource[] = [];
+  let maxProducts = 500; // Default
 
   for (const arg of args) {
-    if (arg === "--poshmark") sources.push("poshmark");
-    if (arg === "--therealreal") sources.push("therealreal");
-    if (arg === "--brands") sources.push("brands");
-    if (arg === "--jcrew") sources.push("jcrew");
-    if (arg === "--everlane") sources.push("everlane");
-    if (arg === "--all") sources.push("poshmark", "therealreal", "brands", "jcrew", "everlane");
+    const flag = arg.replace("--", "") as ScraperSource;
+    // Check if it's a known source
+    if ([
+      "poshmark", "therealreal", "brands", "jcrew", "everlane",
+      "shopify-brands", "major-retailers", "marketplaces",
+      "gymshark", "allbirds", "alo-yoga", "outdoor-voices", "bombas",
+      "quince", "buck-mason", "taylor-stitch", "good-american", "figs",
+      "rebecca-minkoff", "clare-v", "pura-vida",
+      "carhartt", "levis", "dickies", "uniqlo", "patagonia", "llbean",
+      "depop", "grailed", "stockx", "backcountry", "zappos"
+    ].includes(flag)) {
+      sources.push(flag);
+    }
+    if (arg === "--all") sources.push(...ALL_SOURCES);
     if (arg.startsWith("--max=")) {
-      maxProducts = parseInt(arg.split("=")[1]) || 50;
+      maxProducts = parseInt(arg.split("=")[1]) || 500;
     }
   }
 
@@ -108,8 +130,8 @@ async function main() {
     sources.push("everlane");
   }
 
-  console.log("Product Scraper & Importer");
-  console.log("==========================");
+  console.log("Product Scraper & Importer (Upsert Mode)");
+  console.log("========================================");
   console.log(`Sources: ${sources.join(", ")}`);
   console.log(`Max products per source: ${maxProducts}`);
   console.log("");
@@ -135,7 +157,7 @@ async function main() {
     );
     console.log(`\nUnique products after dedup: ${uniqueProducts.length}`);
 
-    // Import to Convex
+    // Import to Convex (upsert - update existing, insert new)
     await importProducts(uniqueProducts);
   } catch (error) {
     console.error("Script failed:", error);

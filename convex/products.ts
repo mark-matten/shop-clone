@@ -162,3 +162,63 @@ export const deleteByPlatform = mutation({
     return products.length;
   },
 });
+
+// Upsert a product - update if exists (by sourceUrl), insert if not
+export const upsertProduct = mutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    brand: v.string(),
+    price: v.number(),
+    originalPrice: v.optional(v.number()),
+    material: v.optional(v.string()),
+    size: v.optional(v.string()),
+    sizes: v.optional(v.array(v.string())),
+    variants: v.optional(v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+      available: v.boolean(),
+      price: v.optional(v.number()),
+      option1: v.optional(v.string()),
+      option2: v.optional(v.string()),
+      option3: v.optional(v.string()),
+    }))),
+    options: v.optional(v.array(v.object({
+      name: v.string(),
+      values: v.array(v.string()),
+    }))),
+    colorGroupId: v.optional(v.string()),
+    colorName: v.optional(v.string()),
+    colorHex: v.optional(v.string()),
+    category: v.string(),
+    gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
+    condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
+    sourceUrl: v.string(),
+    sourcePlatform: v.string(),
+    imageUrl: v.optional(v.string()),
+    imageUrls: v.optional(v.array(v.string())),
+  },
+  handler: async (ctx, args) => {
+    // Check if product already exists by sourceUrl
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_sourceUrl", (q) => q.eq("sourceUrl", args.sourceUrl))
+      .first();
+
+    if (existing) {
+      // Update only price, originalPrice, variants (availability), and images
+      await ctx.db.patch(existing._id, {
+        price: args.price,
+        originalPrice: args.originalPrice,
+        variants: args.variants,
+        imageUrl: args.imageUrl,
+        imageUrls: args.imageUrls,
+      });
+      return { id: existing._id, action: "updated" as const };
+    } else {
+      // Insert new product
+      const id = await ctx.db.insert("products", args);
+      return { id, action: "inserted" as const };
+    }
+  },
+});

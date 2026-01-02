@@ -12,28 +12,66 @@ const EVERLANE_CATEGORIES: EverlaneCategory[] = [
   { url: "/collections/womens-sweaters", category: "sweaters", gender: "women" },
   { url: "/collections/womens-tees", category: "tops", gender: "women" },
   { url: "/collections/womens-shirts", category: "tops", gender: "women" },
+  { url: "/collections/womens-tops", category: "tops", gender: "women" },
+  { url: "/collections/womens-bodysuits", category: "tops", gender: "women" },
   { url: "/collections/womens-dresses", category: "dresses", gender: "women" },
+  { url: "/collections/womens-skirts", category: "skirts", gender: "women" },
   { url: "/collections/womens-pants", category: "pants", gender: "women" },
   { url: "/collections/womens-jeans", category: "jeans", gender: "women" },
+  { url: "/collections/womens-shorts", category: "shorts", gender: "women" },
   { url: "/collections/womens-outerwear", category: "outerwear", gender: "women" },
   { url: "/collections/womens-shoes", category: "shoes", gender: "women" },
+  { url: "/collections/womens-boots", category: "shoes", gender: "women" },
   { url: "/collections/womens-bags", category: "bags", gender: "women" },
+  { url: "/collections/womens-accessories", category: "accessories", gender: "women" },
+  { url: "/collections/womens-intimates", category: "intimates", gender: "women" },
+  { url: "/collections/womens-active", category: "activewear", gender: "women" },
+  { url: "/collections/womens-lounge", category: "loungewear", gender: "women" },
+  { url: "/collections/womens-linen", category: "clothing", gender: "women" },
   // Men's categories
   { url: "/collections/mens-sweaters", category: "sweaters", gender: "men" },
   { url: "/collections/mens-tees", category: "tops", gender: "men" },
   { url: "/collections/mens-shirts", category: "tops", gender: "men" },
+  { url: "/collections/mens-polos", category: "tops", gender: "men" },
   { url: "/collections/mens-pants", category: "pants", gender: "men" },
+  { url: "/collections/mens-chinos", category: "pants", gender: "men" },
   { url: "/collections/mens-jeans", category: "jeans", gender: "men" },
+  { url: "/collections/mens-shorts", category: "shorts", gender: "men" },
   { url: "/collections/mens-outerwear", category: "outerwear", gender: "men" },
   { url: "/collections/mens-shoes", category: "shoes", gender: "men" },
+  { url: "/collections/mens-boots", category: "shoes", gender: "men" },
   { url: "/collections/mens-bags", category: "bags", gender: "men" },
+  { url: "/collections/mens-accessories", category: "accessories", gender: "men" },
+  { url: "/collections/mens-sweatpants", category: "pants", gender: "men" },
+  { url: "/collections/mens-linen", category: "clothing", gender: "men" },
+  // Unisex/general
+  { url: "/collections/gift-cards", category: "gift cards", gender: "unisex" },
 ];
 
-const USER_AGENT = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+// Rotating User-Agent strings to avoid detection
+const USER_AGENTS = [
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0",
+  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:121.0) Gecko/20100101 Firefox/121.0",
+  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+];
 
-// Small delay between requests to be polite
+function getRandomUserAgent(): string {
+  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
+}
+
+// Delay with random jitter to appear more human-like
 function delay(ms: number = 500): Promise<void> {
-  return new Promise(r => setTimeout(r, ms));
+  const jitter = Math.random() * 200 - 100; // +/- 100ms jitter
+  return new Promise(r => setTimeout(r, Math.max(100, ms + jitter)));
+}
+
+// Longer delay with more jitter for rate limit recovery
+function longDelay(ms: number = 2000): Promise<void> {
+  const jitter = Math.random() * 500; // 0-500ms additional
+  return new Promise(r => setTimeout(r, ms + jitter));
 }
 
 interface EverlaneProductJson {
@@ -284,25 +322,42 @@ async function fetchVariantAvailability(handle: string): Promise<HtmlVariantData
   }
 }
 
-// Fetch product data from JSON API
-async function fetchProductJson(handle: string): Promise<EverlaneProductJson | null> {
-  try {
-    const url = `https://www.everlane.com/products/${handle}.json`;
-    const response = await fetch(url, {
-      headers: {
-        "User-Agent": USER_AGENT,
-        "Accept": "application/json",
-      },
-    });
+// Fetch product data from JSON API with retry on rate limit
+async function fetchProductJson(handle: string, retries = 3): Promise<EverlaneProductJson | null> {
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      const url = `https://www.everlane.com/products/${handle}.json`;
+      const response = await fetch(url, {
+        headers: {
+          "User-Agent": getRandomUserAgent(),
+          "Accept": "application/json",
+          "Accept-Language": "en-US,en;q=0.9",
+          "Cache-Control": "no-cache",
+        },
+      });
 
-    if (!response.ok) {
+      if (response.status === 429) {
+        // Rate limited - wait and retry
+        const waitTime = Math.pow(2, attempt + 1) * 1000; // 2s, 4s, 8s
+        console.log(`      Rate limited, waiting ${waitTime/1000}s...`);
+        await longDelay(waitTime);
+        continue;
+      }
+
+      if (!response.ok) {
+        return null;
+      }
+
+      return await response.json();
+    } catch (error) {
+      if (attempt < retries - 1) {
+        await delay(1000);
+        continue;
+      }
       return null;
     }
-
-    return await response.json();
-  } catch (error) {
-    return null;
   }
+  return null;
 }
 
 // Extract product handles from category page HTML
@@ -540,17 +595,48 @@ function jsonToProduct(
   };
 }
 
-// Get product handles from sitemap
+// Get product handles from sitemap with rate limit handling
 async function getProductHandlesFromSitemap(): Promise<string[]> {
   const handles: string[] = [];
 
+  // Helper to fetch with retry
+  async function fetchWithRetry(url: string, retries = 3): Promise<Response | null> {
+    for (let attempt = 0; attempt < retries; attempt++) {
+      try {
+        const response = await fetch(url, {
+          headers: {
+            "User-Agent": getRandomUserAgent(),
+            "Accept": "text/xml,application/xml",
+            "Accept-Language": "en-US,en;q=0.9",
+          },
+        });
+
+        if (response.status === 429) {
+          const waitTime = Math.pow(2, attempt + 1) * 2000; // 4s, 8s, 16s
+          console.log(`    Rate limited, waiting ${waitTime/1000}s...`);
+          await longDelay(waitTime);
+          continue;
+        }
+
+        return response;
+      } catch (error) {
+        if (attempt < retries - 1) {
+          await delay(2000);
+          continue;
+        }
+      }
+    }
+    return null;
+  }
+
   try {
     // First, get the sitemap index to find product sitemap URLs
-    const indexResponse = await fetch("https://www.everlane.com/sitemap.xml", {
-      headers: { "User-Agent": USER_AGENT },
-    });
+    const indexResponse = await fetchWithRetry("https://www.everlane.com/sitemap.xml");
 
-    if (!indexResponse.ok) return handles;
+    if (!indexResponse || !indexResponse.ok) {
+      console.log(`    Sitemap index fetch failed`);
+      return handles;
+    }
 
     const indexXml = await indexResponse.text();
 
@@ -566,14 +652,17 @@ async function getProductHandlesFromSitemap(): Promise<string[]> {
 
     console.log(`    Found ${sitemapUrls.length} product sitemaps`);
 
-    // Fetch each product sitemap
-    for (const sitemapUrl of sitemapUrls) {
+    // Fetch each product sitemap with delays
+    for (let i = 0; i < sitemapUrls.length; i++) {
+      const sitemapUrl = sitemapUrls[i];
       try {
-        const response = await fetch(sitemapUrl, {
-          headers: { "User-Agent": USER_AGENT },
-        });
+        await longDelay(1500); // Longer delay between sitemaps
+        const response = await fetchWithRetry(sitemapUrl);
 
-        if (!response.ok) continue;
+        if (!response || !response.ok) {
+          console.log(`    Sitemap ${i+1} fetch failed`);
+          continue;
+        }
 
         const xml = await response.text();
 
@@ -587,32 +676,45 @@ async function getProductHandlesFromSitemap(): Promise<string[]> {
           }
         }
 
-        console.log(`    Sitemap loaded: ${handles.length} products total`);
-        await delay(200);
+        console.log(`    Sitemap ${i+1}/${sitemapUrls.length} loaded: ${handles.length} products total`);
       } catch (error) {
-        // Continue to next sitemap
+        console.log(`    Error fetching sitemap: ${error}`);
       }
     }
   } catch (error) {
-    console.log(`    Sitemap fetch failed, will use category pages`);
+    console.log(`    Sitemap fetch failed: ${error}`);
   }
 
   return handles;
 }
 
 export async function scrapeEverlane(config: ScraperConfig = {}): Promise<ScraperResult> {
-  const maxProducts = config.maxProducts || 200;
+  const maxProducts = config.maxProducts || 2500; // Full catalog is ~2000 products
   const products: ScrapedProduct[] = [];
   const errors: string[] = [];
   const seenHandles = new Set<string>();
 
   console.log("Starting Everlane scraper (JSON API)...");
   console.log(`  Target: ${maxProducts} products`);
-  console.log(`  Method: Sitemap + Category pages + JSON API (fast, reliable)`);
+  console.log(`  Method: Sitemap + JSON API (conservative rate limiting)`);
 
   // Step 1: Try sitemap first for comprehensive product list
-  console.log("\n  Trying sitemap for product handles...");
+  console.log("\n  Fetching sitemap for product handles...");
+  console.log("  (Using conservative delays to avoid rate limiting)");
+
+  await delay(1000); // Initial delay
   const sitemapHandles = await getProductHandlesFromSitemap();
+
+  // If sitemap fails, we won't fall back to category pages to avoid more rate limiting
+  if (sitemapHandles.length === 0) {
+    console.log("\n  Sitemap fetch failed - rate limited. Please try again in a few minutes.");
+    return {
+      products: [],
+      source: "Everlane",
+      scrapedAt: new Date(),
+      errors: ["Rate limited - please try again later"],
+    };
+  }
 
   const allHandles: Array<{ handle: string; category: string; gender: "men" | "women" | "unisex" }> = [];
 
@@ -631,75 +733,82 @@ export async function scrapeEverlane(config: ScraperConfig = {}): Promise<Scrape
       else if (handleLower.includes("mens") || handleLower.includes("men")) gender = "men";
 
       let category = "clothing";
-      if (handleLower.includes("sweater") || handleLower.includes("cardigan")) category = "sweaters";
-      else if (handleLower.includes("tee") || handleLower.includes("shirt") || handleLower.includes("top")) category = "tops";
+      // Order matters - check more specific patterns first
+      if (handleLower.includes("gift-card") || handleLower.includes("giftcard")) category = "gift cards";
+      else if (handleLower.includes("sweater") || handleLower.includes("cardigan") || handleLower.includes("pullover")) category = "sweaters";
+      else if (handleLower.includes("bodysuit")) category = "tops";
+      else if (handleLower.includes("tee") || handleLower.includes("-shirt") || handleLower.includes("blouse") || handleLower.includes("tank") || handleLower.includes("polo") || handleLower.includes("henley")) category = "tops";
       else if (handleLower.includes("jean") || handleLower.includes("denim")) category = "jeans";
-      else if (handleLower.includes("pant") || handleLower.includes("chino") || handleLower.includes("trouser")) category = "pants";
-      else if (handleLower.includes("dress")) category = "dresses";
-      else if (handleLower.includes("jacket") || handleLower.includes("coat") || handleLower.includes("blazer")) category = "outerwear";
-      else if (handleLower.includes("shoe") || handleLower.includes("boot") || handleLower.includes("sneaker") || handleLower.includes("loafer")) category = "shoes";
-      else if (handleLower.includes("bag") || handleLower.includes("tote") || handleLower.includes("backpack")) category = "bags";
+      else if (handleLower.includes("chino") || handleLower.includes("trouser") || handleLower.includes("slack") || handleLower.includes("sweatpant") || handleLower.includes("jogger")) category = "pants";
+      else if (handleLower.includes("pant") && !handleLower.includes("sweatpant")) category = "pants";
+      else if (handleLower.includes("short") && !handleLower.includes("shortie")) category = "shorts";
+      else if (handleLower.includes("dress") && !handleLower.includes("undress")) category = "dresses";
+      else if (handleLower.includes("skirt")) category = "skirts";
+      else if (handleLower.includes("jacket") || handleLower.includes("coat") || handleLower.includes("blazer") || handleLower.includes("parka") || handleLower.includes("puffer") || handleLower.includes("vest")) category = "outerwear";
+      else if (handleLower.includes("boot") || handleLower.includes("loafer") || handleLower.includes("mule") || handleLower.includes("flat") || handleLower.includes("heel") || handleLower.includes("sandal") || handleLower.includes("slipper")) category = "shoes";
+      else if (handleLower.includes("shoe") || handleLower.includes("sneaker")) category = "shoes";
+      else if (handleLower.includes("bag") || handleLower.includes("tote") || handleLower.includes("backpack") || handleLower.includes("clutch") || handleLower.includes("crossbody") || handleLower.includes("wallet")) category = "bags";
+      else if (handleLower.includes("hat") || handleLower.includes("beanie") || handleLower.includes("scarf") || handleLower.includes("belt") || handleLower.includes("sock") || handleLower.includes("glove")) category = "accessories";
+      else if (handleLower.includes("bra") || handleLower.includes("underwear") || handleLower.includes("brief") || handleLower.includes("boxer")) category = "intimates";
+      else if (handleLower.includes("hoodie") || handleLower.includes("sweatshirt")) category = "sweaters";
+      else if (handleLower.includes("top")) category = "tops";
 
       allHandles.push({ handle, category, gender });
     }
   }
 
-  // Step 2: If sitemap didn't work, fall back to category pages
-  if (allHandles.length < maxProducts) {
-    console.log("\n  Collecting additional handles from category pages...");
-
-    for (const category of EVERLANE_CATEGORIES) {
-      if (allHandles.length >= maxProducts * 2) break;
-
-      console.log(`    Loading: ${category.url}`);
-      const handles = await getProductHandlesFromCategory(category.url);
-      console.log(`    Found ${handles.length} products`);
-
-      for (const handle of handles) {
-        if (!seenHandles.has(handle)) {
-          seenHandles.add(handle);
-          allHandles.push({ handle, category: category.category, gender: category.gender });
-        }
-      }
-
-      await delay(300);
-    }
-  }
-
   console.log(`\n  Total unique handles: ${allHandles.length}`);
 
-  // Step 2: Fetch product details from JSON API + HTML for availability
-  console.log(`\n  Fetching product details via JSON API + HTML...`);
+  // Step 2: Fetch product details from JSON API (parallel batches with adaptive rate limiting)
+  console.log(`\n  Fetching product details via JSON API...`);
   const handlesToFetch = allHandles.slice(0, maxProducts);
+  let concurrency = 5; // Start with 5 concurrent requests
+  let consecutiveErrors = 0;
 
-  for (let i = 0; i < handlesToFetch.length; i++) {
-    const { handle, category, gender } = handlesToFetch[i];
+  for (let i = 0; i < handlesToFetch.length; i += concurrency) {
+    const batch = handlesToFetch.slice(i, i + concurrency);
 
-    // Fetch both JSON and HTML data in parallel
-    const [json, htmlData] = await Promise.all([
-      fetchProductJson(handle),
-      fetchVariantAvailability(handle),
-    ]);
+    // Fetch batch in parallel
+    const batchResults = await Promise.all(
+      batch.map(async ({ handle, category, gender }) => {
+        const json = await fetchProductJson(handle);
+        if (json && json.product) {
+          const product = jsonToProduct(json, category, gender, null);
+          if (product.price > 0) {
+            return { success: true, product };
+          }
+        }
+        return { success: false, handle };
+      })
+    );
 
-    if (json && json.product) {
-      const product = jsonToProduct(json, category, gender, htmlData);
-      if (product.price > 0) {
-        products.push(product);
+    let batchErrors = 0;
+    for (const result of batchResults) {
+      if (result.success && result.product) {
+        products.push(result.product);
+        consecutiveErrors = 0;
+      } else {
+        batchErrors++;
+        consecutiveErrors++;
       }
-    } else {
-      errors.push(`Failed to fetch: ${handle}`);
     }
 
-    // Progress update every 10 products
-    if ((i + 1) % 10 === 0 || i === handlesToFetch.length - 1) {
-      const avgImages = products.length > 0
-        ? (products.reduce((sum, p) => sum + (p.imageUrls?.length || 1), 0) / products.length).toFixed(1)
-        : '0';
-      const withVariants = products.filter(p => p.variants && p.variants.length > 0).length;
-      console.log(`    Progress: ${i + 1}/${handlesToFetch.length} fetched, ${products.length} valid (${withVariants} with variants, avg ${avgImages} images/product)`);
+    // Adaptive rate limiting - slow down if seeing errors
+    if (batchErrors > batch.length / 2) {
+      concurrency = Math.max(2, concurrency - 1);
+      await longDelay(3000); // Extra delay when seeing errors
+    } else if (consecutiveErrors === 0 && concurrency < 5) {
+      concurrency = Math.min(5, concurrency + 1); // Speed up if doing well
     }
 
-    await delay(200); // Small delay between API requests
+    // Progress update every 50 products
+    if ((i + concurrency) % 50 === 0 || i + concurrency >= handlesToFetch.length) {
+      const successRate = products.length > 0 ? ((products.length / (i + batch.length)) * 100).toFixed(0) : '0';
+      console.log(`    Progress: ${Math.min(i + batch.length, handlesToFetch.length)}/${handlesToFetch.length} fetched, ${products.length} valid (${successRate}% success, concurrency: ${concurrency})`);
+    }
+
+    // Variable delay based on concurrency
+    await delay(200 + (5 - concurrency) * 100);
   }
 
   console.log(`\nEverlane: Found ${products.length} total products`);

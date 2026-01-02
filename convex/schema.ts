@@ -99,7 +99,8 @@ export default defineSchema({
     .index("by_gender", ["gender"])
     .index("by_gender_category", ["gender", "category"])
     .index("by_sourcePlatform", ["sourcePlatform"])
-    .index("by_colorGroupId", ["colorGroupId"]),
+    .index("by_colorGroupId", ["colorGroupId"])
+    .index("by_sourceUrl", ["sourceUrl"]),
 
   tracked_items: defineTable({
     userId: v.id("users"),
