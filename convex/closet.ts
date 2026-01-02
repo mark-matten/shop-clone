@@ -233,12 +233,49 @@ export const markAsWorn = mutation({
   },
 });
 
-// Update closet item options (size, color)
+// Update closet item options (size, color, category)
 export const updateClosetItemOptions = mutation({
   args: {
     clerkId: v.string(),
     productId: v.id("products"),
     selectedOptions: v.record(v.string(), v.string()),
+    customCategory: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db
+      .query("closet_items")
+      .withIndex("by_userId_productId", (q) =>
+        q.eq("userId", user._id).eq("productId", args.productId)
+      )
+      .first();
+
+    if (item) {
+      const updates: { selectedOptions: Record<string, string>; customCategory?: string } = {
+        selectedOptions: args.selectedOptions,
+      };
+      if (args.customCategory !== undefined) {
+        updates.customCategory = args.customCategory;
+      }
+      await ctx.db.patch(item._id, updates);
+    }
+  },
+});
+
+// Update closet item category (for drag-and-drop)
+export const updateClosetItemCategory = mutation({
+  args: {
+    clerkId: v.string(),
+    productId: v.id("products"),
+    customCategory: v.string(),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -259,8 +296,49 @@ export const updateClosetItemOptions = mutation({
 
     if (item) {
       await ctx.db.patch(item._id, {
-        selectedOptions: args.selectedOptions,
+        customCategory: args.customCategory,
       });
+    }
+  },
+});
+
+// Update sort order for multiple items (for drag-and-drop reordering)
+export const updateClosetItemsOrder = mutation({
+  args: {
+    clerkId: v.string(),
+    items: v.array(v.object({
+      productId: v.id("products"),
+      sortOrder: v.number(),
+      customCategory: v.optional(v.string()),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    for (const update of args.items) {
+      const item = await ctx.db
+        .query("closet_items")
+        .withIndex("by_userId_productId", (q) =>
+          q.eq("userId", user._id).eq("productId", update.productId)
+        )
+        .first();
+
+      if (item) {
+        const patchData: { sortOrder: number; customCategory?: string } = {
+          sortOrder: update.sortOrder,
+        };
+        if (update.customCategory !== undefined) {
+          patchData.customCategory = update.customCategory;
+        }
+        await ctx.db.patch(item._id, patchData);
+      }
     }
   },
 });
