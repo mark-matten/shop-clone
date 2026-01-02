@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useMutation } from "convex/react";
+import { useQuery, useMutation, useAction } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -137,6 +137,11 @@ export default function ProductDetailPage() {
   const [previousProductName, setPreviousProductName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
   const processedProductId = useRef<string | null>(null);
+  const refreshedProductRef = useRef<string | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Action to refresh product data from source
+  const refreshProductFromSource = useAction(api.scraper.refreshProductFromSource);
 
   // Get the cached search query on mount
   useEffect(() => {
@@ -152,6 +157,29 @@ export default function ProductDetailPage() {
       // Ignore parsing errors
     }
   }, []);
+
+  // Refresh product data from source when page loads
+  useEffect(() => {
+    if (!product || !productId) return;
+    // Only refresh once per product per session
+    if (refreshedProductRef.current === productId) return;
+
+    refreshedProductRef.current = productId;
+    setIsRefreshing(true);
+
+    refreshProductFromSource({ productId: productId as Id<"products"> })
+      .then((result) => {
+        if (result.priceChanged) {
+          console.log(`Price updated: $${result.oldPrice} → $${result.newPrice}`);
+        }
+      })
+      .catch((error) => {
+        console.error("Failed to refresh product:", error);
+      })
+      .finally(() => {
+        setIsRefreshing(false);
+      });
+  }, [product, productId, refreshProductFromSource]);
 
   // Track navigation history for back links - single effect to avoid race conditions
   useEffect(() => {
