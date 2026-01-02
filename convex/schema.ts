@@ -52,6 +52,8 @@ export default defineSchema({
     userId: v.id("users"),
     productId: v.id("products"),
     createdAt: v.number(),
+    // Selected variant options (e.g., { "Color": "Black", "Size": "M" })
+    selectedOptions: v.optional(v.record(v.string(), v.string())),
   })
     .index("by_userId", ["userId"])
     .index("by_productId", ["productId"])
@@ -107,6 +109,8 @@ export default defineSchema({
     productId: v.id("products"),
     targetPrice: v.optional(v.number()),
     createdAt: v.number(),
+    // Selected variant options (e.g., { "Color": "Black", "Size": "M" })
+    selectedOptions: v.optional(v.record(v.string(), v.string())),
   })
     .index("by_userId", ["userId"])
     .index("by_productId", ["productId"])
@@ -119,6 +123,8 @@ export default defineSchema({
     notes: v.optional(v.string()),
     wornCount: v.optional(v.number()),
     lastWorn: v.optional(v.number()),
+    // Selected variant options (e.g., { "Color": "Black", "Size": "M" })
+    selectedOptions: v.optional(v.record(v.string(), v.string())),
   })
     .index("by_userId", ["userId"])
     .index("by_productId", ["productId"])

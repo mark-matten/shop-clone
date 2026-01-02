@@ -8,9 +8,41 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
 
+// Helper to get a CSS color from a color name
+function getColorFromName(colorName: string): string {
+  const colorMap: Record<string, string> = {
+    'black': '#000000', 'white': '#ffffff', 'grey': '#6b7280', 'gray': '#6b7280',
+    'navy': '#1e3a5f', 'blue': '#2563eb', 'red': '#dc2626', 'green': '#16a34a',
+    'brown': '#92400e', 'tan': '#d2b48c', 'beige': '#f5f5dc', 'cream': '#fffdd0',
+    'pink': '#ec4899', 'purple': '#9333ea', 'orange': '#ea580c', 'yellow': '#eab308',
+    'olive': '#65a30d', 'burgundy': '#800020', 'charcoal': '#374151', 'khaki': '#c3b091',
+    'coral': '#f97316', 'teal': '#0d9488', 'maroon': '#7f1d1d', 'mint': '#10b981',
+    'gold': '#ca8a04', 'silver': '#9ca3af', 'ivory': '#fffff0', 'indigo': '#4f46e5',
+  };
+
+  const lowerColor = colorName.toLowerCase();
+  for (const [key, hex] of Object.entries(colorMap)) {
+    if (lowerColor.includes(key)) {
+      return hex;
+    }
+  }
+  return '#6b7280'; // Default gray
+}
+
+interface EditingItem {
+  productId: Id<"products">;
+  productName: string;
+  options: { name: string; values: string[] }[];
+  currentOptions: Record<string, string>;
+  colorGroupId?: string;
+  currentColor?: string;
+}
+
 export default function ClosetPage() {
   const { user, isLoaded } = useUser();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  const [editOptions, setEditOptions] = useState<Record<string, string>>({});
 
   const closetItems = useQuery(
     api.closet.getClosetItems,
@@ -23,7 +55,7 @@ export default function ClosetPage() {
   );
 
   const removeFromCloset = useMutation(api.closet.removeFromCloset);
-  const markAsWorn = useMutation(api.closet.markAsWorn);
+  const updateClosetItemOptions = useMutation(api.closet.updateClosetItemOptions);
 
   const handleRemove = async (productId: Id<"products">) => {
     if (!user?.id) return;
@@ -32,9 +64,38 @@ export default function ClosetPage() {
     }
   };
 
-  const handleMarkWorn = async (productId: Id<"products">) => {
-    if (!user?.id) return;
-    await markAsWorn({ clerkId: user.id, productId });
+  const handleEdit = (item: typeof closetItems extends (infer T)[] | undefined ? T : never) => {
+    if (!item.product) return;
+    const currentColor = item.selectedOptions?.["Color"] || item.selectedOptions?.["Colour"] || item.product.colorName;
+    setEditingItem({
+      productId: item.product._id,
+      productName: item.product.name,
+      options: item.product.options || [],
+      currentOptions: item.selectedOptions || {},
+      colorGroupId: item.product.colorGroupId,
+      currentColor,
+    });
+    setEditOptions({
+      ...item.selectedOptions,
+      ...(currentColor ? { Color: currentColor } : {}),
+    });
+  };
+
+  // Fetch color variants when editing an item with a colorGroupId
+  const colorVariants = useQuery(
+    api.products.getColorVariants,
+    editingItem?.colorGroupId ? { colorGroupId: editingItem.colorGroupId } : "skip"
+  );
+
+  const handleSaveEdit = async () => {
+    if (!user?.id || !editingItem) return;
+    await updateClosetItemOptions({
+      clerkId: user.id,
+      productId: editingItem.productId,
+      selectedOptions: editOptions,
+    });
+    setEditingItem(null);
+    setEditOptions({});
   };
 
   const conditionLabels: Record<string, string> = {
@@ -195,61 +256,69 @@ export default function ClosetPage() {
               const product = item.product;
               if (!product) return null;
 
+              // Get selected color and size - check selectedOptions first, then product defaults
+              const selectedColor = item.selectedOptions?.["Color"] || item.selectedOptions?.["Colour"] || product.colorName;
+              const selectedSize = item.selectedOptions?.["Size"] || product.size;
+              const colorHex = selectedColor ? getColorFromName(selectedColor) : null;
+
               return (
                 <div
                   key={item._id}
                   className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
                 >
-                  <Link href={`/product/${product._id}`}>
-                    <div className="aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                      {product.imageUrl ? (
-                        <img
-                          src={product.imageUrl}
-                          alt={product.name}
-                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                          <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
+                  <div className="aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                    {product.imageUrl ? (
+                      <img
+                        src={product.imageUrl}
+                        alt={product.name}
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                        <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-4">
+                    <span className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+                      {product.brand}
+                    </span>
+                    <h3 className="mt-1 line-clamp-2 text-sm font-medium text-zinc-900 dark:text-white">
+                      {product.name}
+                    </h3>
+
+                    {/* Selected Options (Color & Size) with colored text */}
+                    <div className="mt-2 flex flex-wrap gap-1">
+                      {selectedColor && (
+                        <span
+                          className="rounded px-2 py-0.5 text-xs font-medium"
+                          style={{
+                            backgroundColor: `${colorHex}20`,
+                            color: colorHex || '#6b7280'
+                          }}
+                        >
+                          {selectedColor}
+                        </span>
+                      )}
+                      {selectedSize && (
+                        <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                          Size {selectedSize}
+                        </span>
                       )}
                     </div>
-                    <div className="p-4">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
-                          {product.brand}
-                        </span>
-                        <span className={`rounded-full px-2 py-0.5 text-xs font-medium ${conditionColors[product.condition]}`}>
-                          {conditionLabels[product.condition]}
-                        </span>
-                      </div>
-                      <h3 className="mt-1 line-clamp-2 text-sm font-medium text-zinc-900 dark:text-white">
-                        {product.name}
-                      </h3>
-                      <div className="mt-2 flex items-center justify-between">
-                        <span className="font-semibold text-zinc-900 dark:text-white">
-                          ${product.price.toFixed(2)}
-                        </span>
-                        {item.wornCount !== undefined && item.wornCount > 0 && (
-                          <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                            Worn {item.wornCount}x
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </Link>
+                  </div>
 
                   {/* Action Buttons */}
                   <div className="absolute right-2 top-2 flex flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100">
                     <button
-                      onClick={() => handleMarkWorn(product._id)}
+                      onClick={() => handleEdit(item)}
                       className="rounded-full bg-white/90 p-2 text-zinc-600 shadow-sm hover:bg-white hover:text-purple-600 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-purple-400"
-                      title="Mark as worn"
+                      title="Edit size/color"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
                     <button
@@ -278,6 +347,120 @@ export default function ClosetPage() {
           </div>
         )}
       </main>
+
+      {/* Edit Modal */}
+      {editingItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+              Edit Item
+            </h3>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2">
+              {editingItem.productName}
+            </p>
+
+            <div className="mt-4 space-y-4">
+              {/* Color selection from variants */}
+              {colorVariants && colorVariants.length > 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Color
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {colorVariants.map((variant) => {
+                      if (!variant.colorName) return null;
+                      const isSelected = editOptions["Color"] === variant.colorName;
+                      const colorHex = variant.colorHex || getColorFromName(variant.colorName);
+                      return (
+                        <button
+                          key={variant._id}
+                          onClick={() => setEditOptions({ ...editOptions, Color: variant.colorName! })}
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                            isSelected
+                              ? "border-purple-600 ring-2 ring-purple-600"
+                              : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500"
+                          }`}
+                          title={variant.colorName}
+                        >
+                          <span
+                            className="h-4 w-4 rounded-full border border-zinc-300 dark:border-zinc-600"
+                            style={{ backgroundColor: colorHex }}
+                          />
+                          <span className="text-zinc-900 dark:text-white">
+                            {variant.colorName}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Show current color if no variants available */}
+              {(!colorVariants || colorVariants.length <= 1) && editingItem.currentColor && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Color
+                  </label>
+                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <span
+                      className="h-4 w-4 rounded-full border border-zinc-300 dark:border-zinc-600"
+                      style={{ backgroundColor: getColorFromName(editingItem.currentColor) }}
+                    />
+                    {editingItem.currentColor}
+                    <span className="text-xs text-zinc-400">(no other colors available)</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Size and other options */}
+              {editingItem.options.map((option) => (
+                <div key={option.name}>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    {option.name}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {option.values.map((value) => {
+                      const isSelected = editOptions[option.name] === value;
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => setEditOptions({ ...editOptions, [option.name]: value })}
+                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                            isSelected
+                              ? "border-purple-600 bg-purple-600 text-white"
+                              : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:border-zinc-500"
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => {
+                  setEditingItem(null);
+                  setEditOptions({});
+                }}
+                className="flex-1 rounded-lg border border-zinc-300 py-2 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveEdit}
+                className="flex-1 rounded-lg bg-purple-600 py-2 font-medium text-white transition-colors hover:bg-purple-500"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

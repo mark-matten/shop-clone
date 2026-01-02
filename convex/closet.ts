@@ -7,6 +7,7 @@ export const addToCloset = mutation({
     clerkId: v.string(),
     productId: v.id("products"),
     notes: v.optional(v.string()),
+    selectedOptions: v.optional(v.record(v.string(), v.string())),
   },
   handler: async (ctx, args) => {
     // Get user by clerkId
@@ -28,6 +29,10 @@ export const addToCloset = mutation({
       .first();
 
     if (existing) {
+      // Update selected options if provided
+      if (args.selectedOptions && Object.keys(args.selectedOptions).length > 0) {
+        await ctx.db.patch(existing._id, { selectedOptions: args.selectedOptions });
+      }
       return existing._id;
     }
 
@@ -37,6 +42,7 @@ export const addToCloset = mutation({
       addedAt: Date.now(),
       notes: args.notes,
       wornCount: 0,
+      selectedOptions: args.selectedOptions,
     });
   },
 });
@@ -75,6 +81,7 @@ export const toggleCloset = mutation({
   args: {
     clerkId: v.string(),
     productId: v.id("products"),
+    selectedOptions: v.optional(v.record(v.string(), v.string())),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -102,6 +109,7 @@ export const toggleCloset = mutation({
         productId: args.productId,
         addedAt: Date.now(),
         wornCount: 0,
+        selectedOptions: args.selectedOptions,
       });
       return { isInCloset: true };
     }
@@ -220,6 +228,38 @@ export const markAsWorn = mutation({
       await ctx.db.patch(item._id, {
         wornCount: (item.wornCount || 0) + 1,
         lastWorn: Date.now(),
+      });
+    }
+  },
+});
+
+// Update closet item options (size, color)
+export const updateClosetItemOptions = mutation({
+  args: {
+    clerkId: v.string(),
+    productId: v.id("products"),
+    selectedOptions: v.record(v.string(), v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const item = await ctx.db
+      .query("closet_items")
+      .withIndex("by_userId_productId", (q) =>
+        q.eq("userId", user._id).eq("productId", args.productId)
+      )
+      .first();
+
+    if (item) {
+      await ctx.db.patch(item._id, {
+        selectedOptions: args.selectedOptions,
       });
     }
   },

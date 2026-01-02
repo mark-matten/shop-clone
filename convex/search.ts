@@ -44,19 +44,22 @@ export const parseSearchQuery = internalAction({
     const systemPrompt = `You are a search query parser for a fashion/clothing e-commerce platform.
 Parse the user's natural language search into a structured JSON object.
 
-Extract these fields ONLY when EXPLICITLY mentioned by the user:
-- query: the core search terms (always required)
-- gender: ONLY set if user explicitly says "men's", "women's", "mens", "womens", "for men", "for women". Do NOT infer gender.
-- category: product type (e.g., "boots", "jacket", "dress", "sneakers", "bag", "sweater", "shoes", "shirt", "top", "pants")
+Extract ALL of these fields when present in the search:
+- query: the original search text (always required)
+- gender: "men" or "women" if the user says "men's", "women's", "mens", "womens", "for men", "for women"
+- category: the product type like "boots", "jacket", "dress", "sneakers", "sandals", "bag", "sweater", "shoes", "shirt", "top", "pants", "coat"
 - brand: brand name if mentioned (e.g., "Nike", "Gucci", "Levi's", "Everlane")
-- material: material type (e.g., "leather", "cotton", "silk", "denim", "cashmere", "suede", "wool")
-- color: color if mentioned (e.g., "black", "white", "red", "blue", "brown", "navy", "beige")
-- size: size mentioned (e.g., "8", "M", "32", "XL")
+- material: material type like "leather", "cotton", "silk", "denim", "cashmere", "suede", "wool", "canvas"
+- color: color like "black", "white", "red", "blue", "brown", "navy", "beige", "pink", "green"
+- size: size like "8", "M", "32", "XL"
 - condition: "new", "used", or "like_new"
-- minPrice: minimum price as number (extract from phrases like "over $100")
-- maxPrice: maximum price as number (extract from phrases like "under $200")
+- minPrice: minimum price as number (from "over $100" or "above $100")
+- maxPrice: maximum price as number (from "under $200" or "below $200")
 
-IMPORTANT: Do NOT include fields that aren't explicitly mentioned. Do NOT guess or infer values.
+IMPORTANT:
+- Extract color, material, and category if they appear ANYWHERE in the search
+- For "women's black leather boots": gender=women, color=black, material=leather, category=boots
+- Do NOT put color/material/category in the query field - extract them as separate fields
 
 Return ONLY valid JSON, no explanation or markdown.`;
 
@@ -94,11 +97,23 @@ Return ONLY valid JSON, no explanation or markdown.`;
 
       const parsed = JSON.parse(jsonMatch[0]);
 
-      // Ensure query field is always present
-      return {
+      // Get basic parser results as fallback for any missed fields
+      const basicParsed = parseBasic(args.searchText);
+
+      // Merge: LLM results take priority, but fill in missing fields from basic parser
+      const result: SearchFilter = {
         query: parsed.query || args.searchText,
         ...parsed,
       };
+
+      // Supplement with basic parser for any fields the LLM missed
+      if (!result.color && basicParsed.color) result.color = basicParsed.color;
+      if (!result.category && basicParsed.category) result.category = basicParsed.category;
+      if (!result.material && basicParsed.material) result.material = basicParsed.material;
+      if (!result.gender && basicParsed.gender) result.gender = basicParsed.gender;
+      if (!result.condition && basicParsed.condition) result.condition = basicParsed.condition;
+
+      return result;
     } catch (error) {
       console.error("Error parsing with Claude:", error);
       return parseBasic(args.searchText);
@@ -125,13 +140,97 @@ function parseBasic(searchText: string): SearchFilter {
   // Condition detection
   if (query.includes("like new")) filter.condition = "like_new";
   else if (query.includes("used")) filter.condition = "used";
-  else if (query.includes("new")) filter.condition = "new";
+  else if (query.includes("new") && !query.includes("sneaker")) filter.condition = "new";
 
-  // Category detection
-  const categories = ["boots", "jacket", "dress", "sneakers", "bag", "sweater", "shoes", "coat"];
+  // Category detection - comprehensive list ordered by specificity (most specific first)
+  const categories = [
+    // Footwear - specific first
+    "booties", "bootie", "boots", "boot",
+    "sneakers", "sneaker", "trainers", "trainer",
+    "sandals", "sandal",
+    "stilettos", "stiletto", "pumps", "pump", "heels", "heel",
+    "loafers", "loafer", "moccasins", "moccasin",
+    "flats", "flat",
+    "mules", "mule",
+    "slippers", "slipper",
+    "shoes", "shoe",
+    // Outerwear - specific first
+    "parkas", "parka", "anorak",
+    "blazers", "blazer",
+    "coats", "coat", "overcoat", "trench",
+    "jackets", "jacket",
+    "vests", "vest",
+    // Sweaters/Knitwear - specific first
+    "cardigans", "cardigan",
+    "hoodies", "hoodie",
+    "sweatshirts", "sweatshirt",
+    "sweaters", "sweater", "pullover", "jumper",
+    // Tops - specific first
+    "blouses", "blouse",
+    "t-shirts", "t-shirt", "tshirts", "tshirt", "tees", "tee",
+    "tanks", "tank", "cami", "camisole",
+    "shirts", "shirt",
+    "tops", "top",
+    // Bottoms - specific first
+    "leggings", "legging", "tights",
+    "skirts", "skirt",
+    "shorts", "short",
+    "jeans", "jean",
+    "pants", "pant", "trousers", "trouser", "chinos", "chino",
+    // Dresses - specific first
+    "jumpsuits", "jumpsuit",
+    "rompers", "romper",
+    "gowns", "gown",
+    "dresses", "dress",
+    // Bags - specific first
+    "backpacks", "backpack", "rucksack",
+    "clutches", "clutch",
+    "crossbody", "crossbodies",
+    "satchels", "satchel",
+    "totes", "tote",
+    "purses", "purse", "handbags", "handbag",
+    "bags", "bag",
+    // Accessories - specific first
+    "beanies", "beanie",
+    "caps", "cap",
+    "hats", "hat",
+    "scarves", "scarf",
+    "belts", "belt",
+    "watches", "watch",
+    "sunglasses",
+    "gloves", "glove",
+    "jewelry", "jewellery", "necklace", "bracelet", "earrings", "earring",
+    // Socks
+    "socks", "sock",
+  ];
   for (const cat of categories) {
     if (query.includes(cat)) {
       filter.category = cat;
+      break;
+    }
+  }
+
+  // Color detection
+  const colors = [
+    "black", "white", "blue", "navy", "red", "pink", "green", "brown", "tan",
+    "beige", "cream", "grey", "gray", "purple", "orange", "yellow", "gold",
+    "burgundy", "olive", "coral", "teal", "ivory", "charcoal"
+  ];
+  for (const color of colors) {
+    if (query.includes(color)) {
+      filter.color = color;
+      break;
+    }
+  }
+
+  // Material detection
+  const materials = [
+    "leather", "suede", "canvas", "denim", "cotton", "wool", "cashmere",
+    "silk", "linen", "velvet", "satin", "nylon", "polyester"
+  ];
+  for (const material of materials) {
+    if (query.includes(material)) {
+      filter.material = material;
       break;
     }
   }
@@ -257,46 +356,362 @@ const SYNONYMS: Record<string, string[]> = {
   brown: ["brown", "tan", "camel", "cognac", "chocolate", "espresso"],
   green: ["green", "olive", "sage", "forest", "hunter", "moss"],
   red: ["red", "burgundy", "wine", "maroon", "crimson"],
-  pink: ["pink", "blush", "rose", "coral"],
-  // Footwear
-  shoe: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes", "shoe"],
-  shoes: ["boots", "sneakers", "sandals", "heels", "loafers", "shoe", "shoes"],
-  footwear: ["boots", "sneakers", "sandals", "heels", "loafers", "shoes", "shoe"],
-  boot: ["boots", "boot"],
-  boots: ["boots", "boot"],
-  sneaker: ["sneakers", "sneaker"],
-  sneakers: ["sneakers", "sneaker"],
-  // Tops
-  top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "tops", "tee"],
-  tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top", "tee"],
-  shirt: ["shirt", "blouse", "top", "tops", "tee", "button-down"],
-  shirts: ["shirt", "blouse", "top", "tops", "tee", "button-down"],
-  blouse: ["blouse", "shirt", "top"],
-  tee: ["t-shirt", "tee", "shirt", "top"],
+  pink: ["pink", "blush", "rose", "coral", "hot pink", "fuchsia"],
+  orange: ["orange", "coral", "peach", "rust"],
+  yellow: ["yellow", "gold", "mustard", "lemon"],
+  purple: ["purple", "violet", "lavender", "plum", "eggplant"],
+  // Footwear - ONLY footwear items
+  shoe: ["shoe", "shoes", "footwear"],
+  shoes: ["shoe", "shoes", "footwear"],
+  footwear: ["shoe", "shoes", "footwear"],
+  boot: ["boot", "boots", "bootie", "booties"],
+  boots: ["boot", "boots", "bootie", "booties"],
+  sneaker: ["sneaker", "sneakers", "trainer", "trainers"],
+  sneakers: ["sneaker", "sneakers", "trainer", "trainers"],
+  sandal: ["sandal", "sandals"],
+  sandals: ["sandal", "sandals"],
+  heel: ["heel", "heels", "pump", "pumps"],
+  heels: ["heel", "heels", "pump", "pumps"],
+  loafer: ["loafer", "loafers"],
+  loafers: ["loafer", "loafers"],
+  // Sweaters/Knitwear - grouped together
+  sweater: ["sweater", "sweaters", "cardigan", "cardigans", "pullover", "pullovers", "knit", "knitwear", "jumper", "jumpers", "crew", "sweatshirt"],
+  sweaters: ["sweater", "sweaters", "cardigan", "cardigans", "pullover", "pullovers", "knit", "knitwear", "jumper", "jumpers", "crew", "sweatshirt"],
+  cardigan: ["cardigan", "cardigans", "sweater", "sweaters", "knit", "knitwear"],
+  cardigans: ["cardigan", "cardigans", "sweater", "sweaters", "knit", "knitwear"],
+  sweatshirt: ["sweatshirt", "sweatshirts", "hoodie", "hoodies", "sweater", "sweaters"],
+  hoodie: ["hoodie", "hoodies", "sweatshirt", "sweatshirts"],
+  // Tops - shirts, tees, blouses (NOT sweaters)
+  top: ["top", "tops"],
+  tops: ["top", "tops"],
+  shirt: ["shirt", "shirts", "blouse", "blouses", "button-down"],
+  shirts: ["shirt", "shirts", "blouse", "blouses", "button-down"],
+  blouse: ["blouse", "blouses", "shirt", "shirts"],
+  tee: ["tee", "t-shirt", "tees", "t-shirts"],
+  "t-shirt": ["tee", "t-shirt", "tees", "t-shirts"],
   // Outerwear
-  outerwear: ["jacket", "coat", "blazer"],
-  coats: ["coat", "jacket"],
-  jackets: ["jacket", "coat", "blazer"],
+  jacket: ["jacket", "jackets", "coat", "coats", "blazer", "blazers"],
+  jackets: ["jacket", "jackets", "coat", "coats", "blazer", "blazers"],
+  coat: ["coat", "coats", "jacket", "jackets"],
+  coats: ["coat", "coats", "jacket", "jackets"],
+  blazer: ["blazer", "blazers"],
+  outerwear: ["jacket", "jackets", "coat", "coats", "blazer", "blazers"],
   // Bottoms
-  bottom: ["pants", "jeans", "shorts", "skirt", "chino", "trouser"],
-  bottoms: ["pants", "jeans", "shorts", "skirt", "chino", "trouser"],
-  pants: ["pants", "jeans", "chino", "trouser", "pant"],
-  chinos: ["chino", "pants", "trouser"],
-  trousers: ["trouser", "pants", "chino"],
+  pants: ["pants", "pant", "trousers", "trouser", "chinos", "chino", "slacks"],
+  jeans: ["jeans", "jean", "denim"],
+  shorts: ["shorts", "short"],
+  skirt: ["skirt", "skirts"],
+  bottom: ["pants", "jeans", "shorts", "skirt"],
+  bottoms: ["pants", "jeans", "shorts", "skirt"],
   // Bags
-  bags: ["bag", "purse", "handbag"],
-  purse: ["bag", "handbag"],
-  handbag: ["bag", "purse"],
+  bag: ["bag", "bags", "purse", "purses", "handbag", "handbags", "tote", "totes", "clutch"],
+  bags: ["bag", "bags", "purse", "purses", "handbag", "handbags", "tote", "totes", "clutch"],
+  purse: ["bag", "bags", "purse", "purses", "handbag", "handbags"],
+  handbag: ["bag", "bags", "purse", "purses", "handbag", "handbags"],
   // Dresses
-  dresses: ["dress"],
+  dress: ["dress", "dresses"],
+  dresses: ["dress", "dresses"],
+  // Accessories
+  socks: ["socks", "sock"],
+  hat: ["hat", "hats", "cap", "caps", "beanie"],
+  scarf: ["scarf", "scarves"],
   // Materials
   denim: ["jeans", "denim"],
-  leather: ["leather", "boots", "bag"],
+  leather: ["leather"],
   // Conditions
   vintage: ["used", "vintage"],
   preloved: ["used", "like_new"],
   secondhand: ["used", "like_new"],
 };
+
+// All color words for detection
+const ALL_COLOR_WORDS = new Set([
+  "white", "off-white", "ivory", "cream", "bone",
+  "black", "charcoal", "onyx", "ebony",
+  "blue", "navy", "indigo", "cobalt", "sky", "azure", "teal", "turquoise",
+  "grey", "gray", "heather", "slate", "silver",
+  "brown", "tan", "camel", "cognac", "chocolate", "espresso", "khaki", "beige", "taupe",
+  "green", "olive", "sage", "forest", "hunter", "moss", "emerald", "mint",
+  "red", "burgundy", "wine", "maroon", "crimson", "scarlet",
+  "pink", "blush", "rose", "coral", "fuchsia", "magenta", "hot pink",
+  "orange", "peach", "rust", "terracotta",
+  "yellow", "gold", "mustard", "lemon", "amber",
+  "purple", "violet", "lavender", "plum", "eggplant", "lilac",
+]);
+
+// Category groups - items in the same group are considered similar
+// Keywords here are used for DETECTION in the search query only
+const CATEGORY_GROUPS: Record<string, string[]> = {
+  // Sweaters/Knitwear - specific sub-categories
+  sweaters: ["sweater", "sweaters", "pullover", "pullovers", "knitwear", "jumper", "jumpers"],
+  cardigans: ["cardigan", "cardigans"],
+  hoodies: ["hoodie", "hoodies"],
+  sweatshirts: ["sweatshirt", "sweatshirts"],
+  // General knitwear for broad searches
+  knitwear: ["knitwear", "knit", "knits"],
+
+  // Tops - specific sub-categories
+  shirts: ["shirt", "shirts", "button-down", "button-up", "oxford"],
+  blouses: ["blouse", "blouses"],
+  tshirts: ["tee", "tees", "t-shirt", "t-shirts", "tshirt", "tshirts"],
+  tanks: ["tank", "tanks", "cami", "camis", "camisole"],
+  // General tops for broad searches
+  tops: ["top", "tops"],
+
+  // Footwear - specific sub-categories
+  boots: ["boot", "boots", "bootie", "booties"],
+  sneakers: ["sneaker", "sneakers", "trainer", "trainers"],
+  sandals: ["sandal", "sandals"],
+  heels: ["heel", "heels", "pump", "pumps", "stiletto", "stilettos"],
+  loafers: ["loafer", "loafers", "moccasin", "moccasins"],
+  flats: ["flat", "flats", "ballet"],
+  mules: ["mule", "mules"],
+  slippers: ["slipper", "slippers"],
+  // General footwear for "shoes" search
+  footwear: ["shoe", "shoes", "footwear"],
+
+  // Outerwear - specific sub-categories
+  jackets: ["jacket", "jackets"],
+  coats: ["coat", "coats", "overcoat", "trench"],
+  blazers: ["blazer", "blazers", "sport coat"],
+  vests: ["vest", "vests", "gilet"],
+  parkas: ["parka", "parkas", "anorak"],
+  // General outerwear for broad searches
+  outerwear: ["outerwear"],
+
+  // Bottoms - specific sub-categories
+  pants: ["pants", "pant", "trouser", "trousers", "chino", "chinos", "slacks"],
+  jeans: ["jeans", "jean", "denim pants"],
+  shorts: ["shorts", "short"],
+  skirts: ["skirt", "skirts"],
+  leggings: ["legging", "leggings", "tights"],
+  // General bottoms for broad searches
+  bottoms: ["bottoms", "bottom"],
+
+  // Dresses - specific sub-categories
+  dresses: ["dress", "dresses"],
+  gowns: ["gown", "gowns", "evening dress"],
+  rompers: ["romper", "rompers"],
+  jumpsuits: ["jumpsuit", "jumpsuits", "playsuit"],
+
+  // Bags - specific sub-categories
+  totes: ["tote", "totes", "tote bag"],
+  purses: ["purse", "purses", "handbag", "handbags"],
+  backpacks: ["backpack", "backpacks", "rucksack"],
+  clutches: ["clutch", "clutches", "evening bag"],
+  crossbodys: ["crossbody", "crossbodies", "shoulder bag"],
+  satchels: ["satchel", "satchels"],
+  // General bags for broad searches
+  bags: ["bag", "bags"],
+
+  // Accessories - specific sub-categories
+  hats: ["hat", "hats", "cap", "caps", "beanie", "beanies"],
+  scarves: ["scarf", "scarves"],
+  belts: ["belt", "belts"],
+  jewelry: ["jewelry", "jewellery", "necklace", "bracelet", "earring", "earrings", "ring"],
+  watches: ["watch", "watches"],
+  sunglasses: ["sunglasses", "sunglass", "eyewear"],
+  gloves: ["glove", "gloves", "mittens"],
+  // General accessories for broad searches
+  accessories: ["accessory", "accessories"],
+
+  socks: ["sock", "socks"],
+};
+
+// Product categories that belong to each group (for matching products)
+// More specific than CATEGORY_GROUPS to avoid false positives
+const CATEGORY_PRODUCT_MATCHES: Record<string, string[]> = {
+  // Sweaters/Knitwear - specific sub-categories
+  sweaters: ["sweater", "sweaters", "pullover", "pullovers", "jumper", "jumpers"],
+  cardigans: ["cardigan", "cardigans"],
+  hoodies: ["hoodie", "hoodies"],
+  sweatshirts: ["sweatshirt", "sweatshirts"],
+  // General knitwear - matches any knitwear type
+  knitwear: ["sweater", "sweaters", "cardigan", "cardigans", "knitwear", "sweatshirt", "hoodie", "pullover"],
+
+  // Tops - specific sub-categories
+  shirts: ["shirt", "shirts", "button-down", "button-up", "oxford", "dress shirt"],
+  blouses: ["blouse", "blouses"],
+  tshirts: ["tee", "tees", "t-shirt", "t-shirts", "tshirt"],
+  tanks: ["tank", "tanks", "cami", "camis", "camisole"],
+  // General tops - matches any top type
+  tops: ["top", "tops", "shirt", "shirts", "blouse", "blouses", "tee", "t-shirt", "tank", "cami"],
+
+  // Footwear - specific sub-categories
+  boots: ["boot", "boots", "bootie", "booties"],
+  sneakers: ["sneaker", "sneakers", "trainer", "trainers"],
+  sandals: ["sandal", "sandals"],
+  heels: ["heel", "heels", "pump", "pumps", "stiletto"],
+  loafers: ["loafer", "loafers", "moccasin"],
+  flats: ["flat", "flats", "ballet"],
+  mules: ["mule", "mules"],
+  slippers: ["slipper", "slippers"],
+  // General footwear - matches any shoe type
+  footwear: ["shoe", "shoes", "boot", "boots", "bootie", "booties", "sneaker", "sneakers", "sandal", "sandals", "heel", "heels", "loafer", "loafers", "flat", "flats", "pump", "pumps", "footwear", "mule", "mules", "slipper", "slippers"],
+
+  // Outerwear - specific sub-categories
+  jackets: ["jacket", "jackets"],
+  coats: ["coat", "coats", "overcoat", "trench"],
+  blazers: ["blazer", "blazers"],
+  vests: ["vest", "vests", "gilet"],
+  parkas: ["parka", "parkas", "anorak"],
+  // General outerwear - matches any outerwear type
+  outerwear: ["jacket", "jackets", "coat", "coats", "blazer", "blazers", "parka", "vest", "outerwear"],
+
+  // Bottoms - specific sub-categories
+  pants: ["pants", "pant", "trouser", "trousers", "chino", "chinos", "slacks"],
+  jeans: ["jeans", "jean", "denim"],
+  shorts: ["shorts", "short"],
+  skirts: ["skirt", "skirts"],
+  leggings: ["legging", "leggings", "tights"],
+  // General bottoms - matches any bottom type
+  bottoms: ["pants", "pant", "jeans", "jean", "shorts", "short", "skirt", "skirts", "trouser", "trousers", "chino", "chinos", "legging", "leggings"],
+
+  // Dresses - specific sub-categories
+  dresses: ["dress", "dresses"],
+  gowns: ["gown", "gowns"],
+  rompers: ["romper", "rompers"],
+  jumpsuits: ["jumpsuit", "jumpsuits", "playsuit"],
+
+  // Bags - specific sub-categories
+  totes: ["tote", "totes"],
+  purses: ["purse", "purses", "handbag", "handbags"],
+  backpacks: ["backpack", "backpacks", "rucksack"],
+  clutches: ["clutch", "clutches"],
+  crossbodys: ["crossbody", "crossbodies"],
+  satchels: ["satchel", "satchels"],
+  // General bags - matches any bag type
+  bags: ["bag", "bags", "purse", "purses", "handbag", "handbags", "tote", "totes", "clutch", "crossbody", "backpack", "satchel"],
+
+  // Accessories - specific sub-categories
+  hats: ["hat", "hats", "cap", "caps", "beanie", "beanies"],
+  scarves: ["scarf", "scarves"],
+  belts: ["belt", "belts"],
+  jewelry: ["jewelry", "jewellery", "necklace", "bracelet", "earring", "earrings", "ring"],
+  watches: ["watch", "watches"],
+  sunglasses: ["sunglasses", "sunglass", "eyewear"],
+  gloves: ["glove", "gloves", "mittens"],
+  // General accessories - matches any accessory type
+  accessories: ["hat", "hats", "scarf", "scarves", "belt", "belts", "jewelry", "watch", "sunglasses", "gloves", "accessory", "accessories"],
+
+  socks: ["sock", "socks"],
+};
+
+// Categories that are EXCLUDED from each group (to prevent false positives)
+const CATEGORY_EXCLUSIONS: Record<string, string[]> = {
+  sweaters: ["sock", "socks", "shoe", "shoes", "boot", "boots", "dress", "dresses", "bag", "bags", "pants", "pant", "jeans", "shorts", "skirt"],
+  tops: ["sweater", "sweaters", "cardigan", "sock", "socks", "shoe", "shoes", "dress", "dresses", "pants", "pant"],
+  footwear: ["sock", "socks", "sweater", "shirt", "top", "dress", "pants", "bag"],
+  dresses: ["sock", "socks", "shoe", "shoes", "sweater", "shirt", "pants", "bag"],
+  bags: ["sock", "socks", "shoe", "shoes", "sweater", "shirt", "dress", "pants"],
+};
+
+// Detect which category group a word belongs to
+function detectCategoryGroup(word: string): string | null {
+  const lowerWord = word.toLowerCase();
+  for (const [group, keywords] of Object.entries(CATEGORY_GROUPS)) {
+    if (keywords.includes(lowerWord)) {
+      return group;
+    }
+  }
+  return null;
+}
+
+// Specific sub-categories that require name-based matching
+// (because products often have generic categories like "shoes", "clothing", "bags" but specific names)
+const SPECIFIC_SUBCATEGORIES = new Set([
+  // Footwear
+  "boots", "sneakers", "sandals", "heels", "loafers", "flats", "mules", "slippers",
+  // Sweaters/Knitwear
+  "sweaters", "cardigans", "hoodies", "sweatshirts",
+  // Tops
+  "shirts", "blouses", "tshirts", "tanks",
+  // Outerwear
+  "jackets", "coats", "blazers", "vests", "parkas",
+  // Bottoms
+  "pants", "jeans", "shorts", "skirts", "leggings",
+  // Dresses
+  "dresses", "gowns", "rompers", "jumpsuits",
+  // Bags
+  "totes", "purses", "backpacks", "clutches", "crossbodys", "satchels",
+  // Accessories
+  "hats", "scarves", "belts", "jewelry", "watches", "sunglasses", "gloves",
+]);
+
+// Check if a product's category matches a target category group
+function productMatchesCategoryGroup(productCategory: string, productName: string, targetGroup: string): boolean {
+  const categoryLower = productCategory.toLowerCase();
+  const nameLower = productName.toLowerCase();
+
+  // First check exclusions - if product category matches an exclusion, reject it
+  const exclusions = CATEGORY_EXCLUSIONS[targetGroup] || [];
+  for (const exclusion of exclusions) {
+    if (categoryLower.includes(exclusion)) {
+      return false;  // Product is in an excluded category
+    }
+  }
+
+  // Use the stricter CATEGORY_PRODUCT_MATCHES for checking
+  const targetKeywords = CATEGORY_PRODUCT_MATCHES[targetGroup] || [];
+
+  // For specific sub-categories, also check the product name
+  // because many products have generic categories like "shoes", "clothing", "bags"
+  // but specific names like "The Chelsea Boot", "Cashmere Cardigan", "Leather Tote"
+  if (SPECIFIC_SUBCATEGORIES.has(targetGroup)) {
+    // For specific types, check BOTH category and name
+    // Product must have the specific type in either category OR name
+    for (const keyword of targetKeywords) {
+      if (categoryLower.includes(keyword) || nameLower.includes(keyword)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Check if product CATEGORY (not name) contains any of the target keywords
+  // This prevents "Crew Sock" from matching "sweaters" just because "Crew" is in the name
+  for (const keyword of targetKeywords) {
+    if (categoryLower.includes(keyword)) {
+      return true;
+    }
+  }
+
+  // Also check if the product name contains specific keywords
+  // but ONLY if the category is generic like "clothing", "shoes", "bags", etc.
+  const genericCategories = ["clothing", "shoes", "bags", "accessories", "apparel"];
+  if (genericCategories.some(gc => categoryLower.includes(gc))) {
+    for (const keyword of targetKeywords) {
+      // More specific check - must be the main product type, not a modifier
+      const nameWords = nameLower.split(/\s+/);
+      if (nameWords.includes(keyword) || nameLower.includes(keyword + " ") || nameLower.includes(" " + keyword)) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+// Check if product color matches any of the target colors
+function productMatchesColor(productColorName: string, targetColors: string[]): boolean {
+  const colorLower = productColorName.toLowerCase();
+  for (const targetColor of targetColors) {
+    // Check for the color word in the product's color name
+    if (colorLower.includes(targetColor)) {
+      return true;
+    }
+    // Also check synonyms
+    const synonyms = SYNONYMS[targetColor];
+    if (synonyms) {
+      for (const syn of synonyms) {
+        if (colorLower.includes(syn)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
 
 function expandQueryWithSynonyms(query: string): string[] {
   const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
@@ -375,6 +790,100 @@ function calculateRelevanceScore(
   return score;
 }
 
+// Public query for testing search with scores
+export const searchWithScores = query({
+  args: {
+    query: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 15;
+
+    let products = await ctx.db.query("products").collect();
+
+    // Parse query to extract color words and category words separately
+    const queryLower = args.query.toLowerCase();
+    const queryTokens = queryLower.split(/\s+/).filter(w => w.length > 1);
+
+    // Detect color words in the query
+    const detectedColors: string[] = [];
+    for (const token of queryTokens) {
+      if (ALL_COLOR_WORDS.has(token)) {
+        detectedColors.push(token);
+      }
+    }
+
+    // Detect category group in the query
+    let detectedCategoryGroup: string | null = null;
+    for (const token of queryTokens) {
+      const group = detectCategoryGroup(token);
+      if (group) {
+        detectedCategoryGroup = group;
+        break;
+      }
+    }
+
+    // Filter and score products
+    const scoredProducts = products
+      .map((product) => {
+        // Exclude gift cards from search results
+        if (product.name.toLowerCase().includes('gift card')) return null;
+
+        // STRICT COLOR MATCHING: If user searched for a color, product MUST match that color
+        if (detectedColors.length > 0) {
+          const productColor = product.colorName || "";
+          if (!productMatchesColor(productColor, detectedColors)) {
+            return null;
+          }
+        }
+
+        // STRICT CATEGORY MATCHING: If user searched for a category, product MUST match that category group
+        if (detectedCategoryGroup) {
+          if (!productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
+            return null;
+          }
+        }
+
+        // Calculate relevance score
+        let score = 0;
+
+        // Score for color match
+        if (detectedColors.length > 0 && product.colorName) {
+          score += 25;
+        }
+
+        // Score for category match
+        if (detectedCategoryGroup) {
+          score += 20;
+          const categoryLower = product.category.toLowerCase();
+          if (CATEGORY_GROUPS[detectedCategoryGroup]?.some(kw => categoryLower.includes(kw))) {
+            score += 10;
+          }
+        }
+
+        return {
+          name: product.name,
+          brand: product.brand,
+          category: product.category,
+          colorName: product.colorName,
+          price: product.price,
+          score
+        };
+      })
+      .filter((item): item is NonNullable<typeof item> => item !== null);
+
+    // Sort by relevance score (highest first)
+    scoredProducts.sort((a, b) => b.score - a.score);
+
+    return {
+      results: scoredProducts.slice(0, limit),
+      detectedColors,
+      detectedCategoryGroup,
+      totalMatches: scoredProducts.length,
+    };
+  },
+});
+
 export const filterProductsInternal = internalQuery({
   args: {
     query: v.optional(v.string()),
@@ -387,6 +896,7 @@ export const filterProductsInternal = internalQuery({
     minPrice: v.optional(v.number()),
     maxPrice: v.optional(v.number()),
     limit: v.optional(v.number()),
+    includeScores: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const limit = args.limit ?? 20;
@@ -396,7 +906,29 @@ export const filterProductsInternal = internalQuery({
     // Words that are handled by specific filters and shouldn't require text matching
     const genderWords = ["women", "womens", "women's", "men", "mens", "men's", "unisex"];
 
-    // Get query words for scoring
+    // Parse query to extract color words and category words separately
+    const queryLower = (args.query || "").toLowerCase();
+    const queryTokens = queryLower.split(/\s+/).filter(w => w.length > 1);
+
+    // Detect color words in the query
+    const detectedColors: string[] = [];
+    for (const token of queryTokens) {
+      if (ALL_COLOR_WORDS.has(token)) {
+        detectedColors.push(token);
+      }
+    }
+
+    // Detect category group in the query
+    let detectedCategoryGroup: string | null = null;
+    for (const token of queryTokens) {
+      const group = detectCategoryGroup(token);
+      if (group) {
+        detectedCategoryGroup = group;
+        break;
+      }
+    }
+
+    // Get query words for scoring (excluding gender words)
     const queryWords = args.query ? expandQueryWithSynonyms(args.query) : [];
     const nonGenderWords = queryWords.filter(word => !genderWords.includes(word.toLowerCase()));
 
@@ -406,11 +938,19 @@ export const filterProductsInternal = internalQuery({
         // Exclude gift cards from search results
         if (product.name.toLowerCase().includes('gift card')) return null;
 
-        // Apply filters first
-        if (args.query && nonGenderWords.length > 0) {
-          const productText = `${product.name} ${product.description} ${product.brand} ${product.category} ${product.material || ""} ${product.colorName || ""}`.toLowerCase();
-          const hasMatch = nonGenderWords.some(word => productText.includes(word));
-          if (!hasMatch) return null;
+        // STRICT COLOR MATCHING: If user searched for a color, product MUST match that color
+        if (detectedColors.length > 0) {
+          const productColor = product.colorName || "";
+          if (!productMatchesColor(productColor, detectedColors)) {
+            return null;  // Product doesn't match the searched color - exclude it
+          }
+        }
+
+        // STRICT CATEGORY MATCHING: If user searched for a category, product MUST match that category group
+        if (detectedCategoryGroup) {
+          if (!productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
+            return null;  // Product doesn't match the searched category - exclude it
+          }
         }
 
         // Gender filter: include unisex products in men's or women's searches
@@ -423,7 +963,7 @@ export const filterProductsInternal = internalQuery({
         }
         if (args.condition && product.condition !== args.condition) return null;
 
-        // Category filter with synonym expansion
+        // Category filter with synonym expansion (for explicit category filter)
         if (args.category) {
           const categoryLower = args.category.toLowerCase();
           const productCategoryLower = product.category.toLowerCase();
@@ -440,9 +980,22 @@ export const filterProductsInternal = internalQuery({
         if (args.maxPrice !== undefined && product.price > args.maxPrice) return null;
 
         // Calculate relevance score
-        const score = nonGenderWords.length > 0
-          ? calculateRelevanceScore(product, nonGenderWords)
-          : 0;
+        let score = 0;
+
+        // Score for color match
+        if (detectedColors.length > 0 && product.colorName) {
+          score += 25;  // Base score for matching color
+        }
+
+        // Score for category match
+        if (detectedCategoryGroup) {
+          score += 20;  // Base score for matching category
+          // Bonus for exact category match
+          const categoryLower = product.category.toLowerCase();
+          if (CATEGORY_GROUPS[detectedCategoryGroup]?.some(kw => categoryLower.includes(kw))) {
+            score += 10;
+          }
+        }
 
         return { product, score };
       })
@@ -451,6 +1004,10 @@ export const filterProductsInternal = internalQuery({
     // Sort by relevance score (highest first)
     scoredProducts.sort((a, b) => b.score - a.score);
 
+    // Return with or without scores based on flag
+    if (args.includeScores) {
+      return scoredProducts.slice(0, limit);
+    }
     return scoredProducts.slice(0, limit).map(item => item.product);
   },
 });

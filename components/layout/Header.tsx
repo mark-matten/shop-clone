@@ -101,6 +101,7 @@ export function Header() {
           >
             Search
           </Link>
+          {/* Hidden for now
           <Link
             href="/compare"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -111,6 +112,7 @@ export function Header() {
           >
             Compare
           </Link>
+          */}
           <Link
             href="/favorites"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -131,6 +133,7 @@ export function Header() {
           >
             My Closet
           </Link>
+          {/* Hidden for now
           <Link
             href="/dashboard"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -151,6 +154,7 @@ export function Header() {
           >
             Tools
           </Link>
+          */}
           <Link
             href="/coupons"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -371,6 +375,7 @@ export function Header() {
             >
               Search
             </Link>
+            {/* Hidden for now
             <Link
               href="/compare"
               onClick={() => setShowMobileMenu(false)}
@@ -382,6 +387,7 @@ export function Header() {
             >
               Compare
             </Link>
+            */}
             <Link
               href="/favorites"
               onClick={() => setShowMobileMenu(false)}
@@ -404,6 +410,7 @@ export function Header() {
             >
               My Closet
             </Link>
+            {/* Hidden for now
             <Link
               href="/dashboard"
               onClick={() => setShowMobileMenu(false)}
@@ -426,6 +433,7 @@ export function Header() {
             >
               Tools
             </Link>
+            */}
             <Link
               href="/coupons"
               onClick={() => setShowMobileMenu(false)}

@@ -78,6 +78,14 @@ const CATEGORY_SYNONYMS: Record<string, string[]> = {
   boots: ["boots", "boot"],
   sneaker: ["sneakers", "sneaker"],
   sneakers: ["sneakers", "sneaker"],
+  sandal: ["sandals", "sandal"],
+  sandals: ["sandals", "sandal"],
+  heel: ["heels", "heel", "pumps"],
+  heels: ["heels", "heel", "pumps"],
+  loafer: ["loafers", "loafer"],
+  loafers: ["loafers", "loafer"],
+  flat: ["flats", "flat"],
+  flats: ["flats", "flat"],
   top: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top", "tops", "clothing"],
   tops: ["shirt", "blouse", "t-shirt", "sweater", "cardigan", "top", "tops", "clothing"],
   shirt: ["tops", "top", "shirt", "blouse", "t-shirt", "clothing"],
@@ -96,7 +104,38 @@ const CATEGORY_SYNONYMS: Record<string, string[]> = {
   dress: ["dress", "dresses"],
 };
 
-function categoryMatches(productCategory: string, filterCategory: string): boolean {
+// Specific footwear/clothing types that should also check product name
+const SPECIFIC_CATEGORY_KEYWORDS: Record<string, string[]> = {
+  boots: ["boot", "bootie"],
+  boot: ["boot", "bootie"],
+  sneakers: ["sneaker", "trainer"],
+  sneaker: ["sneaker", "trainer"],
+  sandals: ["sandal"],
+  sandal: ["sandal"],
+  heels: ["heel", "pump", "stiletto"],
+  heel: ["heel", "pump", "stiletto"],
+  loafers: ["loafer", "moccasin"],
+  loafer: ["loafer", "moccasin"],
+  flats: ["flat", "ballet"],
+  flat: ["flat", "ballet"],
+  cardigans: ["cardigan"],
+  cardigan: ["cardigan"],
+  hoodies: ["hoodie"],
+  hoodie: ["hoodie"],
+  blazers: ["blazer"],
+  blazer: ["blazer"],
+  coats: ["coat", "overcoat", "trench"],
+  coat: ["coat", "overcoat", "trench"],
+  jackets: ["jacket"],
+  jacket: ["jacket"],
+  jeans: ["jean", "denim"],
+  totes: ["tote"],
+  tote: ["tote"],
+  backpacks: ["backpack", "rucksack"],
+  backpack: ["backpack", "rucksack"],
+};
+
+function categoryMatches(productCategory: string, filterCategory: string, productName?: string): boolean {
   const productCatLower = productCategory.toLowerCase();
   const filterCatLower = filterCategory.toLowerCase();
 
@@ -108,7 +147,19 @@ function categoryMatches(productCategory: string, filterCategory: string): boole
   // Check synonyms
   const synonyms = CATEGORY_SYNONYMS[filterCatLower];
   if (synonyms) {
-    return synonyms.some(syn => productCatLower.includes(syn) || syn.includes(productCatLower));
+    if (synonyms.some(syn => productCatLower.includes(syn) || syn.includes(productCatLower))) {
+      return true;
+    }
+  }
+
+  // For specific category types (boots, sneakers, etc.), also check the product name
+  // This handles cases where category is "shoes" but the product name is "The Chelsea Boot"
+  const keywords = SPECIFIC_CATEGORY_KEYWORDS[filterCatLower];
+  if (keywords && productName) {
+    const nameLower = productName.toLowerCase();
+    if (keywords.some(kw => nameLower.includes(kw))) {
+      return true;
+    }
   }
 
   return false;
@@ -389,14 +440,17 @@ export function ProductSearch() {
       // Condition filter
       if (filterToApply.condition && product.condition !== filterToApply.condition) return false;
 
-      // Category filter with synonym expansion
-      if (filterToApply.category && !categoryMatches(product.category, filterToApply.category)) return false;
+      // Category filter with synonym expansion (also checks product name for specific types)
+      if (filterToApply.category && !categoryMatches(product.category, filterToApply.category, product.name)) return false;
 
       // Brand filter
       if (filterToApply.brand && !product.brand.toLowerCase().includes(filterToApply.brand.toLowerCase())) return false;
 
-      // Material filter
-      if (filterToApply.material && product.material && !product.material.toLowerCase().includes(filterToApply.material.toLowerCase())) return false;
+      // Material filter - exclude products without material when filtering by material
+      if (filterToApply.material) {
+        if (!product.material) return false;
+        if (!product.material.toLowerCase().includes(filterToApply.material.toLowerCase())) return false;
+      }
 
       // Size filter
       if (filterToApply.size && product.size && !product.size.toLowerCase().includes(filterToApply.size.toLowerCase())) return false;

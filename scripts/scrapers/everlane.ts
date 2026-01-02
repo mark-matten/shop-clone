@@ -258,7 +258,7 @@ async function fetchVariantAvailability(handle: string): Promise<HtmlVariantData
     const url = `https://www.everlane.com/products/${handle}`;
     const response = await fetch(url, {
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": getRandomUserAgent(),
         "Accept": "text/html",
       },
     });
@@ -366,7 +366,7 @@ async function getProductHandlesFromCategory(categoryUrl: string): Promise<strin
     const url = `https://www.everlane.com${categoryUrl}`;
     const response = await fetch(url, {
       headers: {
-        "User-Agent": USER_AGENT,
+        "User-Agent": getRandomUserAgent(),
         "Accept": "text/html",
       },
     });

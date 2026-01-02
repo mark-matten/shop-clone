@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
@@ -8,18 +8,40 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
 
-const COLLECTION_COLORS = [
-  "#6366f1", "#8b5cf6", "#ec4899", "#f43f5e", "#f97316",
-  "#eab308", "#22c55e", "#14b8a6", "#0ea5e9", "#6b7280",
-];
+// Helper to get a CSS color from a color name
+function getColorFromName(colorName: string): string {
+  const colorMap: Record<string, string> = {
+    'black': '#000000', 'white': '#ffffff', 'grey': '#6b7280', 'gray': '#6b7280',
+    'navy': '#1e3a5f', 'blue': '#2563eb', 'red': '#dc2626', 'green': '#16a34a',
+    'brown': '#92400e', 'tan': '#d2b48c', 'beige': '#f5f5dc', 'cream': '#fffdd0',
+    'pink': '#ec4899', 'purple': '#9333ea', 'orange': '#ea580c', 'yellow': '#eab308',
+    'olive': '#65a30d', 'burgundy': '#800020', 'charcoal': '#374151', 'khaki': '#c3b091',
+    'coral': '#f97316', 'teal': '#0d9488', 'maroon': '#7f1d1d', 'mint': '#10b981',
+    'gold': '#ca8a04', 'silver': '#9ca3af', 'ivory': '#fffff0', 'indigo': '#4f46e5',
+  };
+
+  const lowerColor = colorName.toLowerCase();
+  for (const [key, hex] of Object.entries(colorMap)) {
+    if (lowerColor.includes(key)) {
+      return hex;
+    }
+  }
+  return '#6b7280'; // Default gray
+}
+
+interface EditingItem {
+  productId: Id<"products">;
+  productName: string;
+  options: { name: string; values: string[] }[];
+  currentOptions: Record<string, string>;
+  colorGroupId?: string;
+  currentColor?: string;
+}
 
 export default function FavoritesPage() {
   const { user, isLoaded } = useUser();
-  const [activeTab, setActiveTab] = useState<"all" | "collections">("all");
-  const [showNewCollectionModal, setShowNewCollectionModal] = useState(false);
-  const [newCollectionName, setNewCollectionName] = useState("");
-  const [newCollectionColor, setNewCollectionColor] = useState(COLLECTION_COLORS[0]);
-  const [selectedCollection, setSelectedCollection] = useState<Id<"collections"> | null>(null);
+  const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
+  const [editOptions, setEditOptions] = useState<Record<string, string>>({});
 
   const convexUser = useQuery(
     api.users.getUserByClerkId,
@@ -27,54 +49,70 @@ export default function FavoritesPage() {
   );
 
   const favorites = useQuery(
-    api.favorites.getFavorites,
+    api.favorites.getFavoritesWithTracking,
     user?.id ? { clerkId: user.id } : "skip"
   );
 
-  const collections = useQuery(
-    api.collections.getCollections,
-    convexUser?._id ? { userId: convexUser._id } : "skip"
-  );
-
-  const collectionDetails = useQuery(
-    api.collections.getCollection,
-    selectedCollection ? { collectionId: selectedCollection } : "skip"
-  );
-
   const removeFavorite = useMutation(api.favorites.removeFavorite);
-  const createCollection = useMutation(api.collections.createCollection);
-  const deleteCollection = useMutation(api.collections.deleteCollection);
-  const removeFromCollection = useMutation(api.collections.removeFromCollection);
+  const updateFavoriteOptions = useMutation(api.favorites.updateFavoriteOptions);
+  const trackProduct = useMutation(api.tracking.trackProduct);
+  const untrackProduct = useMutation(api.tracking.untrackProduct);
 
   const handleRemove = async (productId: Id<"products">) => {
     if (!user?.id) return;
     await removeFavorite({ clerkId: user.id, productId });
   };
 
-  const handleCreateCollection = async () => {
-    if (!convexUser?._id || !newCollectionName.trim()) return;
-    await createCollection({
-      userId: convexUser._id,
-      name: newCollectionName.trim(),
-      color: newCollectionColor,
+  const handleEdit = (item: NonNullable<typeof favorites>[number]) => {
+    if (!item.product) return;
+    const currentColor = item.selectedOptions?.["Color"] || item.selectedOptions?.["Colour"] || item.product.colorName;
+    setEditingItem({
+      productId: item.product._id,
+      productName: item.product.name,
+      options: item.product.options || [],
+      currentOptions: item.selectedOptions || {},
+      colorGroupId: item.product.colorGroupId,
+      currentColor,
     });
-    setNewCollectionName("");
-    setShowNewCollectionModal(false);
+    setEditOptions({
+      ...item.selectedOptions,
+      ...(currentColor ? { Color: currentColor } : {}),
+    });
   };
 
-  const handleDeleteCollection = async (collectionId: Id<"collections">) => {
-    if (!convexUser?._id) return;
-    if (confirm("Delete this collection? Items will remain in your favorites.")) {
-      await deleteCollection({ collectionId, userId: convexUser._id });
-      if (selectedCollection === collectionId) {
-        setSelectedCollection(null);
-      }
+  // Fetch color variants when editing an item with a colorGroupId
+  const colorVariants = useQuery(
+    api.products.getColorVariants,
+    editingItem?.colorGroupId ? { colorGroupId: editingItem.colorGroupId } : "skip"
+  );
+
+  const handleSaveEdit = async () => {
+    if (!user?.id || !editingItem) return;
+    await updateFavoriteOptions({
+      clerkId: user.id,
+      productId: editingItem.productId,
+      selectedOptions: editOptions,
+    });
+    setEditingItem(null);
+    setEditOptions({});
+  };
+
+  const handleToggleTracking = async (item: NonNullable<typeof favorites>[number]) => {
+    if (!convexUser?._id || !item.product) return;
+
+    if (item.isTracking) {
+      await untrackProduct({
+        userId: convexUser._id,
+        productId: item.product._id,
+      });
+    } else {
+      await trackProduct({
+        userId: convexUser._id,
+        productId: item.product._id,
+        targetPrice: Math.round(item.product.price * 0.85),
+        selectedOptions: item.selectedOptions,
+      });
     }
-  };
-
-  const handleRemoveFromCollection = async (productId: Id<"products">) => {
-    if (!selectedCollection) return;
-    await removeFromCollection({ collectionId: selectedCollection, productId });
   };
 
   const conditionLabels: Record<string, string> = {
@@ -130,189 +168,24 @@ export default function FavoritesPage() {
     );
   }
 
-  const favoriteProducts = favorites?.map((f) => f.product).filter(Boolean) || [];
+  const favoriteItems = favorites || [];
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       <Header />
 
       <main className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="mb-6 flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-              Favorites
-            </h1>
-            <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-              {favoriteProducts.length} saved items
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowNewCollectionModal(true)}
-              className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              New Collection
-            </button>
-            <Link
-              href="/compare"
-              className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              Compare
-            </Link>
-          </div>
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            Favorites
+          </h1>
+          <p className="mt-1 text-zinc-600 dark:text-zinc-400">
+            {favoriteItems.length} saved items
+          </p>
         </div>
 
-        {/* Tabs */}
-        <div className="mb-6 flex gap-1 rounded-lg border border-zinc-200 bg-white p-1 dark:border-zinc-700 dark:bg-zinc-800">
-          <button
-            onClick={() => { setActiveTab("all"); setSelectedCollection(null); }}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === "all"
-                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-            }`}
-          >
-            All Favorites ({favoriteProducts.length})
-          </button>
-          <button
-            onClick={() => setActiveTab("collections")}
-            className={`flex-1 rounded-md px-4 py-2 text-sm font-medium transition-colors ${
-              activeTab === "collections"
-                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                : "text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-            }`}
-          >
-            Collections ({collections?.length || 0})
-          </button>
-        </div>
-
-        {/* Collections Tab Content */}
-        {activeTab === "collections" && (
-          <>
-            {selectedCollection && collectionDetails ? (
-              // Show selected collection items
-              <div>
-                <button
-                  onClick={() => setSelectedCollection(null)}
-                  className="mb-4 flex items-center gap-2 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Back to collections
-                </button>
-                <div className="mb-6 flex items-center gap-3">
-                  <div
-                    className="h-4 w-4 rounded-full"
-                    style={{ backgroundColor: collectionDetails.color || "#6366f1" }}
-                  />
-                  <h2 className="text-xl font-semibold text-zinc-900 dark:text-white">
-                    {collectionDetails.name}
-                  </h2>
-                  <span className="text-sm text-zinc-500">
-                    ({collectionDetails.items.length} items)
-                  </span>
-                </div>
-                {collectionDetails.items.length === 0 ? (
-                  <div className="rounded-xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
-                    <p className="text-zinc-500">No items in this collection</p>
-                  </div>
-                ) : (
-                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                    {collectionDetails.items.map((item) => item.product && (
-                      <div
-                        key={item._id}
-                        className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-                      >
-                        <Link href={`/product/${item.product._id}`}>
-                          <div className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                            {item.product.imageUrl ? (
-                              <img src={item.product.imageUrl} alt={item.product.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                                <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          <div className="p-4">
-                            <span className="text-xs font-medium uppercase text-zinc-500">{item.product.brand}</span>
-                            <h3 className="line-clamp-2 text-sm font-medium text-zinc-900 dark:text-white">{item.product.name}</h3>
-                            <span className="text-lg font-semibold text-zinc-900 dark:text-white">${item.product.price.toFixed(2)}</span>
-                          </div>
-                        </Link>
-                        <button
-                          onClick={() => handleRemoveFromCollection(item.product!._id)}
-                          className="absolute right-2 top-2 rounded-full bg-white/90 p-2 text-zinc-600 shadow-sm hover:bg-white hover:text-red-500 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                        >
-                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-            ) : (
-              // Show collections grid
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {collections?.map((collection) => (
-                  <div
-                    key={collection._id}
-                    className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white p-4 transition-shadow hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900"
-                  >
-                    <button
-                      onClick={() => setSelectedCollection(collection._id)}
-                      className="block w-full text-left"
-                    >
-                      <div className="mb-3 flex items-center gap-3">
-                        <div
-                          className="h-10 w-10 rounded-lg"
-                          style={{ backgroundColor: collection.color || "#6366f1" }}
-                        />
-                        <div>
-                          <h3 className="font-semibold text-zinc-900 dark:text-white">
-                            {collection.name}
-                          </h3>
-                          <p className="text-sm text-zinc-500">
-                            {collection.itemCount} items
-                          </p>
-                        </div>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => handleDeleteCollection(collection._id)}
-                      className="absolute right-2 top-2 rounded-full p-2 text-zinc-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
-                {(!collections || collections.length === 0) && (
-                  <div className="col-span-full rounded-xl border border-dashed border-zinc-300 bg-zinc-50 py-12 text-center dark:border-zinc-700 dark:bg-zinc-800/50">
-                    <p className="text-zinc-500">No collections yet</p>
-                    <button
-                      onClick={() => setShowNewCollectionModal(true)}
-                      className="mt-3 text-sm font-medium text-zinc-900 hover:underline dark:text-white"
-                    >
-                      Create your first collection
-                    </button>
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
-
-        {/* All Favorites Tab Content */}
-        {activeTab === "all" && favoriteProducts.length === 0 ? (
+        {/* Favorites Content */}
+        {favoriteItems.length === 0 ? (
           <div className="rounded-xl border border-zinc-200 bg-white py-16 text-center dark:border-zinc-800 dark:bg-zinc-900">
             <svg
               className="mx-auto h-12 w-12 text-zinc-400"
@@ -340,143 +213,254 @@ export default function FavoritesPage() {
               Browse products
             </Link>
           </div>
-        ) : activeTab === "all" ? (
+        ) : (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {favoriteProducts.map((product) => (
-              <div
-                key={product!._id}
-                className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
-              >
-                <Link href={`/product/${product!._id}`}>
-                  <div className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-                    {product!.imageUrl ? (
-                      <img
-                        src={product!.imageUrl}
-                        alt={product!.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                        <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
+            {favoriteItems.map((item) => {
+              const product = item.product;
+              if (!product) return null;
+
+              // Get selected color and size from savedOptions or product defaults
+              const selectedColor = item.selectedOptions?.["Color"] || item.selectedOptions?.["Colour"] || product.colorName;
+              const selectedSize = item.selectedOptions?.["Size"];
+              const colorHex = selectedColor ? getColorFromName(selectedColor) : null;
+
+              // Build URL with pre-selected options
+              const optionsParams = new URLSearchParams();
+              if (item.selectedOptions) {
+                Object.entries(item.selectedOptions).forEach(([key, value]) => {
+                  if (value) optionsParams.set(key, value);
+                });
+              }
+              const productUrl = `/product/${product._id}${optionsParams.toString() ? `?${optionsParams.toString()}` : ""}`;
+
+              return (
+                <div
+                  key={product._id}
+                  className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+                >
+                  <Link href={productUrl}>
+                    <div className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+                      {product.imageUrl ? (
+                        <img
+                          src={product.imageUrl}
+                          alt={product.name}
+                          className="h-full w-full object-cover transition-transform group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                          <svg className="h-16 w-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                      )}
+                      <span className={`absolute right-2 top-2 rounded-full px-2 py-1 text-xs font-medium ${conditionColors[product.condition]}`}>
+                        {conditionLabels[product.condition]}
+                      </span>
+                    </div>
+
+                    <div className="p-4">
+                      <div className="mb-1 flex items-center justify-between">
+                        <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                          {product.brand}
+                        </span>
+                        <span className="text-xs text-zinc-400 dark:text-zinc-500">
+                          {product.sourcePlatform}
+                        </span>
                       </div>
+
+                      <h3 className="mb-2 line-clamp-2 text-sm font-medium text-zinc-900 dark:text-white">
+                        {product.name}
+                      </h3>
+
+                      {/* Selected Options (Color & Size) with colored text */}
+                      <div className="mb-3 flex flex-wrap gap-1">
+                        {selectedColor && (
+                          <span
+                            className="rounded px-2 py-0.5 text-xs font-medium"
+                            style={{
+                              backgroundColor: `${colorHex}20`,
+                              color: colorHex || '#6b7280'
+                            }}
+                          >
+                            {selectedColor}
+                          </span>
+                        )}
+                        {selectedSize && (
+                          <span className="rounded bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                            Size {selectedSize}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center justify-between">
+                        <span className="text-lg font-semibold text-zinc-900 dark:text-white">
+                          ${product.price.toFixed(2)}
+                        </span>
+                        {item.isTracking && item.targetPrice && (
+                          <span className="text-xs text-green-600 dark:text-green-400">
+                            Target: ${item.targetPrice.toFixed(2)}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+
+                  {/* Status badges */}
+                  <div className="absolute left-2 top-2 flex flex-col gap-1">
+                    {item.isFavorite && (
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleRemove(product._id); }}
+                        className="rounded-full bg-red-500 p-2 text-white shadow-sm transition-colors hover:bg-red-600"
+                        title="Remove from favorites"
+                      >
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                      </button>
                     )}
-                    <span className={`absolute right-2 top-2 rounded-full px-2 py-1 text-xs font-medium ${conditionColors[product!.condition]}`}>
-                      {conditionLabels[product!.condition]}
-                    </span>
                   </div>
 
-                  <div className="p-4">
-                    <div className="mb-1 flex items-center justify-between">
-                      <span className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                        {product!.brand}
-                      </span>
-                      <span className="text-xs text-zinc-400 dark:text-zinc-500">
-                        {product!.sourcePlatform}
-                      </span>
-                    </div>
-
-                    <h3 className="mb-2 line-clamp-2 text-sm font-medium text-zinc-900 dark:text-white">
-                      {product!.name}
-                    </h3>
-
-                    <div className="mb-3 flex flex-wrap gap-1">
-                      {product!.size && (
-                        <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                          Size {product!.size}
-                        </span>
-                      )}
-                      {product!.material && (
-                        <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                          {product!.material}
-                        </span>
-                      )}
-                    </div>
-
-                    <span className="text-lg font-semibold text-zinc-900 dark:text-white">
-                      ${product!.price.toFixed(2)}
-                    </span>
+                  {/* Action Buttons (Edit & Track) */}
+                  <div className="absolute right-2 top-12 flex flex-col gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleEdit(item); }}
+                      className="rounded-full bg-white/90 p-2 text-zinc-600 shadow-sm hover:bg-white hover:text-purple-600 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-purple-400"
+                      title="Edit size/color"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleToggleTracking(item); }}
+                      className={`rounded-full p-2 shadow-sm transition-colors ${
+                        item.isTracking
+                          ? "bg-green-500 text-white hover:bg-green-600"
+                          : "bg-white/90 text-zinc-600 hover:bg-white hover:text-green-600 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-green-400"
+                      }`}
+                      title={item.isTracking ? "Stop tracking" : "Track price"}
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                      </svg>
+                    </button>
                   </div>
-                </Link>
-
-                {/* Action buttons */}
-                <div className="absolute left-2 top-2 flex flex-col gap-2">
-                  <button
-                    onClick={() => handleRemove(product!._id)}
-                    className="rounded-full bg-red-500 p-2 text-white shadow-sm transition-colors hover:bg-red-600"
-                    title="Remove from favorites"
-                  >
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                    </svg>
-                  </button>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
-        ) : null}
+        )}
       </main>
 
-      {/* New Collection Modal */}
-      {showNewCollectionModal && (
+      {/* Edit Modal */}
+      {editingItem && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900">
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-              Create Collection
+              Edit Item
             </h3>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Organize your favorites into collections
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2">
+              {editingItem.productName}
             </p>
 
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
-                Collection Name
-              </label>
-              <input
-                type="text"
-                value={newCollectionName}
-                onChange={(e) => setNewCollectionName(e.target.value)}
-                placeholder="e.g., Summer Wishlist"
-                className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 text-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-700 dark:text-white"
-              />
-            </div>
+            <div className="mt-4 space-y-4">
+              {/* Color selection from variants */}
+              {colorVariants && colorVariants.length > 1 && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Color
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {colorVariants.map((variant) => {
+                      if (!variant.colorName) return null;
+                      const isSelected = editOptions["Color"] === variant.colorName;
+                      const colorHex = variant.colorHex || getColorFromName(variant.colorName);
+                      return (
+                        <button
+                          key={variant._id}
+                          onClick={() => setEditOptions({ ...editOptions, Color: variant.colorName! })}
+                          className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                            isSelected
+                              ? "border-purple-600 ring-2 ring-purple-600"
+                              : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500"
+                          }`}
+                          title={variant.colorName}
+                        >
+                          <span
+                            className="h-4 w-4 rounded-full border border-zinc-300 dark:border-zinc-600"
+                            style={{ backgroundColor: colorHex }}
+                          />
+                          <span className="text-zinc-900 dark:text-white">
+                            {variant.colorName}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                Color
-              </label>
-              <div className="flex flex-wrap gap-2">
-                {COLLECTION_COLORS.map((color) => (
-                  <button
-                    key={color}
-                    type="button"
-                    onClick={() => setNewCollectionColor(color)}
-                    className={`h-8 w-8 rounded-full transition-transform ${
-                      newCollectionColor === color ? "scale-110 ring-2 ring-zinc-900 ring-offset-2 dark:ring-white" : ""
-                    }`}
-                    style={{ backgroundColor: color }}
-                  />
-                ))}
-              </div>
+              {/* Show current color if no variants available */}
+              {(!colorVariants || colorVariants.length <= 1) && editingItem.currentColor && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Color
+                  </label>
+                  <div className="flex items-center gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+                    <span
+                      className="h-4 w-4 rounded-full border border-zinc-300 dark:border-zinc-600"
+                      style={{ backgroundColor: getColorFromName(editingItem.currentColor) }}
+                    />
+                    {editingItem.currentColor}
+                    <span className="text-xs text-zinc-400">(no other colors available)</span>
+                  </div>
+                </div>
+              )}
+
+              {/* Size and other options */}
+              {editingItem.options.map((option) => (
+                <div key={option.name}>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    {option.name}
+                  </label>
+                  <div className="flex flex-wrap gap-2">
+                    {option.values.map((value) => {
+                      const isSelected = editOptions[option.name] === value;
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => setEditOptions({ ...editOptions, [option.name]: value })}
+                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                            isSelected
+                              ? "border-purple-600 bg-purple-600 text-white"
+                              : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:border-zinc-500"
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
 
             <div className="mt-6 flex gap-3">
               <button
                 onClick={() => {
-                  setShowNewCollectionModal(false);
-                  setNewCollectionName("");
+                  setEditingItem(null);
+                  setEditOptions({});
                 }}
                 className="flex-1 rounded-lg border border-zinc-300 py-2 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
               >
                 Cancel
               </button>
               <button
-                onClick={handleCreateCollection}
-                disabled={!newCollectionName.trim()}
-                className="flex-1 rounded-lg bg-zinc-900 py-2 font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                onClick={handleSaveEdit}
+                className="flex-1 rounded-lg bg-purple-600 py-2 font-medium text-white transition-colors hover:bg-purple-500"
               >
-                Create
+                Save
               </button>
             </div>
           </div>

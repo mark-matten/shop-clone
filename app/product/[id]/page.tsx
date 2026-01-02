@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -15,6 +15,7 @@ import { VariantSelector } from "@/components/ui/VariantSelector";
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const productId = params.id as string;
   const { user: clerkUser } = useUser();
 
@@ -48,6 +49,17 @@ export default function ProductDetailPage() {
 
   const isFavorited = favoriteIds?.includes(productId as Id<"products">) ?? false;
 
+  // Filter out empty values from selected options
+  const getSelectedOptionsForSave = () => {
+    const filtered: Record<string, string> = {};
+    for (const [key, value] of Object.entries(selectedOptions)) {
+      if (value && value.trim() !== "") {
+        filtered[key] = value;
+      }
+    }
+    return Object.keys(filtered).length > 0 ? filtered : undefined;
+  };
+
   const handleToggleFavorite = async () => {
     if (!clerkUser?.id) {
       alert("Please sign in to save favorites");
@@ -64,6 +76,7 @@ export default function ProductDetailPage() {
         await addFavorite({
           clerkId: clerkUser.id,
           productId: productId as Id<"products">,
+          selectedOptions: getSelectedOptionsForSave(),
         });
       }
     } catch (error) {
@@ -90,6 +103,7 @@ export default function ProductDetailPage() {
       await toggleCloset({
         clerkId: clerkUser.id,
         productId: productId as Id<"products">,
+        selectedOptions: getSelectedOptionsForSave(),
       });
     } catch (error) {
       console.error("Failed to toggle closet:", error);
@@ -115,6 +129,7 @@ export default function ProductDetailPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
+  const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
 
   const { addViewed } = useRecentlyViewed();
   const addedViewRef = useRef<string | null>(null);
@@ -239,6 +254,18 @@ export default function ProductDetailPage() {
     }
   }, [product, hasInitializedPrice]);
 
+  // Initialize selected options from URL params (for favorites navigation) or reset when product changes
+  useEffect(() => {
+    const initialOptions: Record<string, string> = {};
+    searchParams.forEach((value, key) => {
+      // Only include Size and Color/Colour params
+      if (key === "Size" || key === "Color" || key === "Colour") {
+        initialOptions[key] = value;
+      }
+    });
+    setSelectedOptions(initialOptions);
+  }, [productId, searchParams]);
+
   // Track product view - only run once per product
   useEffect(() => {
     if (product && productId && addedViewRef.current !== productId) {
@@ -265,6 +292,7 @@ export default function ProductDetailPage() {
         userId: convexUser._id,
         productId: productId as Id<"products">,
         targetPrice: targetPrice ? parseFloat(targetPrice) : undefined,
+        selectedOptions: getSelectedOptionsForSave(),
       });
       setShowTrackingModal(false);
     } catch (error) {
@@ -441,6 +469,8 @@ export default function ProductDetailPage() {
                   imageUrl: v.imageUrl,
                 })) ?? []}
                 currentProductId={productId}
+                onOptionsChange={setSelectedOptions}
+                initialSelectedOptions={selectedOptions}
               />
             </div>
 

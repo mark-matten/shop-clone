@@ -7,6 +7,7 @@ export const trackProduct = mutation({
     userId: v.id("users"),
     productId: v.id("products"),
     targetPrice: v.optional(v.number()),
+    selectedOptions: v.optional(v.record(v.string(), v.string())),
   },
   handler: async (ctx, args) => {
     // Check if already tracking
@@ -18,9 +19,16 @@ export const trackProduct = mutation({
       .first();
 
     if (existing) {
-      // Update target price if provided
+      // Update target price and selected options if provided
+      const updates: { targetPrice?: number; selectedOptions?: Record<string, string> } = {};
       if (args.targetPrice !== undefined) {
-        await ctx.db.patch(existing._id, { targetPrice: args.targetPrice });
+        updates.targetPrice = args.targetPrice;
+      }
+      if (args.selectedOptions && Object.keys(args.selectedOptions).length > 0) {
+        updates.selectedOptions = args.selectedOptions;
+      }
+      if (Object.keys(updates).length > 0) {
+        await ctx.db.patch(existing._id, updates);
       }
       return existing._id;
     }
@@ -30,6 +38,7 @@ export const trackProduct = mutation({
       productId: args.productId,
       targetPrice: args.targetPrice,
       createdAt: Date.now(),
+      selectedOptions: args.selectedOptions,
     });
   },
 });

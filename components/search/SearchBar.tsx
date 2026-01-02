@@ -264,7 +264,18 @@ export function SearchBar({
         )}
       </div>
       <p className="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
-        Try: &quot;women&apos;s black leather boots size 8 under $200&quot;
+        Try:{" "}
+        <button
+          type="button"
+          onClick={() => {
+            const exampleQuery = "women's black leather boots size 8 under $200";
+            setQuery(exampleQuery);
+            onSearch(exampleQuery);
+          }}
+          className="text-emerald-600 hover:text-emerald-700 hover:underline dark:text-emerald-400 dark:hover:text-emerald-300"
+        >
+          &quot;women&apos;s black leather boots size 8 under $200&quot;
+        </button>
       </p>
     </form>
   );
