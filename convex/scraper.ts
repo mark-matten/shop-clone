@@ -222,10 +222,37 @@ export const upsertProduct = internalMutation({
   },
 });
 
+// Interface for color variant data
+interface ColorVariantData {
+  handle: string;
+  colorName: string;
+  colorGroupId: string;
+  name: string;
+  description: string;
+  price: number;
+  originalPrice?: number;
+  imageUrl?: string;
+  variants: Array<{
+    id: string;
+    title: string;
+    available: boolean;
+    price?: number;
+    option1?: string;
+    option2?: string;
+    option3?: string;
+  }>;
+  options?: Array<{
+    name: string;
+    values: string[];
+  }>;
+}
+
 // Interface for refreshed product data
 interface RefreshedProductData {
   price?: number;
   originalPrice?: number;
+  description?: string;
+  imageUrl?: string;
   variants?: Array<{
     id: string;
     title: string;
@@ -239,6 +266,142 @@ interface RefreshedProductData {
     name: string;
     values: string[];
   }>;
+  colorGroupId?: string;
+  colorVariants?: ColorVariantData[];
+}
+
+// Helper to parse Everlane product JSON
+function parseEverlaneProductJson(product: any, availabilityMap?: Map<number, boolean>): {
+  price: number | undefined;
+  originalPrice: number | undefined;
+  description: string;
+  colorGroupId: string | undefined;
+  colorName: string | undefined;
+  imageUrl: string | undefined;
+  variants: RefreshedProductData['variants'];
+  options: RefreshedProductData['options'];
+} {
+  // Get the lowest price variant
+  const prices = product.variants
+    .map((v: { price: string }) => parseFloat(v.price))
+    .filter((p: number) => !isNaN(p) && p > 0);
+
+  const price = prices.length > 0 ? Math.min(...prices) : undefined;
+
+  // Get original price if on sale
+  const compareAtPrices = product.variants
+    .map((v: { price: string; compare_at_price: string | null }) => ({
+      price: parseFloat(v.price),
+      compareAt: v.compare_at_price ? parseFloat(v.compare_at_price) : null
+    }))
+    .filter((p: { price: number; compareAt: number | null }) => p.compareAt && p.compareAt > p.price)
+    .map((p: { compareAt: number | null }) => p.compareAt);
+
+  const originalPrice = compareAtPrices.length > 0 ? Math.max(...compareAtPrices) : undefined;
+
+  // Get description (strip HTML tags)
+  const description = (product.body_html || "")
+    .replace(/<[^>]*>/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  // Extract colorGroupId from tags (format: "Product Group: 1468")
+  const tags = product.tags || "";
+  const groupMatch = tags.match(/Product Group:\s*(\d+)/i);
+  const colorGroupId = groupMatch ? groupMatch[1] : undefined;
+
+  // Extract color name from title (format: "The Glove Boot | Burgundy")
+  const titleParts = (product.title || "").split("|");
+  const colorName = titleParts.length > 1 ? titleParts[1].trim() : undefined;
+
+  // Get main image
+  const imageUrl = product.images?.[0]?.src;
+
+  // Build variants array
+  const variants = product.variants.map((v: { id: number; title: string; price: string; option1: string | null; option2: string | null; option3: string | null }) => ({
+    id: v.id.toString(),
+    title: v.title,
+    available: availabilityMap ? (availabilityMap.get(v.id) ?? true) : true,
+    price: parseFloat(v.price),
+    option1: v.option1 || undefined,
+    option2: v.option2 || undefined,
+    option3: v.option3 || undefined,
+  }));
+
+  // Build options array
+  const options = product.options
+    ?.filter((opt: { name: string; values: string[] }) => opt.name !== 'Title' && opt.values.length > 0)
+    ?.map((opt: { name: string; values: string[] }) => ({
+      name: opt.name,
+      values: opt.values,
+    }));
+
+  return {
+    price,
+    originalPrice,
+    description,
+    colorGroupId,
+    colorName,
+    imageUrl,
+    variants,
+    options: options?.length > 0 ? options : undefined,
+  };
+}
+
+// Fetch all color variants from Everlane's collection page
+async function fetchEverlaneColorVariants(colorGroupId: string, currentHandle: string): Promise<ColorVariantData[]> {
+  const colorVariants: ColorVariantData[] = [];
+
+  try {
+    // Everlane uses YGroup tags to group color variants
+    // We can search for products with the same YGroup tag
+    const searchUrl = `https://www.everlane.com/collections/all/products.json?limit=50`;
+
+    const response = await fetch(searchUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Accept": "application/json",
+      },
+    });
+
+    if (!response.ok) return colorVariants;
+
+    const data = await response.json();
+    const products = data.products || [];
+
+    // Filter products that have the same YGroup tag
+    const yGroupTag = `YGroup_${colorGroupId}`;
+
+    for (const product of products) {
+      const tags = product.tags || [];
+      if (tags.includes(yGroupTag) && product.handle !== currentHandle) {
+        const parsed = parseEverlaneProductJson(product);
+
+        // Extract proper product name (without color)
+        const titleParts = (product.title || "").split("|");
+        const name = titleParts[0].trim();
+
+        if (parsed.colorName && parsed.price !== undefined) {
+          colorVariants.push({
+            handle: product.handle,
+            colorName: parsed.colorName,
+            colorGroupId,
+            name,
+            description: parsed.description,
+            price: parsed.price,
+            originalPrice: parsed.originalPrice,
+            imageUrl: parsed.imageUrl,
+            variants: parsed.variants || [],
+            options: parsed.options,
+          });
+        }
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching color variants:", error);
+  }
+
+  return colorVariants;
 }
 
 // Fetch product data from Everlane JSON API
@@ -265,28 +428,8 @@ async function fetchEverlaneProduct(sourceUrl: string): Promise<RefreshedProduct
 
     if (!product) return null;
 
-    // Get the lowest price variant
-    const prices = product.variants
-      .map((v: { price: string }) => parseFloat(v.price))
-      .filter((p: number) => !isNaN(p) && p > 0);
-
-    const price = prices.length > 0 ? Math.min(...prices) : undefined;
-
-    // Get original price if on sale
-    const compareAtPrices = product.variants
-      .map((v: { price: string; compare_at_price: string | null }) => ({
-        price: parseFloat(v.price),
-        compareAt: v.compare_at_price ? parseFloat(v.compare_at_price) : null
-      }))
-      .filter((p: { price: number; compareAt: number | null }) => p.compareAt && p.compareAt > p.price)
-      .map((p: { compareAt: number | null }) => p.compareAt);
-
-    const originalPrice = compareAtPrices.length > 0 ? Math.max(...compareAtPrices) : undefined;
-
-    // Build variants array - fetch availability from HTML page
-    let variants: RefreshedProductData['variants'];
-
     // Try to get availability from HTML page
+    let availabilityMap: Map<number, boolean> | undefined;
     try {
       const htmlResponse = await fetch(sourceUrl, {
         headers: {
@@ -302,20 +445,10 @@ async function fetchEverlaneProduct(sourceUrl: string): Promise<RefreshedProduct
         if (variantMatch) {
           const productData = JSON.parse(variantMatch[1]);
           if (productData.variants && Array.isArray(productData.variants)) {
-            const availabilityMap = new Map<number, boolean>();
+            availabilityMap = new Map<number, boolean>();
             for (const v of productData.variants) {
               availabilityMap.set(v.id, v.available ?? true);
             }
-
-            variants = product.variants.map((v: { id: number; title: string; price: string; option1: string | null; option2: string | null; option3: string | null }) => ({
-              id: v.id.toString(),
-              title: v.title,
-              available: availabilityMap.get(v.id) ?? true,
-              price: parseFloat(v.price),
-              option1: v.option1 || undefined,
-              option2: v.option2 || undefined,
-              option3: v.option3 || undefined,
-            }));
           }
         }
       }
@@ -323,32 +456,23 @@ async function fetchEverlaneProduct(sourceUrl: string): Promise<RefreshedProduct
       // Fall back to assuming all variants available
     }
 
-    // If we didn't get availability data, assume all available
-    if (!variants) {
-      variants = product.variants.map((v: { id: number; title: string; price: string; option1: string | null; option2: string | null; option3: string | null }) => ({
-        id: v.id.toString(),
-        title: v.title,
-        available: true,
-        price: parseFloat(v.price),
-        option1: v.option1 || undefined,
-        option2: v.option2 || undefined,
-        option3: v.option3 || undefined,
-      }));
+    const parsed = parseEverlaneProductJson(product, availabilityMap);
+
+    // Fetch color variants if we have a colorGroupId
+    let colorVariants: ColorVariantData[] | undefined;
+    if (parsed.colorGroupId) {
+      colorVariants = await fetchEverlaneColorVariants(parsed.colorGroupId, handle);
     }
 
-    // Build options array
-    const options = product.options
-      ?.filter((opt: { name: string; values: string[] }) => opt.name !== 'Title' && opt.values.length > 0)
-      ?.map((opt: { name: string; values: string[] }) => ({
-        name: opt.name,
-        values: opt.values,
-      }));
-
     return {
-      price,
-      originalPrice,
-      variants,
-      options: options?.length > 0 ? options : undefined,
+      price: parsed.price,
+      originalPrice: parsed.originalPrice,
+      description: parsed.description,
+      imageUrl: parsed.imageUrl,
+      variants: parsed.variants,
+      options: parsed.options,
+      colorGroupId: parsed.colorGroupId,
+      colorVariants: colorVariants && colorVariants.length > 0 ? colorVariants : undefined,
     };
   } catch (error) {
     console.error("Error fetching Everlane product:", error);
@@ -417,6 +541,7 @@ export const refreshProductFromSource = action({
     priceChanged: boolean;
     oldPrice?: number;
     newPrice?: number;
+    colorVariantsAdded?: number;
     error?: string;
   }> => {
     // Get the product
@@ -463,14 +588,48 @@ export const refreshProductFromSource = action({
     const newPrice = refreshedData.price;
     const priceChanged = Math.abs(oldPrice - newPrice) > 0.01;
 
-    // Update the product
+    // Update the product with new data including description
     await ctx.runMutation(internal.scraper.updateProductFromRefresh, {
       productId: args.productId,
       price: newPrice,
       originalPrice: refreshedData.originalPrice,
+      description: refreshedData.description,
+      imageUrl: refreshedData.imageUrl,
       variants: refreshedData.variants,
       options: refreshedData.options,
+      colorGroupId: refreshedData.colorGroupId,
     });
+
+    // Add any missing color variants
+    let colorVariantsAdded = 0;
+    if (refreshedData.colorVariants && refreshedData.colorVariants.length > 0) {
+      for (const variant of refreshedData.colorVariants) {
+        const sourceUrl = `https://www.everlane.com/products/${variant.handle}`;
+
+        // Check if this color variant already exists
+        const result = await ctx.runMutation(internal.scraper.upsertColorVariant, {
+          sourceUrl,
+          name: variant.name,
+          description: variant.description,
+          brand: product.brand,
+          price: variant.price,
+          originalPrice: variant.originalPrice,
+          category: product.category,
+          gender: product.gender,
+          condition: product.condition,
+          sourcePlatform: product.sourcePlatform,
+          imageUrl: variant.imageUrl,
+          colorGroupId: variant.colorGroupId,
+          colorName: variant.colorName,
+          variants: variant.variants,
+          options: variant.options,
+        });
+
+        if (result.isNew) {
+          colorVariantsAdded++;
+        }
+      }
+    }
 
     // Record price check
     await ctx.runMutation(internal.scraper.recordPriceCheck, {
@@ -483,6 +642,7 @@ export const refreshProductFromSource = action({
       priceChanged,
       oldPrice: priceChanged ? oldPrice : undefined,
       newPrice: priceChanged ? newPrice : undefined,
+      colorVariantsAdded: colorVariantsAdded > 0 ? colorVariantsAdded : undefined,
     };
   },
 });
@@ -513,6 +673,8 @@ export const updateProductFromRefresh = internalMutation({
     productId: v.id("products"),
     price: v.number(),
     originalPrice: v.optional(v.number()),
+    description: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
     variants: v.optional(v.array(v.object({
       id: v.string(),
       title: v.string(),
@@ -526,6 +688,7 @@ export const updateProductFromRefresh = internalMutation({
       name: v.string(),
       values: v.array(v.string()),
     }))),
+    colorGroupId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const updates: Record<string, unknown> = { price: args.price };
@@ -533,14 +696,97 @@ export const updateProductFromRefresh = internalMutation({
     if (args.originalPrice !== undefined) {
       updates.originalPrice = args.originalPrice;
     }
+    if (args.description !== undefined && args.description.length > 0) {
+      updates.description = args.description;
+    }
+    if (args.imageUrl !== undefined) {
+      updates.imageUrl = args.imageUrl;
+    }
     if (args.variants !== undefined) {
       updates.variants = args.variants;
     }
     if (args.options !== undefined) {
       updates.options = args.options;
     }
+    if (args.colorGroupId !== undefined) {
+      updates.colorGroupId = args.colorGroupId;
+    }
 
     await ctx.db.patch(args.productId, updates);
+  },
+});
+
+// Internal mutation to upsert a color variant
+export const upsertColorVariant = internalMutation({
+  args: {
+    sourceUrl: v.string(),
+    name: v.string(),
+    description: v.string(),
+    brand: v.string(),
+    price: v.number(),
+    originalPrice: v.optional(v.number()),
+    category: v.string(),
+    gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
+    condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
+    sourcePlatform: v.string(),
+    imageUrl: v.optional(v.string()),
+    colorGroupId: v.string(),
+    colorName: v.string(),
+    variants: v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+      available: v.boolean(),
+      price: v.optional(v.number()),
+      option1: v.optional(v.string()),
+      option2: v.optional(v.string()),
+      option3: v.optional(v.string()),
+    })),
+    options: v.optional(v.array(v.object({
+      name: v.string(),
+      values: v.array(v.string()),
+    }))),
+  },
+  handler: async (ctx, args) => {
+    // Check if product already exists by sourceUrl
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_sourceUrl", (q) => q.eq("sourceUrl", args.sourceUrl))
+      .first();
+
+    if (existing) {
+      // Update existing product
+      await ctx.db.patch(existing._id, {
+        price: args.price,
+        originalPrice: args.originalPrice,
+        description: args.description,
+        imageUrl: args.imageUrl,
+        variants: args.variants,
+        options: args.options,
+        colorGroupId: args.colorGroupId,
+        colorName: args.colorName,
+      });
+      return { id: existing._id, isNew: false };
+    } else {
+      // Insert new product
+      const id = await ctx.db.insert("products", {
+        name: args.name,
+        description: args.description,
+        brand: args.brand,
+        price: args.price,
+        originalPrice: args.originalPrice,
+        category: args.category,
+        gender: args.gender,
+        condition: args.condition,
+        sourceUrl: args.sourceUrl,
+        sourcePlatform: args.sourcePlatform,
+        imageUrl: args.imageUrl,
+        colorGroupId: args.colorGroupId,
+        colorName: args.colorName,
+        variants: args.variants,
+        options: args.options,
+      });
+      return { id, isNew: true };
+    }
   },
 });
 
