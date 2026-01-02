@@ -195,7 +195,7 @@ export function SearchBar({
         <button
           type="submit"
           disabled={isLoading || !query.trim()}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-amber-600 p-3 text-white transition-colors hover:bg-amber-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-amber-500 dark:hover:bg-amber-400"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-yellow-600 p-3 text-white transition-colors hover:bg-yellow-500 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-yellow-500 dark:hover:bg-yellow-400"
         >
           {isLoading ? (
             <svg
@@ -272,7 +272,7 @@ export function SearchBar({
             setQuery(exampleQuery);
             onSearch(exampleQuery);
           }}
-          className="text-blue-600 hover:text-blue-700 hover:underline dark:text-blue-400 dark:hover:text-blue-300"
+          className="text-purple-600 hover:text-purple-700 hover:underline dark:text-purple-400 dark:hover:text-purple-300"
         >
           &quot;women&apos;s black leather boots size 8 under $200&quot;
         </button>
