@@ -137,6 +137,44 @@ export const clearSearchHistory = mutation({
   },
 });
 
+// Calculate how well a product name matches the search query
+function calculateProductMatchScore(productName: string, queryWords: string[]): number {
+  const nameLower = productName.toLowerCase();
+  const nameWords = nameLower.split(/\s+/);
+  let score = 0;
+  let matchedWords = 0;
+
+  for (const queryWord of queryWords) {
+    // Exact word match in name
+    if (nameWords.includes(queryWord)) {
+      score += 100;
+      matchedWords++;
+    }
+    // Word is contained in name
+    else if (nameLower.includes(queryWord)) {
+      score += 50;
+      matchedWords++;
+    }
+    // Partial match (word starts with query or query starts with word)
+    else if (nameWords.some(nw => nw.startsWith(queryWord) || queryWord.startsWith(nw))) {
+      score += 25;
+      matchedWords++;
+    }
+  }
+
+  // Bonus for matching multiple words (strong signal of intent)
+  if (matchedWords >= 2) {
+    score += matchedWords * 50;
+  }
+
+  // Bonus for matching ALL query words
+  if (matchedWords === queryWords.length && queryWords.length > 0) {
+    score += 100;
+  }
+
+  return score;
+}
+
 // Get autocomplete suggestions based on query prefix
 export const getAutocompleteSuggestions = query({
   args: {
@@ -152,7 +190,8 @@ export const getAutocompleteSuggestions = query({
       return [];
     }
 
-    const suggestions: { query: string; type: "recent" | "popular" | "product" }[] = [];
+    const suggestions: { query: string; type: "recent" | "popular" | "product"; score?: number }[] = [];
+    const queryWords = prefix.split(/\s+/).filter(w => w.length >= 2);
 
     // Get user's recent searches matching prefix
     if (args.clerkId) {
@@ -167,7 +206,7 @@ export const getAutocompleteSuggestions = query({
         .slice(0, 3);
 
       for (const search of matchingRecent) {
-        suggestions.push({ query: search.query, type: "recent" });
+        suggestions.push({ query: search.query, type: "recent", score: 1000 });
       }
     }
 
@@ -190,7 +229,7 @@ export const getAutocompleteSuggestions = query({
     const sortedPopular = Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 3)
-      .map(([query]) => ({ query, type: "popular" as const }));
+      .map(([query]) => ({ query, type: "popular" as const, score: 500 }));
 
     for (const pop of sortedPopular) {
       if (!suggestions.find((s) => s.query.toLowerCase() === pop.query.toLowerCase())) {
@@ -198,28 +237,49 @@ export const getAutocompleteSuggestions = query({
       }
     }
 
-    // Get product names/brands matching prefix
-    const products = await ctx.db.query("products").take(200);
-    const matchingProducts = new Set<string>();
+    // Get ALL products and score them by name match
+    const products = await ctx.db.query("products").collect();
+    const scoredProducts: { name: string; score: number }[] = [];
 
     for (const product of products) {
-      if (product.name.toLowerCase().includes(prefix)) {
-        matchingProducts.add(product.name);
-      }
-      if (product.brand.toLowerCase().includes(prefix)) {
-        matchingProducts.add(product.brand);
+      // Skip gift cards
+      if (product.name.toLowerCase().includes('gift card')) continue;
+
+      const score = calculateProductMatchScore(product.name, queryWords);
+      if (score > 0) {
+        scoredProducts.push({ name: product.name, score });
       }
     }
 
-    const productSuggestions = Array.from(matchingProducts)
-      .slice(0, 3)
-      .map((query) => ({ query, type: "product" as const }));
+    // Sort by score and deduplicate
+    scoredProducts.sort((a, b) => b.score - a.score);
+    const seenNames = new Set<string>();
+    const topProducts: { name: string; score: number }[] = [];
 
-    for (const prod of productSuggestions) {
-      if (!suggestions.find((s) => s.query.toLowerCase() === prod.query.toLowerCase())) {
-        suggestions.push(prod);
+    for (const p of scoredProducts) {
+      const key = p.name.toLowerCase();
+      if (!seenNames.has(key)) {
+        seenNames.add(key);
+        topProducts.push(p);
+        if (topProducts.length >= 5) break;
       }
     }
+
+    // Add product suggestions
+    for (const prod of topProducts) {
+      if (!suggestions.find((s) => s.query.toLowerCase() === prod.name.toLowerCase())) {
+        suggestions.push({ query: prod.name, type: "product", score: prod.score });
+      }
+    }
+
+    // Sort all suggestions: recent first, then by score
+    suggestions.sort((a, b) => {
+      // Recent searches always first
+      if (a.type === "recent" && b.type !== "recent") return -1;
+      if (b.type === "recent" && a.type !== "recent") return 1;
+      // Then by score
+      return (b.score || 0) - (a.score || 0);
+    });
 
     return suggestions.slice(0, limit);
   },

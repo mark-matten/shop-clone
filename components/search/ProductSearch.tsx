@@ -49,6 +49,7 @@ interface SearchResult {
   products: Product[];
   filter: SearchFilter;
   totalResults: number;
+  partialMatches?: Product[];
 }
 
 // Size ordering for comparison
@@ -118,10 +119,16 @@ const SPECIFIC_CATEGORY_KEYWORDS: Record<string, string[]> = {
   loafer: ["loafer", "moccasin"],
   flats: ["flat", "ballet"],
   flat: ["flat", "ballet"],
+  mules: ["mule"],
+  mule: ["mule"],
+  slippers: ["slipper"],
+  slipper: ["slipper"],
   cardigans: ["cardigan"],
   cardigan: ["cardigan"],
   hoodies: ["hoodie"],
   hoodie: ["hoodie"],
+  sweaters: ["sweater", "pullover"],
+  sweater: ["sweater", "pullover"],
   blazers: ["blazer"],
   blazer: ["blazer"],
   coats: ["coat", "overcoat", "trench"],
@@ -133,6 +140,8 @@ const SPECIFIC_CATEGORY_KEYWORDS: Record<string, string[]> = {
   tote: ["tote"],
   backpacks: ["backpack", "rucksack"],
   backpack: ["backpack", "rucksack"],
+  gloves: ["glove"],
+  glove: ["glove"],
 };
 
 function categoryMatches(productCategory: string, filterCategory: string, productName?: string): boolean {
@@ -540,6 +549,7 @@ export function ProductSearch() {
         products: result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[],
         filter: result.filter as SearchFilter,
         totalResults: result.totalResults,
+        partialMatches: result.partialMatches?.map((p) => ({ ...p, _id: p._id.toString() })) as Product[] | undefined,
       });
 
       // Save to search history
@@ -591,6 +601,7 @@ export function ProductSearch() {
           products: result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[],
           filter: result.filter as SearchFilter,
           totalResults: result.totalResults,
+          partialMatches: result.partialMatches?.map((p) => ({ ...p, _id: p._id.toString() })) as Product[] | undefined,
         });
         // Preserve the remaining filters (don't let LLM re-parse override them)
         // Merge the new search filter with our explicitly kept filters
@@ -976,56 +987,88 @@ export function ProductSearch() {
                 )}
               </>
             ) : (
-            <div className="rounded-xl border border-zinc-200 bg-zinc-50 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
-              <svg
-                className="mx-auto h-12 w-12 text-zinc-400"
-                xmlns="http://www.w3.org/2000/svg"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke="currentColor"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={1.5}
-                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
-                />
-              </svg>
-              <p className="mt-4 text-lg font-medium text-zinc-700 dark:text-zinc-300">
-                No products found
-              </p>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
-                Try adjusting your search or removing some filters
-              </p>
-
-              {/* Clear filters button */}
-              {(activeFilter && Object.keys(activeFilter).filter(k => k !== "query" && activeFilter[k as keyof SearchFilter] !== undefined).length > 0) && (
-                <button
-                  onClick={() => setActiveFilter({ query: activeFilter.query })}
-                  className="mt-4 inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+            <div className="space-y-6">
+              <div className="rounded-xl border border-zinc-200 bg-zinc-50 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
+                <svg
+                  className="mx-auto h-12 w-12 text-zinc-400"
+                  xmlns="http://www.w3.org/2000/svg"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
                 >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                  Clear all filters
-                </button>
-              )}
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={1.5}
+                    d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+                  />
+                </svg>
+                <p className="mt-4 text-lg font-medium text-zinc-700 dark:text-zinc-300">
+                  No exact matches found
+                </p>
+                <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-500">
+                  Try adjusting your search or removing some filters
+                </p>
 
-              {/* Search suggestions */}
-              <div className="mt-6">
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">Try searching for:</p>
-                <div className="mt-2 flex flex-wrap justify-center gap-2">
-                  {["women's shoes", "men's jacket", "vintage denim", "leather boots"].map((suggestion) => (
-                    <button
-                      key={suggestion}
-                      onClick={() => handleSearch(suggestion)}
-                      className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600"
-                    >
-                      {suggestion}
-                    </button>
-                  ))}
+                {/* Clear filters button */}
+                {(activeFilter && Object.keys(activeFilter).filter(k => k !== "query" && activeFilter[k as keyof SearchFilter] !== undefined).length > 0) && (
+                  <button
+                    onClick={() => setActiveFilter({ query: activeFilter.query })}
+                    className="mt-4 inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                    Clear all filters
+                  </button>
+                )}
+
+                {/* Search suggestions */}
+                <div className="mt-6">
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">Try searching for:</p>
+                  <div className="mt-2 flex flex-wrap justify-center gap-2">
+                    {["women's shoes", "men's jacket", "vintage denim", "leather boots"].map((suggestion) => (
+                      <button
+                        key={suggestion}
+                        onClick={() => handleSearch(suggestion)}
+                        className="rounded-full border border-zinc-200 bg-white px-3 py-1.5 text-sm text-zinc-600 transition-colors hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:border-zinc-600"
+                      >
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
                 </div>
               </div>
+
+              {/* Partial Matches Section */}
+              {searchResult?.partialMatches && searchResult.partialMatches.length > 0 && (
+                <div>
+                  <h3 className="mb-4 text-lg font-medium text-zinc-700 dark:text-zinc-300">
+                    Similar products you might like
+                  </h3>
+                  {viewMode === "grid" ? (
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                      {searchResult.partialMatches.map((product) => (
+                        <ProductCard
+                          key={product._id}
+                          product={product}
+                          isFavorited={favoriteIds?.includes(product._id as any) ?? false}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {searchResult.partialMatches.map((product) => (
+                        <ProductListItem
+                          key={product._id}
+                          product={product}
+                          isFavorited={favoriteIds?.includes(product._id as any) ?? false}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
             );
           })()}

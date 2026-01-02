@@ -319,6 +319,7 @@ export const searchProducts = action({
     products: any[];
     filter: SearchFilter;
     totalResults: number;
+    partialMatches?: any[];
   }> => {
     const limit = args.limit ?? 50; // Fetch more products for client-side filtering
 
@@ -336,11 +337,21 @@ export const searchProducts = action({
       limit,
     });
 
+    // Step 3: If no exact matches, get partial matches based on name similarity
+    let partialMatches: any[] | undefined;
+    if (products.length === 0) {
+      partialMatches = await ctx.runQuery(internal.search.getPartialMatches, {
+        searchText: args.searchText,
+        limit: 10,
+      });
+    }
+
     // Return products and filters (filters applied client-side)
     return {
       products,
       filter,
       totalResults: products.length,
+      partialMatches,
     };
   },
 });
@@ -884,6 +895,39 @@ export const searchWithScores = query({
   },
 });
 
+// Calculate name match score - how well query words match product name
+function calculateNameMatchScore(productName: string, queryWords: string[]): number {
+  const nameLower = productName.toLowerCase();
+  const nameWords = nameLower.split(/\s+/);
+  let score = 0;
+  let matchedWords = 0;
+
+  for (const queryWord of queryWords) {
+    // Exact word match in name (highest priority)
+    if (nameWords.includes(queryWord)) {
+      score += 50;
+      matchedWords++;
+    }
+    // Partial match (word contains query or query contains word)
+    else if (nameLower.includes(queryWord)) {
+      score += 30;
+      matchedWords++;
+    }
+    // Check if any name word starts with the query word
+    else if (nameWords.some(nw => nw.startsWith(queryWord) || queryWord.startsWith(nw))) {
+      score += 20;
+      matchedWords++;
+    }
+  }
+
+  // Bonus for matching multiple words
+  if (matchedWords >= 2) {
+    score += matchedWords * 15;
+  }
+
+  return score;
+}
+
 export const filterProductsInternal = internalQuery({
   args: {
     query: v.optional(v.string()),
@@ -909,6 +953,13 @@ export const filterProductsInternal = internalQuery({
     // Parse query to extract color words and category words separately
     const queryLower = (args.query || "").toLowerCase();
     const queryTokens = queryLower.split(/\s+/).filter(w => w.length > 1);
+
+    // Get query words for name matching (exclude only gender and color words, keep category words)
+    // This allows product names like "The Glove Mule" to match when searching "glove mule"
+    const nameMatchWords = queryTokens.filter(token =>
+      !genderWords.includes(token) &&
+      !ALL_COLOR_WORDS.has(token)
+    );
 
     // Detect color words in the query
     const detectedColors: string[] = [];
@@ -938,8 +989,15 @@ export const filterProductsInternal = internalQuery({
         // Exclude gift cards from search results
         if (product.name.toLowerCase().includes('gift card')) return null;
 
+        // Calculate name match score FIRST
+        const nameScore = calculateNameMatchScore(product.name, nameMatchWords);
+
+        // If we have a strong name match (multiple words match), bypass strict filters
+        const hasStrongNameMatch = nameScore >= 80;
+
         // STRICT COLOR MATCHING: If user searched for a color, product MUST match that color
-        if (detectedColors.length > 0) {
+        // (unless we have a strong name match)
+        if (detectedColors.length > 0 && !hasStrongNameMatch) {
           const productColor = product.colorName || "";
           if (!productMatchesColor(productColor, detectedColors)) {
             return null;  // Product doesn't match the searched color - exclude it
@@ -947,7 +1005,8 @@ export const filterProductsInternal = internalQuery({
         }
 
         // STRICT CATEGORY MATCHING: If user searched for a category, product MUST match that category group
-        if (detectedCategoryGroup) {
+        // (unless we have a strong name match)
+        if (detectedCategoryGroup && !hasStrongNameMatch) {
           if (!productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
             return null;  // Product doesn't match the searched category - exclude it
           }
@@ -980,20 +1039,24 @@ export const filterProductsInternal = internalQuery({
         if (args.maxPrice !== undefined && product.price > args.maxPrice) return null;
 
         // Calculate relevance score
-        let score = 0;
+        let score = nameScore; // Start with name match score
 
         // Score for color match
         if (detectedColors.length > 0 && product.colorName) {
-          score += 25;  // Base score for matching color
+          if (productMatchesColor(product.colorName, detectedColors)) {
+            score += 25;  // Bonus for matching color
+          }
         }
 
         // Score for category match
         if (detectedCategoryGroup) {
-          score += 20;  // Base score for matching category
-          // Bonus for exact category match
-          const categoryLower = product.category.toLowerCase();
-          if (CATEGORY_GROUPS[detectedCategoryGroup]?.some(kw => categoryLower.includes(kw))) {
-            score += 10;
+          if (productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
+            score += 20;  // Base score for matching category
+            // Bonus for exact category match
+            const categoryLower = product.category.toLowerCase();
+            if (CATEGORY_GROUPS[detectedCategoryGroup]?.some(kw => categoryLower.includes(kw))) {
+              score += 10;
+            }
           }
         }
 
@@ -1008,6 +1071,75 @@ export const filterProductsInternal = internalQuery({
     if (args.includeScores) {
       return scoredProducts.slice(0, limit);
     }
+    return scoredProducts.slice(0, limit).map(item => item.product);
+  },
+});
+
+// Get partial matches based on name similarity when no exact matches found
+export const getPartialMatches = internalQuery({
+  args: {
+    searchText: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 10;
+    const products = await ctx.db.query("products").collect();
+
+    const queryLower = args.searchText.toLowerCase();
+    const queryWords = queryLower.split(/\s+/).filter(w => w.length > 2);
+
+    // Score all products by how well they match the query
+    const scoredProducts = products
+      .map((product) => {
+        // Exclude gift cards
+        if (product.name.toLowerCase().includes('gift card')) return null;
+
+        const nameLower = product.name.toLowerCase();
+        const brandLower = product.brand.toLowerCase();
+        const categoryLower = product.category.toLowerCase();
+        const descLower = (product.description || "").toLowerCase();
+        const materialLower = (product.material || "").toLowerCase();
+        const colorLower = (product.colorName || "").toLowerCase();
+
+        let score = 0;
+
+        for (const word of queryWords) {
+          // Name matches are highest priority
+          if (nameLower.includes(word)) {
+            score += 50;
+            // Bonus for word being a distinct part of the name
+            if (nameLower.split(/\s+/).includes(word)) {
+              score += 20;
+            }
+          }
+          // Brand match
+          else if (brandLower.includes(word)) {
+            score += 15;
+          }
+          // Category match
+          else if (categoryLower.includes(word)) {
+            score += 10;
+          }
+          // Material/color match
+          else if (materialLower.includes(word) || colorLower.includes(word)) {
+            score += 8;
+          }
+          // Description match
+          else if (descLower.includes(word)) {
+            score += 3;
+          }
+        }
+
+        // Only include products that have some match
+        if (score === 0) return null;
+
+        return { product, score };
+      })
+      .filter((item): item is { product: typeof products[0]; score: number } => item !== null);
+
+    // Sort by score and return top matches
+    scoredProducts.sort((a, b) => b.score - a.score);
+
     return scoredProducts.slice(0, limit).map(item => item.product);
   },
 });

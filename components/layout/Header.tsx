@@ -101,7 +101,7 @@ export function Header() {
           >
             Search
           </Link>
-          {/* Hidden for now
+          {/* Hidden for now - Compare and Favorites moved to My Closet
           <Link
             href="/compare"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -112,7 +112,6 @@ export function Header() {
           >
             Compare
           </Link>
-          */}
           <Link
             href="/favorites"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -123,6 +122,7 @@ export function Header() {
           >
             Favorites
           </Link>
+          */}
           <Link
             href="/closet"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -375,7 +375,7 @@ export function Header() {
             >
               Search
             </Link>
-            {/* Hidden for now
+            {/* Hidden for now - Compare and Favorites moved to My Closet
             <Link
               href="/compare"
               onClick={() => setShowMobileMenu(false)}
@@ -387,7 +387,6 @@ export function Header() {
             >
               Compare
             </Link>
-            */}
             <Link
               href="/favorites"
               onClick={() => setShowMobileMenu(false)}
@@ -399,6 +398,7 @@ export function Header() {
             >
               Favorites
             </Link>
+            */}
             <Link
               href="/closet"
               onClick={() => setShowMobileMenu(false)}
