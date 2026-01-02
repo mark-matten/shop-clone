@@ -243,12 +243,13 @@ export const getFavoritesWithTracking = query({
   },
 });
 
-// Update favorite item options (size, color)
+// Update favorite item options (size, color, category)
 export const updateFavoriteOptions = mutation({
   args: {
     clerkId: v.string(),
     productId: v.id("products"),
     selectedOptions: v.record(v.string(), v.string()),
+    customCategory: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -268,9 +269,13 @@ export const updateFavoriteOptions = mutation({
       .first();
 
     if (favorite) {
-      await ctx.db.patch(favorite._id, {
+      const updates: { selectedOptions: Record<string, string>; customCategory?: string } = {
         selectedOptions: args.selectedOptions,
-      });
+      };
+      if (args.customCategory !== undefined) {
+        updates.customCategory = args.customCategory;
+      }
+      await ctx.db.patch(favorite._id, updates);
     }
   },
 });

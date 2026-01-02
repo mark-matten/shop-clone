@@ -366,11 +366,16 @@ export default function ClosetPage() {
       const existing = itemMap.get(fav.product._id);
       if (existing) {
         existing.isWishlist = true;
+        // If favorite has customCategory but closet item doesn't, use favorite's
+        if (!existing.customCategory && (fav as any).customCategory) {
+          existing.customCategory = (fav as any).customCategory;
+        }
       } else {
         itemMap.set(fav.product._id, {
           productId: fav.product._id,
           product: fav.product as CombinedItem["product"],
           selectedOptions: fav.selectedOptions,
+          customCategory: (fav as any).customCategory,
           isOwned: false,
           isWishlist: true,
           addedAt: fav.createdAt,
@@ -478,18 +483,21 @@ export default function ClosetPage() {
   const handleSaveEdit = async () => {
     if (!user?.id || !editingItem) return;
 
+    const categoryChanged = editCategory !== editingItem.currentCategory;
+
     if (editingItem.isOwned) {
       await updateClosetItemOptions({
         clerkId: user.id,
         productId: editingItem.productId,
         selectedOptions: editOptions,
-        customCategory: editCategory !== editingItem.currentCategory ? editCategory : undefined,
+        customCategory: categoryChanged ? editCategory : undefined,
       });
     } else {
       await updateFavoriteOptions({
         clerkId: user.id,
         productId: editingItem.productId,
         selectedOptions: editOptions,
+        customCategory: categoryChanged ? editCategory : undefined,
       });
     }
     setEditingItem(null);
@@ -787,25 +795,23 @@ export default function ClosetPage() {
             </p>
 
             <div className="mt-4 space-y-4">
-              {/* Category Selection */}
-              {editingItem.isOwned && (
-                <div>
-                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                    Category
-                  </label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value)}
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  >
-                    {CLOSET_CATEGORIES.map((cat) => (
-                      <option key={cat} value={cat} className="capitalize">
-                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              {/* Category Selection - available for both owned and wishlist items */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Category
+                </label>
+                <select
+                  value={editCategory}
+                  onChange={(e) => setEditCategory(e.target.value)}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                >
+                  {CLOSET_CATEGORIES.map((cat) => (
+                    <option key={cat} value={cat} className="capitalize">
+                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               {/* Color selection from variants */}
               {colorVariants && colorVariants.length > 1 && (

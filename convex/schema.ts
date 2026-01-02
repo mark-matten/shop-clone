@@ -54,6 +54,8 @@ export default defineSchema({
     createdAt: v.number(),
     // Selected variant options (e.g., { "Color": "Black", "Size": "M" })
     selectedOptions: v.optional(v.record(v.string(), v.string())),
+    // Custom category override (user can change from product's default category)
+    customCategory: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
     .index("by_productId", ["productId"])
