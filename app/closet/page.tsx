@@ -116,31 +116,62 @@ interface EditingItem {
 type TypeFilter = "all" | "owned" | "wishlist";
 type ViewMode = "grid" | "list";
 
-// Compact list item component
-function ListItem({
+// Sortable list item component
+function SortableListItem({
   item,
   onEdit,
   onRemove,
+  isDragging,
 }: {
   item: CombinedItem;
   onEdit: (item: CombinedItem) => void;
   onRemove: (item: CombinedItem) => void;
+  isDragging?: boolean;
 }) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+  } = useSortable({ id: item.productId });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
   const product = item.product;
   const selectedColor = item.selectedOptions?.["Color"] || item.selectedOptions?.["Colour"] || product.colorName;
   const selectedSize = item.selectedOptions?.["Size"];
   const colorHex = selectedColor ? getColorFromName(selectedColor) : null;
 
   return (
-    <div className="group flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-2 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-2 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
+    >
+      {/* Drag Handle */}
+      <div
+        {...attributes}
+        {...listeners}
+        className="flex-shrink-0 cursor-grab rounded p-1 text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-100 hover:text-zinc-600 group-hover:opacity-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 active:cursor-grabbing"
+      >
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
+        </svg>
+      </div>
+
       {/* Thumbnail */}
       <Link href={`/product/${product._id}`} className="flex-shrink-0">
-        <div className="h-16 w-16 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+        <div className="h-14 w-14 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
           ) : (
             <div className="flex h-full w-full items-center justify-center text-zinc-400">
-              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
             </div>
@@ -150,44 +181,39 @@ function ListItem({
 
       {/* Info */}
       <Link href={`/product/${product._id}`} className="min-w-0 flex-1">
-        <div className="flex items-start justify-between gap-2">
-          <div className="min-w-0">
-            <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
-              {product.brand}
-            </p>
-            <h3 className="truncate text-sm font-medium text-zinc-900 dark:text-white">
-              {product.name}
-            </h3>
-            <div className="mt-1 flex flex-wrap items-center gap-1">
-              {selectedColor && colorHex && (
+        <div className="min-w-0">
+          <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+            {product.brand}
+          </p>
+          <h3 className="truncate text-sm font-medium text-zinc-900 dark:text-white">
+            {product.name}
+          </h3>
+          <div className="mt-1 flex flex-wrap items-center gap-1">
+            {selectedColor && colorHex && (
+              <span
+                className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium"
+                style={{
+                  backgroundColor: `${colorHex}20`,
+                  color: getColorBadgeTextColor(colorHex),
+                  borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+                }}
+              >
                 <span
-                  className="inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-xs font-medium"
+                  className="h-2 w-2 rounded-full border"
                   style={{
-                    backgroundColor: `${colorHex}20`,
-                    color: getColorBadgeTextColor(colorHex),
+                    backgroundColor: colorHex,
                     borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
                   }}
-                >
-                  <span
-                    className="h-2 w-2 rounded-full border"
-                    style={{
-                      backgroundColor: colorHex,
-                      borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
-                    }}
-                  />
-                  {selectedColor}
-                </span>
-              )}
-              {selectedSize && (
-                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                  {selectedSize}
-                </span>
-              )}
-            </div>
+                />
+                {selectedColor}
+              </span>
+            )}
+            {selectedSize && (
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                {selectedSize}
+              </span>
+            )}
           </div>
-          <p className="flex-shrink-0 text-sm font-semibold text-zinc-900 dark:text-white">
-            ${product.price.toFixed(2)}
-          </p>
         </div>
       </Link>
 
@@ -332,9 +358,6 @@ function SortableItem({
               </span>
             )}
           </div>
-          <p className="mt-2 text-sm font-semibold text-zinc-900 dark:text-white">
-            ${product.price.toFixed(2)}
-          </p>
         </div>
       </Link>
 
@@ -361,7 +384,7 @@ function SortableItem({
       </div>
 
       {/* Status Badge */}
-      <div className="absolute right-2 bottom-16">
+      <div className="absolute right-2 bottom-4">
         {item.isOwned ? (
           <span className="inline-flex items-center gap-1 rounded-full bg-purple-600 px-2 py-1 text-xs font-medium text-white">
             <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
@@ -431,6 +454,53 @@ function CategorySection({
           Drag items here
         </div>
       )}
+    </div>
+  );
+}
+
+// Droppable list category section
+function ListCategorySection({
+  category,
+  items,
+  onEdit,
+  onRemove,
+  activeId,
+  isOver,
+}: {
+  category: string;
+  items: CombinedItem[];
+  onEdit: (item: CombinedItem) => void;
+  onRemove: (item: CombinedItem) => void;
+  activeId: string | null;
+  isOver: boolean;
+}) {
+  const { setNodeRef } = useDroppable({ id: `category-${category}` });
+
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-xl border-2 border-dashed p-4 transition-colors ${
+        isOver
+          ? "border-purple-500 bg-purple-50 dark:bg-purple-900/20"
+          : "border-transparent"
+      }`}
+    >
+      <h3 className="mb-3 text-lg font-semibold capitalize text-zinc-900 dark:text-white">
+        {category} ({items.length})
+      </h3>
+      <SortableContext items={items.map(i => i.productId)} strategy={rectSortingStrategy}>
+        <div className="space-y-2">
+          {items.map((item) => (
+            <SortableListItem
+              key={item.productId}
+              item={item}
+              onEdit={onEdit}
+              onRemove={onRemove}
+              isDragging={activeId === item.productId}
+            />
+          ))}
+        </div>
+      </SortableContext>
     </div>
   );
 }
@@ -784,7 +854,7 @@ export default function ClosetPage() {
               My Closet
             </h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {stats.total} items · {stats.categoryCount} categories{viewMode === "grid" && " · Drag to reorder"}
+              {stats.total} items · {stats.categoryCount} categories · Drag to reorder
             </p>
           </div>
           {/* View Toggle */}
@@ -913,41 +983,50 @@ export default function ClosetPage() {
             </p>
           </div>
         ) : viewMode === "list" ? (
-          /* List View */
-          <div className="mt-6 space-y-6">
-            {selectedCategory ? (
-              // Single category list
-              <div className="space-y-2">
-                {filteredItems.map((item) => (
-                  <ListItem
-                    key={item.productId}
-                    item={item}
-                    onEdit={handleEdit}
-                    onRemove={handleRemove}
-                  />
-                ))}
-              </div>
-            ) : (
-              // Category sections list
-              categories.map((category) => (
-                <div key={category}>
-                  <h3 className="mb-3 text-lg font-semibold capitalize text-zinc-900 dark:text-white">
-                    {category} ({(itemsByCategory[category] || []).length})
-                  </h3>
+          /* List View with Drag and Drop */
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragOver={handleDragOver}
+            onDragEnd={handleDragEnd}
+          >
+            <div className="mt-6 space-y-6">
+              {selectedCategory ? (
+                // Single category list
+                <SortableContext items={filteredItems.map(i => i.productId)} strategy={rectSortingStrategy}>
                   <div className="space-y-2">
-                    {(itemsByCategory[category] || []).map((item) => (
-                      <ListItem
+                    {filteredItems.map((item) => (
+                      <SortableListItem
                         key={item.productId}
                         item={item}
                         onEdit={handleEdit}
                         onRemove={handleRemove}
+                        isDragging={activeId === item.productId}
                       />
                     ))}
                   </div>
-                </div>
-              ))
-            )}
-          </div>
+                </SortableContext>
+              ) : (
+                // Category sections list
+                categories.map((category) => (
+                  <ListCategorySection
+                    key={category}
+                    category={category}
+                    items={itemsByCategory[category] || []}
+                    onEdit={handleEdit}
+                    onRemove={handleRemove}
+                    activeId={activeId}
+                    isOver={overCategory === category}
+                  />
+                ))
+              )}
+            </div>
+
+            <DragOverlay>
+              {activeItem && <DragOverlayItem item={activeItem} />}
+            </DragOverlay>
+          </DndContext>
         ) : (
           /* Grid View with Drag and Drop */
           <DndContext
