@@ -98,6 +98,116 @@ interface EditingItem {
 }
 
 type TypeFilter = "all" | "owned" | "wishlist";
+type ViewMode = "grid" | "list";
+
+// Compact list item component
+function ListItem({
+  item,
+  onEdit,
+  onRemove,
+}: {
+  item: CombinedItem;
+  onEdit: (item: CombinedItem) => void;
+  onRemove: (item: CombinedItem) => void;
+}) {
+  const product = item.product;
+  const selectedColor = item.selectedOptions?.["Color"] || item.selectedOptions?.["Colour"] || product.colorName;
+  const selectedSize = item.selectedOptions?.["Size"];
+  const colorHex = selectedColor ? getColorFromName(selectedColor) : null;
+
+  return (
+    <div className="group flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-2 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
+      {/* Thumbnail */}
+      <Link href={`/product/${product._id}`} className="flex-shrink-0">
+        <div className="h-16 w-16 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+          {product.imageUrl ? (
+            <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+          ) : (
+            <div className="flex h-full w-full items-center justify-center text-zinc-400">
+              <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+            </div>
+          )}
+        </div>
+      </Link>
+
+      {/* Info */}
+      <Link href={`/product/${product._id}`} className="min-w-0 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <div className="min-w-0">
+            <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
+              {product.brand}
+            </p>
+            <h3 className="truncate text-sm font-medium text-zinc-900 dark:text-white">
+              {product.name}
+            </h3>
+            <div className="mt-1 flex flex-wrap items-center gap-1">
+              {selectedColor && (
+                <span
+                  className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-xs font-medium"
+                  style={{ backgroundColor: `${colorHex}20`, color: colorHex || '#6b7280' }}
+                >
+                  <span className="h-2 w-2 rounded-full" style={{ backgroundColor: colorHex || '#6b7280' }} />
+                  {selectedColor}
+                </span>
+              )}
+              {selectedSize && (
+                <span className="rounded bg-blue-100 px-1.5 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  {selectedSize}
+                </span>
+              )}
+            </div>
+          </div>
+          <p className="flex-shrink-0 text-sm font-semibold text-zinc-900 dark:text-white">
+            ${product.price.toFixed(2)}
+          </p>
+        </div>
+      </Link>
+
+      {/* Status Badge */}
+      <div className="flex-shrink-0">
+        {item.isOwned ? (
+          <span className="inline-flex items-center gap-1 rounded-full bg-purple-600 px-2 py-0.5 text-xs font-medium text-white">
+            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Owned
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-1 rounded-full bg-red-500 px-2 py-0.5 text-xs font-medium text-white">
+            <svg className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            Wishlist
+          </span>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex flex-shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+        <button
+          onClick={(e) => { e.preventDefault(); onEdit(item); }}
+          className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-purple-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-purple-400"
+          title="Edit"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+          </svg>
+        </button>
+        <button
+          onClick={(e) => { e.preventDefault(); onRemove(item); }}
+          className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-400"
+          title="Remove"
+        >
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
+    </div>
+  );
+}
 
 // Sortable item component
 function SortableItem({
@@ -310,6 +420,7 @@ export default function ClosetPage() {
   const { user, isLoaded } = useUser();
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>("grid");
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [editOptions, setEditOptions] = useState<Record<string, string>>({});
   const [editCategory, setEditCategory] = useState<string>("");
@@ -636,8 +747,37 @@ export default function ClosetPage() {
               My Closet
             </h1>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              {stats.total} items · {stats.categoryCount} categories · Drag to reorder or change category
+              {stats.total} items · {stats.categoryCount} categories{viewMode === "grid" && " · Drag to reorder"}
             </p>
+          </div>
+          {/* View Toggle */}
+          <div className="flex items-center gap-1 rounded-lg border border-zinc-200 p-1 dark:border-zinc-700">
+            <button
+              onClick={() => setViewMode("grid")}
+              className={`rounded-md p-1.5 transition-colors ${
+                viewMode === "grid"
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              }`}
+              title="Grid view"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+              </svg>
+            </button>
+            <button
+              onClick={() => setViewMode("list")}
+              className={`rounded-md p-1.5 transition-colors ${
+                viewMode === "list"
+                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              }`}
+              title="List view"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+              </svg>
+            </button>
           </div>
         </div>
 
@@ -735,8 +875,44 @@ export default function ClosetPage() {
               No items match your current filters
             </p>
           </div>
+        ) : viewMode === "list" ? (
+          /* List View */
+          <div className="mt-6 space-y-6">
+            {selectedCategory ? (
+              // Single category list
+              <div className="space-y-2">
+                {filteredItems.map((item) => (
+                  <ListItem
+                    key={item.productId}
+                    item={item}
+                    onEdit={handleEdit}
+                    onRemove={handleRemove}
+                  />
+                ))}
+              </div>
+            ) : (
+              // Category sections list
+              categories.map((category) => (
+                <div key={category}>
+                  <h3 className="mb-3 text-lg font-semibold capitalize text-zinc-900 dark:text-white">
+                    {category} ({(itemsByCategory[category] || []).length})
+                  </h3>
+                  <div className="space-y-2">
+                    {(itemsByCategory[category] || []).map((item) => (
+                      <ListItem
+                        key={item.productId}
+                        item={item}
+                        onEdit={handleEdit}
+                        onRemove={handleRemove}
+                      />
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
         ) : (
-          /* Items with Drag and Drop */
+          /* Grid View with Drag and Drop */
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
