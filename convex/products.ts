@@ -146,6 +146,82 @@ export const deleteProduct = mutation({
   },
 });
 
+// Debug: Search products and show colorGroupId info
+export const debugColorGroups = query({
+  args: { searchTerm: v.string() },
+  handler: async (ctx, args) => {
+    const products = await ctx.db.query("products").collect();
+    const matches = products.filter(p =>
+      p.name.toLowerCase().includes(args.searchTerm.toLowerCase())
+    );
+    return matches.map(p => ({
+      _id: p._id,
+      name: p.name,
+      colorGroupId: p.colorGroupId || "NOT SET",
+      colorName: p.colorName || "NOT SET",
+      brand: p.brand,
+    }));
+  },
+});
+
+// Fix colorGroupId for products that should be grouped together
+// Groups products by name + brand and assigns same colorGroupId to all variants
+export const fixColorGroups = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect();
+
+    // Group products by normalized name + brand
+    const groups = new Map<string, typeof products>();
+
+    for (const product of products) {
+      // Normalize name: remove color mentions, trim, lowercase
+      const normalizedName = product.name
+        .toLowerCase()
+        .trim();
+      const key = `${product.brand.toLowerCase()}::${normalizedName}`;
+
+      const existing = groups.get(key);
+      if (existing) {
+        existing.push(product);
+      } else {
+        groups.set(key, [product]);
+      }
+    }
+
+    let updatedCount = 0;
+    let groupCount = 0;
+
+    // Process each group
+    for (const [key, groupProducts] of groups) {
+      // Only process groups with multiple products (color variants)
+      if (groupProducts.length > 1) {
+        groupCount++;
+
+        // Find an existing colorGroupId or generate a new one
+        let colorGroupId = groupProducts.find(p => p.colorGroupId)?.colorGroupId;
+        if (!colorGroupId) {
+          // Generate a new colorGroupId based on the first product's ID
+          colorGroupId = `group_${groupProducts[0]._id.slice(-8)}`;
+        }
+
+        // Update all products in the group to have the same colorGroupId
+        for (const product of groupProducts) {
+          if (product.colorGroupId !== colorGroupId) {
+            await ctx.db.patch(product._id, { colorGroupId });
+            updatedCount++;
+          }
+        }
+      }
+    }
+
+    return {
+      groupsFound: groupCount,
+      productsUpdated: updatedCount,
+    };
+  },
+});
+
 // Delete all products from a specific platform
 export const deleteByPlatform = mutation({
   args: { platform: v.string() },
