@@ -14,6 +14,20 @@ import { ViewToggle, ProductListItem } from "./ViewToggle";
 import { RecentlyViewed, useRecentlyViewed } from "./RecentlyViewed";
 import { Id } from "@/convex/_generated/dataModel";
 
+interface ProductVariant {
+  id: string;
+  title: string;
+  available: boolean;
+  option1?: string;
+  option2?: string;
+  option3?: string;
+}
+
+interface ProductOption {
+  name: string;
+  values: string[];
+}
+
 interface Product {
   _id: string;
   name: string;
@@ -24,6 +38,10 @@ interface Product {
   material?: string;
   size?: string;
   sizes?: string[];
+  variants?: ProductVariant[];
+  options?: ProductOption[];
+  colorGroupId?: string;
+  colorName?: string;
   category: string;
   gender?: "men" | "women" | "unisex";
   condition: "new" | "used" | "like_new";

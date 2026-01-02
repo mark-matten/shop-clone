@@ -43,6 +43,20 @@ export function ViewToggle({ view, onViewChange }: ViewToggleProps) {
 }
 
 // Product list item for list view
+interface ProductVariant {
+  id: string;
+  title: string;
+  available: boolean;
+  option1?: string;
+  option2?: string;
+  option3?: string;
+}
+
+interface ProductOption {
+  name: string;
+  values: string[];
+}
+
 interface ProductListItemProps {
   product: {
     _id: string;
@@ -52,11 +66,15 @@ interface ProductListItemProps {
     price: number;
     originalPrice?: number;
     size?: string;
+    sizes?: string[];
     gender?: "men" | "women" | "unisex";
     condition: string;
     sourcePlatform: string;
     imageUrl?: string;
-    variants?: Array<{ id: string; title: string; available: boolean }>;
+    variants?: ProductVariant[];
+    options?: ProductOption[];
+    colorGroupId?: string;
+    colorName?: string;
   };
   isFavorited?: boolean;
   onFavoriteClick?: () => void;
@@ -73,6 +91,50 @@ export function ProductListItem({ product, isFavorited, onFavoriteClick }: Produ
   const isSoldOut = product.variants && product.variants.length > 0
     ? product.variants.every(v => !v.available)
     : false;
+
+  // Count available sizes from options or variants
+  const getSizeCount = (): number => {
+    const sizeOption = product.options?.find(opt =>
+      opt.name.toLowerCase() === 'size' || opt.name.toLowerCase() === 'sizes'
+    );
+    if (sizeOption) {
+      return sizeOption.values.length;
+    }
+    const waistOption = product.options?.find(opt =>
+      opt.name.toLowerCase().includes('waist')
+    );
+    if (waistOption) {
+      return waistOption.values.length;
+    }
+    if (product.sizes && product.sizes.length > 0) {
+      return product.sizes.length;
+    }
+    if (product.variants && product.variants.length > 0) {
+      const sizes = new Set<string>();
+      product.variants.forEach(v => {
+        if (v.option1) sizes.add(v.option1);
+      });
+      return sizes.size;
+    }
+    return 0;
+  };
+
+  // Count colors from options
+  const getColorCount = (): number => {
+    const colorOption = product.options?.find(opt =>
+      opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
+    );
+    if (colorOption) {
+      return colorOption.values.length;
+    }
+    if (product.colorName) {
+      return 1;
+    }
+    return 0;
+  };
+
+  const sizeCount = getSizeCount();
+  const colorCount = getColorCount();
 
   return (
     <div className="flex gap-4 rounded-xl border border-zinc-200 bg-white p-4 transition-all hover:border-zinc-300 hover:shadow-md dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
@@ -136,9 +198,14 @@ export function ProductListItem({ product, isFavorited, onFavoriteClick }: Produ
               {genderLabels[product.gender]}
             </span>
           )}
-          {product.size && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-              {product.size}
+          {colorCount > 0 && (
+            <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-medium text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+              {colorCount} {colorCount === 1 ? 'color' : 'colors'}
+            </span>
+          )}
+          {sizeCount > 0 && (
+            <span className="rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+              {sizeCount} {sizeCount === 1 ? 'size' : 'sizes'}
             </span>
           )}
           <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium capitalize text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">

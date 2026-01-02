@@ -12,6 +12,14 @@ interface ProductVariant {
   id: string;
   title: string;
   available: boolean;
+  option1?: string;
+  option2?: string;
+  option3?: string;
+}
+
+interface ProductOption {
+  name: string;
+  values: string[];
 }
 
 interface Product {
@@ -23,6 +31,7 @@ interface Product {
   originalPrice?: number; // For showing price drops
   material?: string;
   size?: string;
+  sizes?: string[];
   category: string;
   gender?: "men" | "women" | "unisex";
   condition: "new" | "used" | "like_new";
@@ -30,6 +39,9 @@ interface Product {
   sourcePlatform: string;
   imageUrl?: string;
   variants?: ProductVariant[];
+  options?: ProductOption[];
+  colorGroupId?: string;
+  colorName?: string;
 }
 
 interface ProductCardProps {
@@ -93,6 +105,55 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
   const isSoldOut = product.variants && product.variants.length > 0
     ? product.variants.every(v => !v.available)
     : false;
+
+  // Count available sizes from options or variants
+  const getSizeCount = (): number => {
+    // First check options for Size
+    const sizeOption = product.options?.find(opt =>
+      opt.name.toLowerCase() === 'size' || opt.name.toLowerCase() === 'sizes'
+    );
+    if (sizeOption) {
+      return sizeOption.values.length;
+    }
+    // Check for waist/length options (for jeans/pants)
+    const waistOption = product.options?.find(opt =>
+      opt.name.toLowerCase().includes('waist')
+    );
+    if (waistOption) {
+      return waistOption.values.length;
+    }
+    // Fallback to sizes array
+    if (product.sizes && product.sizes.length > 0) {
+      return product.sizes.length;
+    }
+    // Count unique sizes from variants
+    if (product.variants && product.variants.length > 0) {
+      const sizes = new Set<string>();
+      product.variants.forEach(v => {
+        if (v.option1) sizes.add(v.option1);
+      });
+      return sizes.size;
+    }
+    return 0;
+  };
+
+  // Count colors from options
+  const getColorCount = (): number => {
+    const colorOption = product.options?.find(opt =>
+      opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
+    );
+    if (colorOption) {
+      return colorOption.values.length;
+    }
+    // If product has colorName, it's one of potentially multiple colors
+    if (product.colorName) {
+      return 1; // At least this color exists, but we don't know about others without colorGroupId query
+    }
+    return 0;
+  };
+
+  const sizeCount = getSizeCount();
+  const colorCount = getColorCount();
 
   // Sync favorite state with prop
   useEffect(() => {
@@ -242,9 +303,14 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
                   {genderLabels[product.gender]}
                 </span>
               )}
-              {product.size && (
-                <span className="rounded bg-zinc-100 px-2 py-0.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                  Size {product.size}
+              {colorCount > 0 && (
+                <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
+                  {colorCount} {colorCount === 1 ? 'color' : 'colors'}
+                </span>
+              )}
+              {sizeCount > 0 && (
+                <span className="rounded bg-blue-100 px-2 py-0.5 text-xs text-blue-700 dark:bg-blue-900/50 dark:text-blue-300">
+                  {sizeCount} {sizeCount === 1 ? 'size' : 'sizes'}
                 </span>
               )}
               {product.material && (
