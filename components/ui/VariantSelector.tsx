@@ -153,7 +153,8 @@ export function VariantSelector({
                 colorVariants.map((variant) => (
                   <Link
                     key={variant._id}
-                    href={`/product/${variant._id}`}
+                    href={`/product/${variant._id}?fromVariant=true`}
+                    replace
                     className={`relative h-10 w-10 rounded-full border-2 transition-all hover:scale-110 ${
                       variant._id === currentProductId
                         ? "border-zinc-900 dark:border-white ring-2 ring-zinc-900/20 dark:ring-white/20"

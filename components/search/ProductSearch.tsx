@@ -545,6 +545,15 @@ export function ProductSearch() {
     setDisplayCount(20); // Reset pagination
     setCurrentSearchQuery(query); // Track current query
 
+    // Scroll to top when search is triggered
+    window.scrollTo({ top: 0, behavior: "smooth" });
+
+    // Clear product navigation stack when starting a fresh search
+    // This ensures clicking a product from search results starts a fresh chain
+    if (updateUrl) {
+      sessionStorage.removeItem("product_nav_stack");
+    }
+
     // Only reset filters for new user-initiated searches, not URL restoration
     if (updateUrl) {
       setActiveFilter(null);
