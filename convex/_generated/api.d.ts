@@ -16,6 +16,7 @@ import type * as coupons from "../coupons.js";
 import type * as crons from "../crons.js";
 import type * as dashboard from "../dashboard.js";
 import type * as favorites from "../favorites.js";
+import type * as gemini from "../gemini.js";
 import type * as http from "../http.js";
 import type * as priceChecker from "../priceChecker.js";
 import type * as products from "../products.js";
@@ -25,6 +26,7 @@ import type * as savedSearches from "../savedSearches.js";
 import type * as scraper from "../scraper.js";
 import type * as search from "../search.js";
 import type * as searchHistory from "../searchHistory.js";
+import type * as storage from "../storage.js";
 import type * as tracking from "../tracking.js";
 import type * as users from "../users.js";
 
@@ -43,6 +45,7 @@ declare const fullApi: ApiFromModules<{
   crons: typeof crons;
   dashboard: typeof dashboard;
   favorites: typeof favorites;
+  gemini: typeof gemini;
   http: typeof http;
   priceChecker: typeof priceChecker;
   products: typeof products;
@@ -52,6 +55,7 @@ declare const fullApi: ApiFromModules<{
   scraper: typeof scraper;
   search: typeof search;
   searchHistory: typeof searchHistory;
+  storage: typeof storage;
   tracking: typeof tracking;
   users: typeof users;
 }>;

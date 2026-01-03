@@ -141,3 +141,40 @@ export const getAllTrackedProductIds = query({
     return uniqueProductIds;
   },
 });
+
+// Cleanup orphaned tracked_items that reference non-existent products
+export const cleanupOrphanedTrackedItems = mutation({
+  args: { userId: v.optional(v.id("users")) },
+  handler: async (ctx, args) => {
+    // Get tracked items (optionally filtered by user)
+    let trackedItems;
+    if (args.userId) {
+      const userId = args.userId;
+      trackedItems = await ctx.db
+        .query("tracked_items")
+        .withIndex("by_userId", (q) => q.eq("userId", userId))
+        .collect();
+    } else {
+      trackedItems = await ctx.db.query("tracked_items").collect();
+    }
+
+    let deletedCount = 0;
+    const deletedItems: { id: string; productId: string }[] = [];
+
+    for (const item of trackedItems) {
+      const product = await ctx.db.get(item.productId);
+      if (!product) {
+        // Product doesn't exist, delete the tracked item
+        await ctx.db.delete(item._id);
+        deletedCount++;
+        deletedItems.push({
+          id: item._id,
+          productId: item.productId,
+        });
+      }
+    }
+
+    console.log(`[cleanupOrphanedTrackedItems] Deleted ${deletedCount} orphaned tracked items`);
+    return { deletedCount, deletedItems };
+  },
+});

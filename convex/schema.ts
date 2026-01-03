@@ -120,7 +120,7 @@ export default defineSchema({
 
   closet_items: defineTable({
     userId: v.id("users"),
-    productId: v.id("products"),
+    productId: v.optional(v.id("products")), // Optional for user-added items
     addedAt: v.number(),
     notes: v.optional(v.string()),
     wornCount: v.optional(v.number()),
@@ -131,11 +131,49 @@ export default defineSchema({
     customCategory: v.optional(v.string()),
     // Sort order within category for drag-and-drop reordering
     sortOrder: v.optional(v.number()),
+    // Source of the item: linked product, URL scrape, or AI-generated
+    source: v.optional(v.union(v.literal("product"), v.literal("url"), v.literal("generated"))),
+    // For user-added items (url or generated sources)
+    name: v.optional(v.string()),
+    brand: v.optional(v.string()),
+    imageUrl: v.optional(v.string()),
+    size: v.optional(v.string()),
+    color: v.optional(v.string()),
+    material: v.optional(v.string()),
+    category: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()), // Original URL for URL-sourced items
+    // For AI-generated items
+    generatedImageStorageId: v.optional(v.id("_storage")),
+    userDescription: v.optional(v.string()),
   })
     .index("by_userId", ["userId"])
     .index("by_productId", ["productId"])
     .index("by_userId_productId", ["userId", "productId"])
-    .index("by_userId_addedAt", ["userId", "addedAt"]),
+    .index("by_userId_addedAt", ["userId", "addedAt"])
+    .index("by_userId_source", ["userId", "source"]),
+
+  // User photos for virtual try-on
+  user_photos: defineTable({
+    clerkId: v.string(),
+    storageId: v.id("_storage"),
+    fileName: v.string(),
+    uploadedAt: v.number(),
+    isDefault: v.boolean(), // User's preferred photo for try-ons
+  })
+    .index("by_clerkId", ["clerkId"])
+    .index("by_clerkId_default", ["clerkId", "isDefault"]),
+
+  // Generated outfit images from virtual try-on
+  outfit_images: defineTable({
+    clerkId: v.string(),
+    storageId: v.id("_storage"),
+    closetItemIds: v.array(v.id("closet_items")),
+    userPhotoId: v.optional(v.id("user_photos")), // null = faceless model
+    generatedAt: v.number(),
+    prompt: v.string(),
+  })
+    .index("by_clerkId", ["clerkId"])
+    .index("by_clerkId_generatedAt", ["clerkId", "generatedAt"]),
 
   price_history: defineTable({
     productId: v.id("products"),

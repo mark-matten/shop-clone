@@ -7,6 +7,7 @@ import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
+import { AddClothesModal, TryOnModal } from "@/components/closet";
 import {
   DndContext,
   DragOverlay,
@@ -29,19 +30,90 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 
-// Available categories for closet items
+// Available categories for closet items (consistent with try-on)
 const CLOSET_CATEGORIES = [
-  "shoes",
-  "clothing",
-  "accessories",
-  "bags",
-  "outerwear",
-  "tops",
-  "bottoms",
-  "dresses",
-  "activewear",
-  "other",
+  { id: "tops", label: "Tops" },
+  { id: "bottoms", label: "Bottoms" },
+  { id: "dresses", label: "Dresses" },
+  { id: "outerwear", label: "Outerwear" },
+  { id: "shoes", label: "Shoes" },
+  { id: "bags", label: "Bags" },
+  { id: "accessories", label: "Accessories" },
+  { id: "activewear", label: "Activewear" },
+  { id: "other", label: "Other" },
 ];
+
+// Map any category to a normalized key (consistent with try-on)
+function getCategoryKey(category: string): string {
+  const lower = category.toLowerCase();
+
+  // Tops: shirts, sweaters, tees, blouses, polos, bodysuits
+  if (lower.includes("top") || lower.includes("shirt") || lower.includes("blouse") ||
+      lower.includes("sweater") || lower.includes("tee") || lower.includes("polo") ||
+      lower.includes("bodysuit") || lower.includes("tank") || lower.includes("cami") ||
+      lower.includes("henley") || lower.includes("cardigan") || lower.includes("pullover")) {
+    return "tops";
+  }
+
+  // Bottoms: pants, jeans, shorts, skirts, chinos, trousers, leggings
+  if (lower.includes("bottom") || lower.includes("pant") || lower.includes("jean") ||
+      lower.includes("skirt") || lower.includes("short") || lower.includes("chino") ||
+      lower.includes("trouser") || lower.includes("legging") || lower.includes("jogger")) {
+    return "bottoms";
+  }
+
+  // Dresses: dresses, jumpsuits, rompers
+  if (lower.includes("dress") || lower.includes("jumpsuit") || lower.includes("romper")) {
+    return "dresses";
+  }
+
+  // Outerwear: jackets, coats, blazers, vests
+  if (lower.includes("jacket") || lower.includes("coat") || lower.includes("outerwear") ||
+      lower.includes("blazer") || lower.includes("vest") || lower.includes("hoodie") ||
+      lower.includes("parka") || lower.includes("windbreaker")) {
+    return "outerwear";
+  }
+
+  // Shoes: all footwear
+  if (lower.includes("shoe") || lower.includes("boot") || lower.includes("sneaker") ||
+      lower.includes("heel") || lower.includes("sandal") || lower.includes("loafer") ||
+      lower.includes("flat") || lower.includes("mule") || lower.includes("slipper") ||
+      lower.includes("oxford") || lower.includes("pump") || lower.includes("wedge") ||
+      lower.includes("footwear") || lower.includes("trainer") || lower.includes("kicks")) {
+    return "shoes";
+  }
+
+  // Bags: all bags and purses
+  if (lower.includes("bag") || lower.includes("tote") || lower.includes("purse") ||
+      lower.includes("backpack") || lower.includes("clutch") || lower.includes("satchel") ||
+      lower.includes("crossbody") || lower.includes("wallet") || lower.includes("pouch")) {
+    return "bags";
+  }
+
+  // Accessories: jewelry, hats, scarves, belts, socks, etc.
+  if (lower.includes("accessor") || lower.includes("jewelry") || lower.includes("hat") ||
+      lower.includes("scarf") || lower.includes("belt") || lower.includes("watch") ||
+      lower.includes("sock") || lower.includes("glove") || lower.includes("sunglasse") ||
+      lower.includes("tie") || lower.includes("beanie") || lower.includes("cap")) {
+    return "accessories";
+  }
+
+  // Activewear: athletic, sports, workout, yoga, gym
+  if (lower.includes("active") || lower.includes("sport") || lower.includes("athletic") ||
+      lower.includes("workout") || lower.includes("yoga") || lower.includes("gym") ||
+      lower.includes("running") || lower.includes("training")) {
+    return "activewear";
+  }
+
+  // Intimates/loungewear/clothing -> other
+  if (lower.includes("intimate") || lower.includes("underwear") || lower.includes("bra") ||
+      lower.includes("lounge") || lower.includes("pajama") || lower.includes("sleepwear") ||
+      lower.includes("robe") || lower.includes("lingerie") || lower === "clothing") {
+    return "other";
+  }
+
+  return "other";
+}
 
 // Helper to get a CSS color from a color name
 function getColorFromName(colorName: string): string {
@@ -533,6 +605,8 @@ export default function ClosetPage() {
   const [editCategory, setEditCategory] = useState<string>("");
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overCategory, setOverCategory] = useState<string | null>(null);
+  const [showAddClothesModal, setShowAddClothesModal] = useState(false);
+  const [showTryOnModal, setShowTryOnModal] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
@@ -634,28 +708,32 @@ export default function ClosetPage() {
     return items;
   }, [combinedItems, typeFilter]);
 
-  // Get unique categories
-  const categories = useMemo(() => {
-    const cats = new Set(filteredByType.map(i => i.customCategory || i.product?.category).filter(Boolean));
-    return Array.from(cats) as string[];
-  }, [filteredByType]);
-
-  // Group items by category
+  // Group items by normalized category key
   const itemsByCategory = useMemo(() => {
     const groups: Record<string, CombinedItem[]> = {};
     for (const item of filteredByType) {
-      const cat = item.customCategory || item.product?.category || "other";
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(item);
+      const rawCat = item.customCategory || item.product?.category || "other";
+      const normalizedCat = getCategoryKey(rawCat);
+      if (!groups[normalizedCat]) groups[normalizedCat] = [];
+      groups[normalizedCat].push(item);
     }
     return groups;
   }, [filteredByType]);
 
+  // Get count for each category
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    for (const cat of CLOSET_CATEGORIES) {
+      counts[cat.id] = itemsByCategory[cat.id]?.length || 0;
+    }
+    return counts;
+  }, [itemsByCategory]);
+
   // Get filtered items (when a specific category is selected)
   const filteredItems = useMemo(() => {
     if (!selectedCategory) return filteredByType;
-    return filteredByType.filter(i => (i.customCategory || i.product?.category) === selectedCategory);
-  }, [filteredByType, selectedCategory]);
+    return itemsByCategory[selectedCategory] || [];
+  }, [filteredByType, selectedCategory, itemsByCategory]);
 
   const handleRemove = async (item: CombinedItem) => {
     if (!user?.id) return;
@@ -857,8 +935,28 @@ export default function ClosetPage() {
               {stats.total} items · {stats.categoryCount} categories · Drag to reorder
             </p>
           </div>
-          {/* View Toggle */}
-          <div className="flex items-center gap-1 rounded-lg border border-zinc-200 p-1 dark:border-zinc-700">
+          <div className="flex items-center gap-3">
+            {/* Action Buttons */}
+            <button
+              onClick={() => setShowAddClothesModal(true)}
+              className="flex items-center gap-2 rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#C9A432]"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Clothes
+            </button>
+            <button
+              onClick={() => setShowTryOnModal(true)}
+              className="flex items-center gap-2 rounded-lg border border-[#D4AF37] px-4 py-2 text-sm font-medium text-[#D4AF37] transition-colors hover:bg-[#D4AF37]/10"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Try On
+            </button>
+            {/* View Toggle */}
+            <div className="flex items-center gap-1 rounded-lg border border-zinc-200 p-1 dark:border-zinc-700">
             <button
               onClick={() => setViewMode("grid")}
               className={`rounded-md p-1.5 transition-colors ${
@@ -885,6 +983,7 @@ export default function ClosetPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
               </svg>
             </button>
+          </div>
           </div>
         </div>
 
@@ -928,34 +1027,34 @@ export default function ClosetPage() {
           </button>
         </div>
 
-        {/* Category Filter */}
-        {categories.length > 0 && (
-          <div className="mt-4 flex flex-wrap gap-2">
+        {/* Category Filter - Always show all categories with counts */}
+        <div className="mt-4 flex flex-wrap gap-2">
+          <button
+            onClick={() => setSelectedCategory(null)}
+            className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
+              selectedCategory === null
+                ? "bg-[#D4AF37] text-white"
+                : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+            }`}
+          >
+            All ({filteredByType.length})
+          </button>
+          {CLOSET_CATEGORIES.map((cat) => (
             <button
-              onClick={() => setSelectedCategory(null)}
+              key={cat.id}
+              onClick={() => setSelectedCategory(cat.id)}
               className={`rounded-full px-3 py-1 text-sm font-medium transition-colors ${
-                selectedCategory === null
-                  ? "bg-zinc-700 text-white dark:bg-zinc-300 dark:text-zinc-900"
-                  : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                selectedCategory === cat.id
+                  ? "bg-[#D4AF37] text-white"
+                  : categoryCounts[cat.id] > 0
+                  ? "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                  : "bg-zinc-50 text-zinc-400 dark:bg-zinc-800/50 dark:text-zinc-600"
               }`}
             >
-              All
+              {cat.label} ({categoryCounts[cat.id]})
             </button>
-            {categories.map((category) => (
-              <button
-                key={category}
-                onClick={() => setSelectedCategory(category)}
-                className={`rounded-full px-3 py-1 text-sm font-medium capitalize transition-colors ${
-                  selectedCategory === category
-                    ? "bg-zinc-700 text-white dark:bg-zinc-300 dark:text-zinc-900"
-                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
-                }`}
-              >
-                {category}
-              </button>
-            ))}
-          </div>
-        )}
+          ))}
+        </div>
 
         {/* Empty State */}
         {combinedItems.length === 0 ? (
@@ -979,7 +1078,9 @@ export default function ClosetPage() {
         ) : filteredItems.length === 0 ? (
           <div className="mt-16 text-center">
             <p className="text-zinc-600 dark:text-zinc-400">
-              No items match your current filters
+              {selectedCategory
+                ? `You haven't added any ${CLOSET_CATEGORIES.find(c => c.id === selectedCategory)?.label.toLowerCase() || selectedCategory} to your closet`
+                : "No items match your current filters"}
             </p>
           </div>
         ) : viewMode === "list" ? (
@@ -1009,15 +1110,15 @@ export default function ClosetPage() {
                 </SortableContext>
               ) : (
                 // Category sections list
-                categories.map((category) => (
+                CLOSET_CATEGORIES.filter(cat => (itemsByCategory[cat.id]?.length || 0) > 0).map((cat) => (
                   <ListCategorySection
-                    key={category}
-                    category={category}
-                    items={itemsByCategory[category] || []}
+                    key={cat.id}
+                    category={cat.label}
+                    items={itemsByCategory[cat.id] || []}
                     onEdit={handleEdit}
                     onRemove={handleRemove}
                     activeId={activeId}
-                    isOver={overCategory === category}
+                    isOver={overCategory === cat.id}
                   />
                 ))
               )}
@@ -1054,15 +1155,15 @@ export default function ClosetPage() {
                 </SortableContext>
               ) : (
                 // Category sections view
-                categories.map((category) => (
+                CLOSET_CATEGORIES.filter(cat => (itemsByCategory[cat.id]?.length || 0) > 0).map((cat) => (
                   <CategorySection
-                    key={category}
-                    category={category}
-                    items={itemsByCategory[category] || []}
+                    key={cat.id}
+                    category={cat.label}
+                    items={itemsByCategory[cat.id] || []}
                     onEdit={handleEdit}
                     onRemove={handleRemove}
                     activeId={activeId}
-                    isOver={overCategory === category}
+                    isOver={overCategory === cat.id}
                   />
                 ))
               )}
@@ -1098,8 +1199,8 @@ export default function ClosetPage() {
                   className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-purple-500 focus:outline-none focus:ring-1 focus:ring-purple-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 >
                   {CLOSET_CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat} className="capitalize">
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                    <option key={cat.id} value={cat.id}>
+                      {cat.label}
                     </option>
                   ))}
                 </select>
@@ -1207,6 +1308,20 @@ export default function ClosetPage() {
           </div>
         </div>
       )}
+
+      {/* Add Clothes Modal */}
+      <AddClothesModal
+        isOpen={showAddClothesModal}
+        onClose={() => setShowAddClothesModal(false)}
+        clerkId={user.id}
+      />
+
+      {/* Try On Modal */}
+      <TryOnModal
+        isOpen={showTryOnModal}
+        onClose={() => setShowTryOnModal(false)}
+        clerkId={user.id}
+      />
     </div>
   );
 }
