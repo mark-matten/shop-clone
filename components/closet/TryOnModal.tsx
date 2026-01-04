@@ -41,6 +41,7 @@ const CATEGORIES = [
 ];
 
 type ModelMode = "generic" | "user";
+type MobileTab = "closet" | "preview";
 
 // Map category to a normalized key for selection (one per category)
 function getCategoryKey(category: string): string {
@@ -130,6 +131,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [generatedOutfit, setGeneratedOutfit] = useState<string | null>(null);
   const [selectedOutfitId, setSelectedOutfitId] = useState<Id<"outfit_images"> | null>(null);
   const [showPhotoManager, setShowPhotoManager] = useState(false);
+  const [mobileTab, setMobileTab] = useState<MobileTab>("closet");
 
   const closetItems = useQuery(api.closet.getAllClosetItems, { clerkId });
   const outfitHistory = useQuery(api.storage.getOutfitHistory, { clerkId, limit: 6 });
@@ -215,7 +217,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
     setIsGenerating(true);
     setGeneratedOutfit(null);
-    setSelectedOutfitId(null); // Clear selection since we're generating a new outfit
+    setSelectedOutfitId(null);
+    setMobileTab("preview"); // Switch to preview on mobile when generating
 
     try {
       // Get productIds from selected items
@@ -248,6 +251,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     setGeneratedOutfit(null);
     setSelectedOutfitId(null);
     setShowPhotoManager(false);
+    setMobileTab("closet");
     onClose();
   };
 
@@ -255,17 +259,56 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4 overflow-auto"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:p-4"
       onClick={handleClose}
     >
       <div
-        className="relative flex h-[90vh] w-full max-w-5xl overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-zinc-900"
+        className="relative flex h-[95vh] sm:h-[90vh] w-full sm:max-w-5xl flex-col sm:flex-row overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Left Panel - Preview & Selected Items */}
-        <div className="flex w-1/2 flex-col border-r border-zinc-200 dark:border-zinc-800 overflow-hidden">
-          {/* Header */}
-          <div className="flex-shrink-0 flex h-[60px] items-center border-b border-zinc-200 px-6 dark:border-zinc-800">
+        {/* Mobile Header */}
+        <div className="flex sm:hidden items-center justify-between border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+            Virtual Try-On
+          </h2>
+          <button
+            onClick={handleClose}
+            className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+
+        {/* Mobile Tab Switcher */}
+        <div className="flex sm:hidden border-b border-zinc-200 dark:border-zinc-800">
+          <button
+            onClick={() => setMobileTab("closet")}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              mobileTab === "closet"
+                ? "border-b-2 border-rose-400 text-rose-500"
+                : "text-zinc-500 dark:text-zinc-400"
+            }`}
+          >
+            Closet
+          </button>
+          <button
+            onClick={() => setMobileTab("preview")}
+            className={`flex-1 py-2.5 text-sm font-medium transition-colors ${
+              mobileTab === "preview"
+                ? "border-b-2 border-rose-400 text-rose-500"
+                : "text-zinc-500 dark:text-zinc-400"
+            }`}
+          >
+            Preview {selectedByCategory.size > 0 && `(${selectedByCategory.size})`}
+          </button>
+        </div>
+
+        {/* Left Panel - Preview & Selected Items (Desktop) / Conditional Mobile */}
+        <div className={`${mobileTab === "preview" ? "flex" : "hidden"} sm:flex w-full sm:w-1/2 flex-col border-r border-zinc-200 dark:border-zinc-800 overflow-hidden`}>
+          {/* Desktop Header */}
+          <div className="hidden sm:flex flex-shrink-0 h-[60px] items-center border-b border-zinc-200 px-6 dark:border-zinc-800">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
               Virtual Try-On
             </h2>
@@ -274,11 +317,11 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           {/* Scrollable Content Area */}
           <div className="flex-1 overflow-y-auto">
             {/* Preview Area */}
-            <div className="p-6">
+            <div className="p-4 sm:p-6">
               {isGenerating ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-4">
+                <div className="flex flex-col items-center justify-center py-8 sm:py-12 gap-4">
                   <svg
-                    className="h-16 w-16 animate-spin text-[#D4AF37]"
+                    className="h-12 w-12 sm:h-16 sm:w-16 animate-spin text-rose-400"
                     fill="none"
                     viewBox="0 0 24 24"
                   >
@@ -305,7 +348,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   <img
                     src={generatedOutfit}
                     alt="Generated outfit"
-                    className="max-h-[50vh] rounded-xl object-contain shadow-lg"
+                    className="max-h-[40vh] sm:max-h-[50vh] rounded-xl object-contain shadow-lg"
                   />
                   <button
                     onClick={() => setGeneratedOutfit(null)}
@@ -321,13 +364,13 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   <h3 className="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                     Selected Items ({selectedItems.length})
                   </h3>
-                  <div className="grid grid-cols-3 gap-3">
+                  <div className="grid grid-cols-3 gap-2 sm:gap-3">
                     {selectedItems.map((item) => {
                       const categoryKey = getCategoryKey(item.displayCategory || "other");
                       return (
                         <div
                           key={item._id}
-                          className="group relative aspect-square overflow-hidden rounded-xl border-2 border-[#D4AF37] bg-zinc-100 dark:bg-zinc-800"
+                          className="group relative aspect-square overflow-hidden rounded-lg sm:rounded-xl border-2 border-rose-400 bg-zinc-100 dark:bg-zinc-800"
                         >
                           {item.displayImageUrl ? (
                             <img
@@ -337,7 +380,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                             />
                           ) : (
                             <div className="flex h-full w-full items-center justify-center">
-                              <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <svg className="h-6 w-6 sm:h-8 sm:w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
                             </div>
@@ -345,15 +388,15 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                           {/* Remove button */}
                           <button
                             onClick={() => removeSelectedItem(categoryKey)}
-                            className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                            className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100"
                           >
                             <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                             </svg>
                           </button>
                           {/* Category label */}
-                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                            <p className="truncate text-xs font-medium text-white capitalize">
+                          <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-1.5 sm:p-2">
+                            <p className="truncate text-[10px] sm:text-xs font-medium text-white capitalize">
                               {categoryKey}
                             </p>
                           </div>
@@ -363,9 +406,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   </div>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 gap-4 text-center">
-                  <div className="rounded-full bg-zinc-100 p-6 dark:bg-zinc-800">
-                    <svg className="h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex flex-col items-center justify-center py-8 sm:py-12 gap-3 sm:gap-4 text-center">
+                  <div className="rounded-full bg-zinc-100 p-4 sm:p-6 dark:bg-zinc-800">
+                    <svg className="h-8 w-8 sm:h-12 sm:w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                     </svg>
                   </div>
@@ -382,8 +425,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
             </div>
 
             {/* Model Selection */}
-            <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">
-              {/* Always show both buttons */}
+            <div className="border-t border-zinc-200 p-3 sm:p-4 dark:border-zinc-800">
               <div className="flex gap-2">
                 <button
                   onClick={() => {
@@ -392,9 +434,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                     setSelectedPhotoStorageId(null);
                     setShowPhotoManager(false);
                   }}
-                  className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-lg px-3 sm:px-4 py-2 text-sm font-medium transition-colors ${
                     modelMode === "generic"
-                      ? "bg-[#D4AF37] text-white"
+                      ? "bg-rose-400 text-white"
                       : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                   }`}
                 >
@@ -405,9 +447,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                     setModelMode("user");
                     setShowPhotoManager(true);
                   }}
-                  className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${
+                  className={`flex-1 rounded-lg px-3 sm:px-4 py-2 text-sm font-medium transition-colors ${
                     modelMode === "user"
-                      ? "bg-[#D4AF37] text-white"
+                      ? "bg-rose-400 text-white"
                       : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                   }`}
                 >
@@ -417,7 +459,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
               {/* Show PhotoManager when My Photo is selected */}
               {modelMode === "user" && showPhotoManager && (
-                <div className="mt-4">
+                <div className="mt-3 sm:mt-4">
                   <PhotoManager
                     clerkId={clerkId}
                     onSelectPhoto={handleSelectPhoto}
@@ -429,11 +471,11 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           </div>
 
           {/* Generate Button - Fixed at bottom */}
-          <div className="flex-shrink-0 border-t border-zinc-200 p-4 dark:border-zinc-800">
+          <div className="flex-shrink-0 border-t border-zinc-200 p-3 sm:p-4 dark:border-zinc-800">
             <button
               onClick={handleGenerate}
               disabled={selectedByCategory.size === 0 || isGenerating}
-              className="w-full rounded-lg bg-[#D4AF37] px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-[#C9A432] disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isGenerating
                 ? "Generating..."
@@ -442,10 +484,10 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           </div>
         </div>
 
-        {/* Right Panel - Closet */}
-        <div className="flex w-1/2 flex-col overflow-hidden">
-          {/* Header with close button */}
-          <div className="flex-shrink-0 flex h-[60px] items-center justify-between border-b border-zinc-200 px-6 dark:border-zinc-800">
+        {/* Right Panel - Closet (Desktop) / Conditional Mobile */}
+        <div className={`${mobileTab === "closet" ? "flex" : "hidden"} sm:flex w-full sm:w-1/2 flex-col overflow-hidden`}>
+          {/* Desktop Header with close button */}
+          <div className="hidden sm:flex flex-shrink-0 h-[60px] items-center justify-between border-b border-zinc-200 px-6 dark:border-zinc-800">
             <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
               Your Closet
             </h2>
@@ -460,8 +502,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           </div>
 
           {/* Category Tabs - Horizontal scrolling */}
-          <div className="flex-shrink-0 overflow-x-auto">
-            <div className="flex gap-2 px-6 py-3 min-w-max">
+          <div className="flex-shrink-0 overflow-x-auto border-b border-zinc-200 dark:border-zinc-800">
+            <div className="flex gap-1.5 sm:gap-2 px-3 sm:px-6 py-2 sm:py-3 min-w-max">
               {CATEGORIES.map((cat) => {
                 const count = itemsByCategory[cat.id]?.length || 0;
                 const hasSelection = selectedByCategory.has(cat.id);
@@ -469,11 +511,11 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   <button
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
-                    className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap ${
+                    className={`flex-shrink-0 rounded-full sm:rounded-lg px-2.5 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium transition-colors whitespace-nowrap ${
                       activeCategory === cat.id
-                        ? "bg-[#D4AF37] text-white"
+                        ? "bg-rose-400 text-white"
                         : hasSelection
-                        ? "bg-[#D4AF37]/20 text-[#D4AF37] dark:bg-[#D4AF37]/30"
+                        ? "bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400"
                         : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                     }`}
                   >
@@ -491,9 +533,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           </div>
 
           {/* Items Grid - Vertical scrolling */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto p-3 sm:p-6">
             {currentCategoryItems.length > 0 ? (
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-3 gap-2 sm:gap-3">
                 {currentCategoryItems.map((item) => {
                   const categoryKey = getCategoryKey(item.displayCategory || "other");
                   const isSelected = selectedByCategory.get(categoryKey) === item._id;
@@ -503,9 +545,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                     <button
                       key={item._id}
                       onClick={() => toggleItemSelection(item)}
-                      className={`group relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
+                      className={`group relative aspect-square overflow-hidden rounded-lg sm:rounded-xl border-2 transition-all ${
                         isSelected
-                          ? "border-[#D4AF37] ring-2 ring-[#D4AF37]/20"
+                          ? "border-rose-400 ring-2 ring-rose-400/20"
                           : otherSelectedInCategory
                           ? "border-transparent opacity-50 hover:opacity-75"
                           : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600"
@@ -520,7 +562,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                       ) : (
                         <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
                           <svg
-                            className="h-8 w-8 text-zinc-400"
+                            className="h-6 w-6 sm:h-8 sm:w-8 text-zinc-400"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"
@@ -536,10 +578,10 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                       )}
 
                       {/* Owned/Wishlist indicator (top-left) */}
-                      <div className="absolute left-1 top-1 rounded-full bg-white/90 p-1 shadow-sm dark:bg-zinc-900/90">
+                      <div className="absolute left-1 top-1 rounded-full bg-white/90 p-0.5 sm:p-1 shadow-sm dark:bg-zinc-900/90">
                         {item.isOwned ? (
                           <svg
-                            className="h-3.5 w-3.5 text-green-600"
+                            className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-purple-500"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -551,7 +593,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                           </svg>
                         ) : (
                           <svg
-                            className="h-3.5 w-3.5 text-pink-500"
+                            className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-500"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -566,9 +608,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
                       {/* Selection indicator */}
                       {isSelected && (
-                        <div className="absolute right-1 top-1 rounded-full bg-[#D4AF37] p-1">
+                        <div className="absolute right-1 top-1 rounded-full bg-rose-400 p-0.5 sm:p-1">
                           <svg
-                            className="h-4 w-4 text-white"
+                            className="h-3 w-3 sm:h-4 sm:w-4 text-white"
                             fill="currentColor"
                             viewBox="0 0 20 20"
                           >
@@ -581,8 +623,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                         </div>
                       )}
 
-                      {/* Item info on hover */}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                      {/* Item info on hover - desktop only */}
+                      <div className="hidden sm:block absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
                         <p className="truncate text-xs font-medium text-white">
                           {item.displayName}
                         </p>
@@ -597,9 +639,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 })}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
+              <div className="flex flex-col items-center justify-center py-8 sm:py-12 text-center">
                 <svg
-                  className="h-12 w-12 text-zinc-300 dark:text-zinc-600"
+                  className="h-10 w-10 sm:h-12 sm:w-12 text-zinc-300 dark:text-zinc-600"
                   fill="none"
                   viewBox="0 0 24 24"
                   stroke="currentColor"
@@ -618,9 +660,24 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
             )}
           </div>
 
-          {/* Selected Items Summary */}
+          {/* Mobile Generate Button */}
+          <div className="sm:hidden flex-shrink-0 border-t border-zinc-200 p-3 dark:border-zinc-800">
+            <button
+              onClick={handleGenerate}
+              disabled={selectedByCategory.size === 0 || isGenerating}
+              className="w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isGenerating
+                ? "Generating..."
+                : selectedByCategory.size > 0
+                ? `Generate (${selectedByCategory.size})`
+                : "Select items"}
+            </button>
+          </div>
+
+          {/* Selected Items Summary - Desktop */}
           {selectedByCategory.size > 0 && (
-            <div className="flex-shrink-0 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+            <div className="hidden sm:block flex-shrink-0 border-t border-zinc-200 px-6 py-3 dark:border-zinc-800">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-zinc-600 dark:text-zinc-400">
                   {selectedByCategory.size} categor{selectedByCategory.size !== 1 ? "ies" : "y"} selected
@@ -635,9 +692,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
             </div>
           )}
 
-          {/* Recent Outfits */}
+          {/* Recent Outfits - Desktop only */}
           {outfitHistory && outfitHistory.length > 0 && (
-            <div className="flex-shrink-0 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
+            <div className="hidden sm:block flex-shrink-0 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
               <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
                 Recent Outfits
               </h3>
@@ -659,16 +716,16 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                         <img
                           src={outfit.url}
                           alt="Previous outfit"
-                          className={`h-16 w-16 rounded-lg object-cover transition-all ${
+                          className={`h-14 w-14 rounded-lg object-cover transition-all ${
                             isSelected
-                              ? "ring-2 ring-[#D4AF37] ring-offset-2 dark:ring-offset-zinc-900"
-                              : "hover:ring-2 hover:ring-[#D4AF37] hover:ring-offset-2 dark:hover:ring-offset-zinc-900"
+                              ? "ring-2 ring-rose-400 ring-offset-2 dark:ring-offset-zinc-900"
+                              : "hover:ring-2 hover:ring-rose-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"
                           }`}
                         />
                       ) : (
-                        <div className="flex h-16 w-16 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                        <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
                           <svg
-                            className="h-6 w-6 text-zinc-400"
+                            className="h-5 w-5 text-zinc-400"
                             fill="none"
                             viewBox="0 0 24 24"
                             stroke="currentColor"

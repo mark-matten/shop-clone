@@ -487,15 +487,16 @@ function CategorySection({
       </h3>
       {items.length > 0 ? (
         <SortableContext items={items.map(i => i.productId)} strategy={rectSortingStrategy}>
-          <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 sm:-mx-3 sm:px-3 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
             {items.map((item) => (
-              <SortableItem
-                key={item.productId}
-                item={item}
-                onEdit={onEdit}
-                onRemove={onRemove}
-                isDragging={activeId === item.productId}
-              />
+              <div key={item.productId} className="flex-shrink-0 w-36 sm:w-44">
+                <SortableItem
+                  item={item}
+                  onEdit={onEdit}
+                  onRemove={onRemove}
+                  isDragging={activeId === item.productId}
+                />
+              </div>
             ))}
           </div>
         </SortableContext>

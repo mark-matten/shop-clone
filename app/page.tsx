@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Image from "next/image";
 import { Header } from "@/components/layout";
 import { ProductSearch } from "@/components/search";
 import { ProductGridSkeleton } from "@/components/search/ProductCardSkeleton";
@@ -26,11 +27,9 @@ function HomeContent() {
   return (
     <main id="main-content" className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 ${hasSearchQuery ? 'pt-6 pb-4' : 'py-6'}`}>
       {!hasSearchQuery && (
-        <div className="mb-6 text-center animate-fade-in-down">
-          <h1 className="text-5xl sm:text-6xl" style={{ fontFamily: 'var(--font-pacifico)' }}>
-            <span className="text-black dark:text-white">ar</span><span className="text-rose-400">moi</span>
-          </h1>
-          <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-400">
+        <div className="mb-4 text-center animate-fade-in-down">
+          <img src="/logo.svg" alt="armoi" className="mx-auto h-32 w-auto" />
+          <p className="mt-3 text-lg text-zinc-600 dark:text-zinc-400">
             Find the best deals for new and used clothing across thousands of brands and marketplaces.
           </p>
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-500">
