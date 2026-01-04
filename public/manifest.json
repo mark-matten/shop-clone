@@ -1,6 +1,6 @@
 {
-  "name": "ShopWatch",
-  "short_name": "ShopWatch",
+  "name": "armoi",
+  "short_name": "armoi",
   "description": "Price tracking and comparison shopping",
   "start_url": "/",
   "display": "standalone",

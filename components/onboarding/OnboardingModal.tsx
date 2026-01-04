@@ -104,7 +104,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 <span className="text-4xl">👋</span>
               </div>
               <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">
-                Welcome to ShopWatch!
+                Welcome to armoi!
               </h2>
               <p className="mt-3 text-zinc-600 dark:text-zinc-400">
                 Find the best deals on clothing across thousands of brands and

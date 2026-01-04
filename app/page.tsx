@@ -1,4 +1,7 @@
+"use client";
+
 import { Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/layout";
 import { ProductSearch } from "@/components/search";
 import { ProductGridSkeleton } from "@/components/search/ProductCardSkeleton";
@@ -16,15 +19,16 @@ function SearchFallback() {
   );
 }
 
-export default function Home() {
-  return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-black">
-      <Header />
+function HomeContent() {
+  const searchParams = useSearchParams();
+  const hasSearchQuery = !!searchParams.get("q");
 
-      <main id="main-content" className="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
-        <div className="mb-8 text-center animate-fade-in-down">
-          <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
-            <span className="text-zinc-700 dark:text-zinc-300">Shop</span><span className="text-[#D4AF37] dark:text-[#E5C158]">Watch</span>
+  return (
+    <main id="main-content" className={`mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 ${hasSearchQuery ? 'pt-6 pb-4' : 'py-6'}`}>
+      {!hasSearchQuery && (
+        <div className="mb-6 text-center animate-fade-in-down">
+          <h1 className="text-5xl sm:text-6xl" style={{ fontFamily: 'var(--font-pacifico)' }}>
+            <span className="text-black dark:text-black">ar</span><span className="text-rose-400">moi</span>
           </h1>
           <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-400">
             Find the best deals for new and used clothing across thousands of brands and marketplaces.
@@ -33,13 +37,23 @@ export default function Home() {
             Search using everyday language. Describe the style, size, price range, or any other details you&apos;re looking for.
           </p>
         </div>
+      )}
 
-        <div className="animate-fade-in-up">
-          <Suspense fallback={<SearchFallback />}>
-            <ProductSearch />
-          </Suspense>
-        </div>
-      </main>
+      <div className={hasSearchQuery ? '' : 'animate-fade-in-up'}>
+        <ProductSearch />
+      </div>
+    </main>
+  );
+}
+
+export default function Home() {
+  return (
+    <div className="min-h-screen bg-zinc-50 dark:bg-black">
+      <Header />
+
+      <Suspense fallback={<SearchFallback />}>
+        <HomeContent />
+      </Suspense>
     </div>
   );
 }

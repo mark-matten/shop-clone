@@ -82,7 +82,7 @@ export function PWAInstallPrompt() {
           </div>
           <div className="flex-1">
             <h3 className="font-semibold text-zinc-900 dark:text-white">
-              Install ShopWatch
+              Install armoi
             </h3>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
               {isIOS

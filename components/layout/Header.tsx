@@ -70,8 +70,8 @@ export function Header() {
   return (
     <header className="border-b border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="text-xl font-bold">
-          <span className="text-zinc-700 dark:text-zinc-300">Shop</span><span className="text-[#D4AF37] dark:text-[#E5C158]">Watch</span>
+        <Link href="/" className="text-2xl" style={{ fontFamily: 'var(--font-pacifico)' }}>
+          <span className="text-black dark:text-black">ar</span><span className="text-rose-400">moi</span>
         </Link>
 
         {/* Mobile menu button */}
@@ -155,6 +155,7 @@ export function Header() {
             Tools
           </Link>
           */}
+          {/* Deals link - hidden for now
           <Link
             href="/coupons"
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
@@ -165,6 +166,7 @@ export function Header() {
           >
             Deals
           </Link>
+          */}
 
           {/* Notifications */}
           <div className="relative ml-2">
@@ -434,6 +436,7 @@ export function Header() {
               Tools
             </Link>
             */}
+            {/* Deals link - hidden for now
             <Link
               href="/coupons"
               onClick={() => setShowMobileMenu(false)}
@@ -445,6 +448,7 @@ export function Header() {
             >
               Deals
             </Link>
+            */}
             <Link
               href="/profile"
               onClick={() => setShowMobileMenu(false)}

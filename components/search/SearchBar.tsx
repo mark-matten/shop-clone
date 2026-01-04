@@ -195,7 +195,7 @@ export function SearchBar({
         <button
           type="submit"
           disabled={isLoading || !query.trim()}
-          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-[#D4AF37] p-3 text-white transition-colors hover:bg-[#C9A432] disabled:cursor-not-allowed disabled:opacity-50 dark:bg-[#D4AF37] dark:hover:bg-[#E5C158]"
+          className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-rose-400 p-3 text-white transition-colors hover:bg-rose-500 active:bg-rose-600 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-rose-400 dark:hover:bg-rose-500 dark:active:bg-rose-600"
         >
           {isLoading ? (
             <svg

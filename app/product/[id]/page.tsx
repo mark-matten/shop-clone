@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { useQuery, useMutation, useAction } from "convex/react";
@@ -151,11 +151,45 @@ export default function ProductDetailPage() {
   const [showCopied, setShowCopied] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
 
+  // Compute the view URL with variant ID when a size is selected
+  const viewUrl = useMemo(() => {
+    if (!product?.sourceUrl) return "";
+
+    // If no options selected or no variants, return base URL
+    if (!product.variants || product.variants.length === 0) {
+      return product.sourceUrl;
+    }
+
+    // Find the matching variant based on selected options
+    const selectedSize = selectedOptions["Size"] || selectedOptions["size"];
+    if (!selectedSize) {
+      return product.sourceUrl;
+    }
+
+    // Find variant that matches the selected size
+    const matchingVariant = product.variants.find(v => {
+      // Check option1 (usually size for single-option products)
+      if (v.option1 === selectedSize) return true;
+      // Check title (sometimes contains size)
+      if (v.title === selectedSize) return true;
+      return false;
+    });
+
+    if (matchingVariant?.id) {
+      // Append variant ID to URL (Shopify format)
+      const baseUrl = product.sourceUrl.split("?")[0];
+      return `${baseUrl}?variant=${matchingVariant.id}`;
+    }
+
+    return product.sourceUrl;
+  }, [product?.sourceUrl, product?.variants, selectedOptions]);
+
   const { addViewed } = useRecentlyViewed();
   const addedViewRef = useRef<string | null>(null);
   const [previousProductId, setPreviousProductId] = useState<string | null>(null);
   const [previousProductName, setPreviousProductName] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState<string | null>(null);
+  const [fromCloset, setFromCloset] = useState(false);
   const processedProductId = useRef<string | null>(null);
   const refreshedProductRef = useRef<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -163,8 +197,17 @@ export default function ProductDetailPage() {
   // Action to refresh product data from source
   const refreshProductFromSource = useAction(api.scraper.refreshProductFromSource);
 
-  // Get the cached search query on mount
+  // Get URL params on mount
+  const urlSearchParams = useSearchParams();
+
+  // Check if we came from closet and get cached search query
   useEffect(() => {
+    // Check if we came from closet
+    if (urlSearchParams.get("from") === "closet") {
+      setFromCloset(true);
+    }
+
+    // Get cached search query
     try {
       const savedState = sessionStorage.getItem("shopwatch_search_state");
       if (savedState) {
@@ -176,7 +219,7 @@ export default function ProductDetailPage() {
     } catch (e) {
       // Ignore parsing errors
     }
-  }, []);
+  }, [urlSearchParams]);
 
   // Refresh product data from source when page loads
   useEffect(() => {
@@ -453,27 +496,41 @@ export default function ProductDetailPage() {
 
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
         <div className="flex items-center gap-4">
-          <Link
-            href={searchQuery ? `/?q=${encodeURIComponent(searchQuery)}` : "/"}
-            className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to search{searchQuery ? ` results` : ""}
-          </Link>
-          {previousProductId && previousProductName && (
+          {fromCloset ? (
+            <Link
+              href="/closet"
+              className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to My Closet
+            </Link>
+          ) : (
             <>
-              <span className="text-zinc-300 dark:text-zinc-600">|</span>
-              <button
-                onClick={handleBackToPreviousProduct}
+              <Link
+                href={searchQuery ? `/?q=${encodeURIComponent(searchQuery)}` : "/"}
                 className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                Back to {previousProductName.length > 25 ? previousProductName.slice(0, 25) + "..." : previousProductName}
-              </button>
+                Back to search{searchQuery ? ` results` : ""}
+              </Link>
+              {previousProductId && previousProductName && (
+                <>
+                  <span className="text-zinc-300 dark:text-zinc-600">|</span>
+                  <button
+                    onClick={handleBackToPreviousProduct}
+                    className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                    Back to {previousProductName.length > 25 ? previousProductName.slice(0, 25) + "..." : previousProductName}
+                  </button>
+                </>
+              )}
             </>
           )}
         </div>
@@ -626,10 +683,10 @@ export default function ProductDetailPage() {
             <div className="mt-8 flex flex-wrap gap-3">
               {/* View on Platform */}
               <a
-                href={product.sourceUrl}
+                href={viewUrl || product.sourceUrl}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex-1 rounded-xl bg-emerald-700 py-3 text-center font-medium text-white transition-colors hover:bg-emerald-600 dark:bg-emerald-700 dark:hover:bg-emerald-600"
+                className="flex-1 rounded-xl bg-red-400 py-3 text-center font-medium text-white transition-colors hover:bg-red-500 dark:bg-red-400 dark:hover:bg-red-500"
               >
                 View on {product.sourcePlatform}
               </a>

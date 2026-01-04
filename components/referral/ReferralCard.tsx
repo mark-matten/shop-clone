@@ -44,8 +44,8 @@ export function ReferralCard({ userId }: ReferralCardProps) {
 
     const referralLink = `${origin}/sign-up?ref=${stats.referralCode}`;
     const shareData = {
-      title: "Join ShopWatch",
-      text: "I've been using ShopWatch to track prices and find great deals. Join me!",
+      title: "Join armoi",
+      text: "I've been using armoi to track prices and find great deals. Join me!",
       url: referralLink,
     };
 
@@ -94,7 +94,7 @@ export function ReferralCard({ userId }: ReferralCardProps) {
             Invite Friends
           </h3>
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Share ShopWatch and earn rewards
+            Share armoi and earn rewards
           </p>
         </div>
       </div>
@@ -136,7 +136,7 @@ export function ReferralCard({ userId }: ReferralCardProps) {
               Share
             </button>
             <a
-              href={origin ? `https://twitter.com/intent/tweet?text=I've been using ShopWatch to track prices and find great deals. Join me!&url=${encodeURIComponent(`${origin}/sign-up?ref=${stats.referralCode}`)}` : "#"}
+              href={origin ? `https://twitter.com/intent/tweet?text=I've been using armoi to track prices and find great deals. Join me!&url=${encodeURIComponent(`${origin}/sign-up?ref=${stats.referralCode}`)}` : "#"}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center justify-center rounded-lg bg-zinc-100 p-2.5 text-zinc-600 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
@@ -146,7 +146,7 @@ export function ReferralCard({ userId }: ReferralCardProps) {
               </svg>
             </a>
             <a
-              href={origin ? `mailto:?subject=Join me on ShopWatch&body=I've been using ShopWatch to track prices and find great deals. Join me using my referral link: ${origin}/sign-up?ref=${stats.referralCode}` : "#"}
+              href={origin ? `mailto:?subject=Join me on armoi&body=I've been using armoi to track prices and find great deals. Join me using my referral link: ${origin}/sign-up?ref=${stats.referralCode}` : "#"}
               className="flex items-center justify-center rounded-lg bg-zinc-100 p-2.5 text-zinc-600 transition-colors hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

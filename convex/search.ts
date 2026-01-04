@@ -1158,12 +1158,22 @@ export const filterProductsInternal = internalQuery({
           }
         }
 
-        return { product, score };
-      })
-      .filter((item): item is { product: typeof products[0]; score: number } => item !== null);
+        // Check if product is sold out
+        const soldOut = isProductSoldOut(product);
 
-    // Sort by relevance score (highest first)
-    scoredProducts.sort((a, b) => b.score - a.score);
+        return { product, score, soldOut };
+      })
+      .filter((item): item is { product: typeof products[0]; score: number; soldOut: boolean } => item !== null);
+
+    // Sort by: in-stock first, then by relevance score
+    scoredProducts.sort((a, b) => {
+      // Sold out items go to the end
+      if (a.soldOut !== b.soldOut) {
+        return a.soldOut ? 1 : -1;
+      }
+      // Within same availability, sort by score
+      return b.score - a.score;
+    });
 
     // Return with or without scores based on flag
     if (args.includeScores) {
@@ -1231,12 +1241,20 @@ export const getPartialMatches = internalQuery({
         // Only include products that have some match
         if (score === 0) return null;
 
-        return { product, score };
-      })
-      .filter((item): item is { product: typeof products[0]; score: number } => item !== null);
+        // Check if product is sold out
+        const soldOut = isProductSoldOut(product);
 
-    // Sort by score and return top matches
-    scoredProducts.sort((a, b) => b.score - a.score);
+        return { product, score, soldOut };
+      })
+      .filter((item): item is { product: typeof products[0]; score: number; soldOut: boolean } => item !== null);
+
+    // Sort by: in-stock first, then by score
+    scoredProducts.sort((a, b) => {
+      if (a.soldOut !== b.soldOut) {
+        return a.soldOut ? 1 : -1;
+      }
+      return b.score - a.score;
+    });
 
     return scoredProducts.slice(0, limit).map(item => item.product);
   },

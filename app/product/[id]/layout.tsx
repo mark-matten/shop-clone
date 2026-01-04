@@ -9,18 +9,18 @@ export async function generateMetadata({
   // In production, you would fetch the product data here
   // For now, return generic metadata that will be overridden by client-side
   return {
-    title: "Product Details | ShopWatch",
-    description: "View product details, price history, and similar items on ShopWatch.",
+    title: "Product Details | armoi",
+    description: "View product details, price history, and similar items on armoi.",
     openGraph: {
-      title: "Product Details | ShopWatch",
-      description: "View product details, price history, and similar items on ShopWatch.",
+      title: "Product Details | armoi",
+      description: "View product details, price history, and similar items on armoi.",
       type: "website",
-      siteName: "ShopWatch",
+      siteName: "armoi",
     },
     twitter: {
       card: "summary_large_image",
-      title: "Product Details | ShopWatch",
-      description: "View product details, price history, and similar items on ShopWatch.",
+      title: "Product Details | armoi",
+      description: "View product details, price history, and similar items on armoi.",
     },
   };
 }

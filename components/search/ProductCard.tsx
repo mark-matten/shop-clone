@@ -106,33 +106,28 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
     ? product.variants.every(v => !v.available)
     : false;
 
-  // Count available sizes from options or variants
+  // Count available (in-stock) sizes from variants
   const getSizeCount = (): number => {
-    // First check options for Size
+    // If we have variants, count only the available ones
+    if (product.variants && product.variants.length > 0) {
+      const availableSizes = new Set<string>();
+      product.variants.forEach(v => {
+        if (v.available && v.option1) {
+          availableSizes.add(v.option1);
+        }
+      });
+      return availableSizes.size;
+    }
+    // Fallback to sizes array (no availability info)
+    if (product.sizes && product.sizes.length > 0) {
+      return product.sizes.length;
+    }
+    // Check options for Size (no availability info)
     const sizeOption = product.options?.find(opt =>
       opt.name.toLowerCase() === 'size' || opt.name.toLowerCase() === 'sizes'
     );
     if (sizeOption) {
       return sizeOption.values.length;
-    }
-    // Check for waist/length options (for jeans/pants)
-    const waistOption = product.options?.find(opt =>
-      opt.name.toLowerCase().includes('waist')
-    );
-    if (waistOption) {
-      return waistOption.values.length;
-    }
-    // Fallback to sizes array
-    if (product.sizes && product.sizes.length > 0) {
-      return product.sizes.length;
-    }
-    // Count unique sizes from variants
-    if (product.variants && product.variants.length > 0) {
-      const sizes = new Set<string>();
-      product.variants.forEach(v => {
-        if (v.option1) sizes.add(v.option1);
-      });
-      return sizes.size;
     }
     return 0;
   };

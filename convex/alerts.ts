@@ -233,8 +233,8 @@ export const sendSMSAlert = internalAction({
     // Build message
     const savings = (alert.previousPrice - alert.newPrice).toFixed(2);
     const message = alert.alertType === "target_reached"
-      ? `ShopWatch Alert: ${alert.product?.name} hit your target price! Now $${alert.newPrice} (was $${alert.previousPrice}). Save $${savings}!`
-      : `ShopWatch Alert: Price drop on ${alert.product?.name}! Now $${alert.newPrice} (was $${alert.previousPrice}). Save $${savings}!`;
+      ? `armoi Alert: ${alert.product?.name} hit your target price! Now $${alert.newPrice} (was $${alert.previousPrice}). Save $${savings}!`
+      : `armoi Alert: Price drop on ${alert.product?.name}! Now $${alert.newPrice} (was $${alert.previousPrice}). Save $${savings}!`;
 
     if (twilioSid && twilioAuth && twilioPhone) {
       try {
