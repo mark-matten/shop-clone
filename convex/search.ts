@@ -298,9 +298,12 @@ export const filterProducts = query({
       if (args.material && product.material && !product.material.toLowerCase().includes(args.material.toLowerCase())) return false;
       if (args.size && product.size && !product.size.toLowerCase().includes(args.size.toLowerCase())) return false;
 
-      // Price filters
-      if (args.minPrice !== undefined && product.price < args.minPrice) return false;
-      if (args.maxPrice !== undefined && product.price > args.maxPrice) return false;
+      // Price filters - get price from colorVariants or legacy field
+      const productPrice = product.colorVariants?.[0]?.price ?? product.price;
+      if (productPrice !== undefined) {
+        if (args.minPrice !== undefined && productPrice < args.minPrice) return false;
+        if (args.maxPrice !== undefined && productPrice > args.maxPrice) return false;
+      }
 
       return true;
     });
@@ -1125,8 +1128,13 @@ export const filterProductsInternal = internalQuery({
         if (args.brand && !product.brand.toLowerCase().includes(args.brand.toLowerCase())) return null;
         if (args.material && product.material && !product.material.toLowerCase().includes(args.material.toLowerCase())) return null;
         if (args.size && product.size && !product.size.toLowerCase().includes(args.size.toLowerCase())) return null;
-        if (args.minPrice !== undefined && product.price < args.minPrice) return null;
-        if (args.maxPrice !== undefined && product.price > args.maxPrice) return null;
+
+        // Price filters - get price from colorVariants or legacy field
+        const productPrice = product.colorVariants?.[0]?.price ?? product.price;
+        if (productPrice !== undefined) {
+          if (args.minPrice !== undefined && productPrice < args.minPrice) return null;
+          if (args.maxPrice !== undefined && productPrice > args.maxPrice) return null;
+        }
 
         // Calculate relevance score
         let score = nameScore; // Start with name match score

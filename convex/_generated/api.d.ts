@@ -18,6 +18,7 @@ import type * as dashboard from "../dashboard.js";
 import type * as favorites from "../favorites.js";
 import type * as gemini from "../gemini.js";
 import type * as http from "../http.js";
+import type * as migrations from "../migrations.js";
 import type * as priceChecker from "../priceChecker.js";
 import type * as products from "../products.js";
 import type * as recommendations from "../recommendations.js";
@@ -47,6 +48,7 @@ declare const fullApi: ApiFromModules<{
   favorites: typeof favorites;
   gemini: typeof gemini;
   http: typeof http;
+  migrations: typeof migrations;
   priceChecker: typeof priceChecker;
   products: typeof products;
   recommendations: typeof recommendations;

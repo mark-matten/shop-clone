@@ -52,7 +52,10 @@ export default defineSchema({
     userId: v.id("users"),
     productId: v.id("products"),
     createdAt: v.number(),
-    // Selected variant options (e.g., { "Color": "Black", "Size": "M" })
+    // NEW: Specific color and size selection
+    colorName: v.optional(v.string()),
+    size: v.optional(v.string()),
+    // Legacy: Selected variant options (e.g., { "Color": "Black", "Size": "M" })
     selectedOptions: v.optional(v.record(v.string(), v.string())),
     // Custom category override (user can change from product's default category)
     customCategory: v.optional(v.string()),
@@ -62,47 +65,78 @@ export default defineSchema({
     .index("by_userId_productId", ["userId", "productId"]),
 
   products: defineTable({
+    // ==============================================
+    // NEW STRUCTURE (optional during migration)
+    // ==============================================
+    // Unique identifier: brand::name::platform
+    productKey: v.optional(v.string()),
+
+    // Color variants - each color is a sub-product with its own sizes/prices
+    colorVariants: v.optional(v.array(v.object({
+      colorName: v.string(),
+      colorHex: v.optional(v.string()),
+      sourceUrl: v.string(),
+      imageUrl: v.optional(v.string()),
+      imageUrls: v.optional(v.array(v.string())),
+      price: v.number(),
+      originalPrice: v.optional(v.number()),
+      // Size availability for this color
+      sizes: v.array(v.object({
+        size: v.string(),
+        available: v.boolean(),
+        price: v.optional(v.number()),
+        variantId: v.optional(v.string()),
+      })),
+    }))),
+
+    // ==============================================
+    // SHARED FIELDS (used in both old and new)
+    // ==============================================
     name: v.string(),
-    description: v.string(),
     brand: v.string(),
-    price: v.number(),
-    originalPrice: v.optional(v.number()), // For sale items - the original/compare-at price
-    material: v.optional(v.string()),
-    size: v.optional(v.string()),
-    sizes: v.optional(v.array(v.string())), // All available sizes (legacy)
-    // Variant data for color/size selection
-    variants: v.optional(v.array(v.object({
-      id: v.string(),
-      title: v.string(), // e.g., "31 / 28" or "M"
-      available: v.boolean(),
-      price: v.optional(v.number()),
-      option1: v.optional(v.string()), // e.g., waist size "31"
-      option2: v.optional(v.string()), // e.g., length "28"
-      option3: v.optional(v.string()),
-    }))),
-    options: v.optional(v.array(v.object({
-      name: v.string(), // e.g., "Waist", "Length", "Size"
-      values: v.array(v.string()), // e.g., ["28", "29", "30", ...]
-    }))),
-    // Color grouping
-    colorGroupId: v.optional(v.string()), // YGroup ID to link related colors
-    colorName: v.optional(v.string()), // e.g., "Graphite", "Black"
-    colorHex: v.optional(v.string()), // e.g., "#4a4a4a"
+    description: v.string(),
     category: v.string(),
     gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
     condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
-    sourceUrl: v.string(),
+    material: v.optional(v.string()),
     sourcePlatform: v.string(),
+
+    // ==============================================
+    // LEGACY FIELDS (kept for backwards compatibility)
+    // ==============================================
+    price: v.optional(v.number()),
+    originalPrice: v.optional(v.number()),
+    size: v.optional(v.string()),
+    sizes: v.optional(v.array(v.string())),
+    variants: v.optional(v.array(v.object({
+      id: v.string(),
+      title: v.string(),
+      available: v.boolean(),
+      price: v.optional(v.number()),
+      option1: v.optional(v.string()),
+      option2: v.optional(v.string()),
+      option3: v.optional(v.string()),
+    }))),
+    options: v.optional(v.array(v.object({
+      name: v.string(),
+      values: v.array(v.string()),
+    }))),
+    colorGroupId: v.optional(v.string()),
+    colorName: v.optional(v.string()),
+    colorHex: v.optional(v.string()),
+    sourceUrl: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
     imageUrls: v.optional(v.array(v.string())),
   })
+    .index("by_productKey", ["productKey"])
     .index("by_brand", ["brand"])
     .index("by_category", ["category"])
-    .index("by_price", ["price"])
     .index("by_condition", ["condition"])
     .index("by_gender", ["gender"])
     .index("by_gender_category", ["gender", "category"])
     .index("by_sourcePlatform", ["sourcePlatform"])
+    // Legacy indexes (kept for migration)
+    .index("by_price", ["price"])
     .index("by_colorGroupId", ["colorGroupId"])
     .index("by_sourceUrl", ["sourceUrl"]),
 
@@ -111,7 +145,10 @@ export default defineSchema({
     productId: v.id("products"),
     targetPrice: v.optional(v.number()),
     createdAt: v.number(),
-    // Selected variant options (e.g., { "Color": "Black", "Size": "M" })
+    // NEW: Specific color and size selection
+    colorName: v.optional(v.string()),
+    size: v.optional(v.string()),
+    // Legacy: Selected variant options (e.g., { "Color": "Black", "Size": "M" })
     selectedOptions: v.optional(v.record(v.string(), v.string())),
   })
     .index("by_userId", ["userId"])
@@ -125,7 +162,10 @@ export default defineSchema({
     notes: v.optional(v.string()),
     wornCount: v.optional(v.number()),
     lastWorn: v.optional(v.number()),
-    // Selected variant options (e.g., { "Color": "Black", "Size": "M" })
+    // NEW: Specific color and size for product-linked items
+    colorName: v.optional(v.string()),
+    selectedSize: v.optional(v.string()),
+    // Legacy: Selected variant options (e.g., { "Color": "Black", "Size": "M" })
     selectedOptions: v.optional(v.record(v.string(), v.string())),
     // Custom category override (user can change from product's default category)
     customCategory: v.optional(v.string()),

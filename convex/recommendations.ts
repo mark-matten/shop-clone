@@ -1,6 +1,14 @@
 import { v } from "convex/values";
 import { query } from "./_generated/server";
 
+// Helper to get price from product (handles both new colorVariants and legacy structure)
+function getProductPrice(product: { colorVariants?: Array<{ price: number }> | null; price?: number }): number | undefined {
+  if (product.colorVariants && product.colorVariants.length > 0) {
+    return product.colorVariants[0].price;
+  }
+  return product.price;
+}
+
 // Get personalized product recommendations for a user
 export const getRecommendations = query({
   args: {
@@ -162,7 +170,8 @@ export const getSimilarProducts = query({
         (p.brand === product.brand ? 2 : 0) +
         (p.category === product.category ? 1 : 0) +
         (p.gender === product.gender ? 1 : 0) +
-        (Math.abs(p.price - product.price) < 50 ? 1 : 0),
+        (getProductPrice(p) !== undefined && getProductPrice(product) !== undefined &&
+          Math.abs(getProductPrice(p)! - getProductPrice(product)!) < 50 ? 1 : 0),
     }));
 
     // Sort by score and return top items

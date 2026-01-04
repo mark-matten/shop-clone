@@ -1,43 +1,47 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-// Add a new product
+// Helper to generate productKey
+function generateProductKey(brand: string, name: string, platform: string): string {
+  return `${brand}::${name}::${platform}`;
+}
+
+// Color variant schema for validation
+const colorVariantSchema = v.object({
+  colorName: v.string(),
+  colorHex: v.optional(v.string()),
+  sourceUrl: v.string(),
+  imageUrl: v.optional(v.string()),
+  imageUrls: v.optional(v.array(v.string())),
+  price: v.number(),
+  originalPrice: v.optional(v.number()),
+  sizes: v.array(v.object({
+    size: v.string(),
+    available: v.boolean(),
+    price: v.optional(v.number()),
+    variantId: v.optional(v.string()),
+  })),
+});
+
+// Add a new product with colorVariants structure
 export const addProduct = mutation({
   args: {
     name: v.string(),
     description: v.string(),
     brand: v.string(),
-    price: v.number(),
-    originalPrice: v.optional(v.number()),
-    material: v.optional(v.string()),
-    size: v.optional(v.string()),
-    sizes: v.optional(v.array(v.string())),
-    variants: v.optional(v.array(v.object({
-      id: v.string(),
-      title: v.string(),
-      available: v.boolean(),
-      price: v.optional(v.number()),
-      option1: v.optional(v.string()),
-      option2: v.optional(v.string()),
-      option3: v.optional(v.string()),
-    }))),
-    options: v.optional(v.array(v.object({
-      name: v.string(),
-      values: v.array(v.string()),
-    }))),
-    colorGroupId: v.optional(v.string()),
-    colorName: v.optional(v.string()),
-    colorHex: v.optional(v.string()),
     category: v.string(),
     gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
     condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
-    sourceUrl: v.string(),
+    material: v.optional(v.string()),
     sourcePlatform: v.string(),
-    imageUrl: v.optional(v.string()),
-    imageUrls: v.optional(v.array(v.string())),
+    colorVariants: v.array(colorVariantSchema),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("products", args);
+    const productKey = generateProductKey(args.brand, args.name, args.sourcePlatform);
+    return await ctx.db.insert("products", {
+      ...args,
+      productKey,
+    });
   },
 });
 
@@ -83,10 +87,70 @@ export const getAllProducts = query({
   },
 });
 
-// Get related color variants by colorGroupId
+// Get product by productKey (brand::name::platform)
+export const getProductByKey = query({
+  args: { productKey: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("products")
+      .withIndex("by_productKey", (q) => q.eq("productKey", args.productKey))
+      .first();
+  },
+});
+
+// Get other color variants of the same product (same productKey, different color)
+export const getOtherColors = query({
+  args: { productId: v.id("products") },
+  handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product || !product.productKey) return [];
+
+    // Find all products with the same productKey
+    const allColors = await ctx.db
+      .query("products")
+      .withIndex("by_productKey", (q) => q.eq("productKey", product.productKey!))
+      .collect();
+
+    // Filter out the current product and return others
+    return allColors
+      .filter(p => p._id !== args.productId)
+      .map(p => ({
+        _id: p._id,
+        colorName: p.colorName || "Default",
+        colorHex: p.colorHex,
+        imageUrl: p.imageUrl,
+        price: p.price,
+      }));
+  },
+});
+
+// Find product by any color variant's sourceUrl
+export const getProductByColorUrl = query({
+  args: { sourceUrl: v.string() },
+  handler: async (ctx, args) => {
+    // First try legacy sourceUrl index
+    const legacyMatch = await ctx.db
+      .query("products")
+      .withIndex("by_sourceUrl", (q) => q.eq("sourceUrl", args.sourceUrl))
+      .first();
+
+    if (legacyMatch) return legacyMatch;
+
+    // Search through colorVariants
+    const products = await ctx.db.query("products").collect();
+    return products.find(p =>
+      p.colorVariants?.some(cv => cv.sourceUrl === args.sourceUrl)
+    ) || null;
+  },
+});
+
+// DEPRECATED: Get related color variants by colorGroupId
+// Use getProduct and access colorVariants array instead
 export const getColorVariants = query({
   args: { colorGroupId: v.string() },
   handler: async (ctx, args) => {
+    // For backwards compatibility, return products with this colorGroupId
+    // These should have been migrated to colorVariants already
     return await ctx.db
       .query("products")
       .withIndex("by_colorGroupId", (q) => q.eq("colorGroupId", args.colorGroupId))
@@ -95,12 +159,38 @@ export const getColorVariants = query({
 });
 
 // Update product price (for price tracking)
+// Supports both legacy price field and new colorVariants structure
 export const updatePrice = mutation({
   args: {
     id: v.id("products"),
     price: v.number(),
+    colorName: v.optional(v.string()), // Which color variant to update
   },
   handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.id);
+    if (!product) throw new Error("Product not found");
+
+    // If product has colorVariants, update the specific variant's price
+    if (product.colorVariants && product.colorVariants.length > 0) {
+      const updatedVariants = product.colorVariants.map(cv => {
+        if (args.colorName && cv.colorName === args.colorName) {
+          return { ...cv, price: args.price };
+        } else if (!args.colorName) {
+          // Update first variant if no colorName specified
+          return cv;
+        }
+        return cv;
+      });
+
+      // If no colorName specified, update the first variant
+      if (!args.colorName && updatedVariants.length > 0) {
+        updatedVariants[0] = { ...updatedVariants[0], price: args.price };
+      }
+
+      return await ctx.db.patch(args.id, { colorVariants: updatedVariants });
+    }
+
+    // Legacy: update the price field directly
     return await ctx.db.patch(args.id, { price: args.price });
   },
 });
@@ -239,8 +329,67 @@ export const deleteByPlatform = mutation({
   },
 });
 
-// Upsert a product - update if exists (by sourceUrl), insert if not
+// Upsert a product with colorVariants - update if exists (by productKey), insert if not
 export const upsertProduct = mutation({
+  args: {
+    name: v.string(),
+    description: v.string(),
+    brand: v.string(),
+    category: v.string(),
+    gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
+    condition: v.union(v.literal("new"), v.literal("used"), v.literal("like_new")),
+    material: v.optional(v.string()),
+    sourcePlatform: v.string(),
+    colorVariants: v.array(colorVariantSchema),
+  },
+  handler: async (ctx, args) => {
+    const productKey = generateProductKey(args.brand, args.name, args.sourcePlatform);
+
+    // Check if product already exists by productKey
+    const existing = await ctx.db
+      .query("products")
+      .withIndex("by_productKey", (q) => q.eq("productKey", productKey))
+      .first();
+
+    if (existing) {
+      // Merge colorVariants: update existing colors, add new ones
+      const existingVariants = existing.colorVariants || [];
+      const existingColorNames = new Set(existingVariants.map(cv => cv.colorName));
+      const updatedVariants = [...existingVariants];
+
+      for (const newVariant of args.colorVariants) {
+        const existingIndex = updatedVariants.findIndex(
+          cv => cv.colorName === newVariant.colorName
+        );
+        if (existingIndex >= 0) {
+          // Update existing color variant
+          updatedVariants[existingIndex] = newVariant;
+        } else {
+          // Add new color variant
+          updatedVariants.push(newVariant);
+        }
+      }
+
+      await ctx.db.patch(existing._id, {
+        colorVariants: updatedVariants,
+        description: args.description,
+        material: args.material,
+        gender: args.gender,
+      });
+      return { id: existing._id, action: "updated" as const };
+    } else {
+      // Insert new product
+      const id = await ctx.db.insert("products", {
+        ...args,
+        productKey,
+      });
+      return { id, action: "inserted" as const };
+    }
+  },
+});
+
+// Legacy upsert for backwards compatibility during transition
+export const upsertProductLegacy = mutation({
   args: {
     name: v.string(),
     description: v.string(),
@@ -282,7 +431,6 @@ export const upsertProduct = mutation({
       .first();
 
     if (existing) {
-      // Update price, originalPrice, variants (availability), images, and color info
       const updates: Record<string, unknown> = {
         price: args.price,
         originalPrice: args.originalPrice,
@@ -290,7 +438,6 @@ export const upsertProduct = mutation({
         imageUrl: args.imageUrl,
         imageUrls: args.imageUrls,
       };
-      // Only update color fields if provided
       if (args.colorHex !== undefined) {
         updates.colorHex = args.colorHex;
       }
@@ -303,7 +450,6 @@ export const upsertProduct = mutation({
       await ctx.db.patch(existing._id, updates);
       return { id: existing._id, action: "updated" as const };
     } else {
-      // Insert new product
       const id = await ctx.db.insert("products", args);
       return { id, action: "inserted" as const };
     }

@@ -12,6 +12,21 @@ import { useRecentlyViewed } from "@/components/search/RecentlyViewed";
 import { ImageCarousel } from "@/components/ui/ImageCarousel";
 import { VariantSelector } from "@/components/ui/VariantSelector";
 
+// Helper to get price from product
+function getProductPrice(product: { price?: number }): number {
+  return product.price ?? 0;
+}
+
+// Helper to get original price from product
+function getProductOriginalPrice(product: { originalPrice?: number }): number | undefined {
+  return product.originalPrice;
+}
+
+// Helper to get image URL from product
+function getProductImageUrl(product: { imageUrl?: string }): string | undefined {
+  return product.imageUrl;
+}
+
 export default function ProductDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -123,10 +138,10 @@ export default function ProductDetailPage() {
     productId ? { productId: productId as Id<"products">, limit: 6 } : "skip"
   );
 
-  // Get color variants for this product
-  const colorVariants = useQuery(
-    api.products.getColorVariants,
-    product?.colorGroupId ? { colorGroupId: product.colorGroupId } : "skip"
+  // Get other colors of the same product
+  const otherColors = useQuery(
+    api.products.getOtherColors,
+    productId ? { productId: productId as Id<"products"> } : "skip"
   );
 
   const [targetPrice, setTargetPrice] = useState("");
@@ -309,7 +324,8 @@ export default function ProductDetailPage() {
   // Set default target price only once when product first loads
   useEffect(() => {
     if (product && !hasInitializedPrice) {
-      setTargetPrice(Math.round(product.price * 0.85).toString());
+      const price = getProductPrice(product);
+      setTargetPrice(Math.round(price * 0.85).toString());
       setHasInitializedPrice(true);
     }
   }, [product, hasInitializedPrice]);
@@ -334,8 +350,8 @@ export default function ProductDetailPage() {
         id: productId,
         name: product.name,
         brand: product.brand,
-        price: product.price,
-        imageUrl: product.imageUrl,
+        price: getProductPrice(product),
+        imageUrl: getProductImageUrl(product),
       });
     }
   }, [product, productId, addViewed]);
@@ -494,15 +510,15 @@ export default function ProductDetailPage() {
 
             <div className="mt-4 flex flex-wrap items-center gap-3">
               <span className="text-3xl font-bold text-zinc-900 dark:text-white">
-                ${product.price.toFixed(2)}
+                ${getProductPrice(product).toFixed(2)}
               </span>
-              {product.originalPrice && product.originalPrice > product.price && (
+              {product.originalPrice && product.originalPrice > (product.price ?? 0) && (
                 <>
                   <span className="text-xl text-zinc-400 line-through dark:text-zinc-500">
                     ${product.originalPrice.toFixed(2)}
                   </span>
                   <span className="rounded-full bg-red-100 px-3 py-1 text-sm font-bold text-red-700 dark:bg-red-900/30 dark:text-red-400">
-                    {Math.round((1 - product.price / product.originalPrice) * 100)}% OFF
+                    {Math.round((1 - (product.price ?? 0) / product.originalPrice) * 100)}% OFF
                   </span>
                 </>
               )}
@@ -515,30 +531,12 @@ export default function ProductDetailPage() {
               {product.description}
             </p>
 
-            {/* Color & Size Selector */}
-            <div className="mt-6">
-              <VariantSelector
-                variants={product.variants}
-                options={product.options}
-                colorName={product.colorName}
-                colorHex={product.colorHex}
-                colorVariants={colorVariants?.map((v) => ({
-                  _id: v._id,
-                  colorName: v.colorName,
-                  colorHex: v.colorHex,
-                  imageUrl: v.imageUrl,
-                })) ?? []}
-                currentProductId={productId}
-                onOptionsChange={setSelectedOptions}
-                initialSelectedOptions={selectedOptions}
-              />
-            </div>
-
+            {/* Product Details: Color, Material, Category, Gender */}
             <dl className="mt-6 grid grid-cols-2 gap-4">
-              {product.size && (
+              {product.colorName && (
                 <div>
-                  <dt className="text-sm text-zinc-500 dark:text-zinc-400">Size</dt>
-                  <dd className="font-medium text-zinc-900 dark:text-white">{product.size}</dd>
+                  <dt className="text-sm text-zinc-500 dark:text-zinc-400">Color</dt>
+                  <dd className="font-medium text-zinc-900 dark:text-white">{product.colorName}</dd>
                 </div>
               )}
               {product.material && (
@@ -558,6 +556,42 @@ export default function ProductDetailPage() {
                 </div>
               )}
             </dl>
+
+            {/* Size Selector */}
+            {product.variants && product.variants.length > 0 && (
+              <div className="mt-6">
+                <VariantSelector
+                  variants={product.variants}
+                  options={product.options}
+                  colorName={product.colorName}
+                  colorHex={product.colorHex}
+                  colorVariants={[]}
+                  currentProductId={productId}
+                  onOptionsChange={setSelectedOptions}
+                  initialSelectedOptions={selectedOptions}
+                />
+              </div>
+            )}
+
+            {/* Available in Other Colors */}
+            {otherColors && otherColors.length > 0 && (
+              <div className="mt-6">
+                <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                  Available in Other Colors
+                </h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {otherColors.map((color) => (
+                    <Link
+                      key={color._id}
+                      href={`/product/${color._id}`}
+                      className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-all hover:border-zinc-400 hover:shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    >
+                      {color.colorName}
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <div className="mt-8 flex flex-wrap gap-3">
               {/* View on Platform */}
@@ -724,7 +758,7 @@ export default function ProductDetailPage() {
                       {item.name}
                     </p>
                     <p className="mt-1 font-semibold text-zinc-900 dark:text-white">
-                      ${item.price.toFixed(2)}
+                      ${getProductPrice(item).toFixed(2)}
                     </p>
                   </div>
                 </Link>
@@ -767,7 +801,7 @@ export default function ProductDetailPage() {
                 />
               </div>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Current price: ${product.price.toFixed(2)} | Leave empty to track any price drop
+                Current price: ${getProductPrice(product).toFixed(2)} | Leave empty to track any price drop
               </p>
             </div>
 

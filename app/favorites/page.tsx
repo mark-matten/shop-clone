@@ -29,6 +29,17 @@ function getColorFromName(colorName: string): string {
   return '#6b7280'; // Default gray
 }
 
+// Helper to get price from product (supports both colorVariants and legacy structure)
+function getProductPrice(product: {
+  colorVariants?: Array<{ price: number }> | null;
+  price?: number;
+}): number {
+  if (product.colorVariants && product.colorVariants.length > 0) {
+    return product.colorVariants[0].price;
+  }
+  return product.price ?? 0;
+}
+
 interface EditingItem {
   productId: Id<"products">;
   productName: string;
@@ -109,7 +120,7 @@ export default function FavoritesPage() {
       await trackProduct({
         userId: convexUser._id,
         productId: item.product._id,
-        targetPrice: Math.round(item.product.price * 0.85),
+        targetPrice: Math.round(getProductPrice(item.product) * 0.85),
         selectedOptions: item.selectedOptions,
       });
     }
@@ -294,7 +305,7 @@ export default function FavoritesPage() {
 
                       <div className="flex items-center justify-between">
                         <span className="text-lg font-semibold text-zinc-900 dark:text-white">
-                          ${product.price.toFixed(2)}
+                          ${getProductPrice(product).toFixed(2)}
                         </span>
                         {item.isTracking && item.targetPrice && (
                           <span className="text-xs text-green-600 dark:text-green-400">

@@ -8,6 +8,17 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
 
+// Helper to get price from product (supports both colorVariants and legacy structure)
+function getProductPrice(product: {
+  colorVariants?: Array<{ price: number }> | null;
+  price?: number;
+}): number {
+  if (product.colorVariants && product.colorVariants.length > 0) {
+    return product.colorVariants[0].price;
+  }
+  return product.price ?? 0;
+}
+
 const sizeOptions = {
   women: {
     shoe: ["5", "5.5", "6", "6.5", "7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11"],
@@ -483,7 +494,7 @@ export default function ProfilePage() {
                       </div>
                       <div className="text-right flex-shrink-0">
                         <p className="text-lg font-semibold text-zinc-900 dark:text-white">
-                          ${item.product.price.toFixed(2)}
+                          ${getProductPrice(item.product).toFixed(2)}
                         </p>
                         {item.targetPrice && (
                           <p className="text-xs text-zinc-400">

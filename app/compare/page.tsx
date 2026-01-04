@@ -11,16 +11,25 @@ type Product = {
   name: string;
   description: string;
   brand: string;
-  price: number;
+  price?: number;
   material?: string;
   size?: string;
   category: string;
   gender?: "men" | "women" | "unisex";
   condition: "new" | "used" | "like_new";
-  sourceUrl: string;
+  sourceUrl?: string;
   sourcePlatform: string;
   imageUrl?: string;
+  colorVariants?: Array<{ price: number }>;
 } | null;
+
+// Helper to get price from product (supports both colorVariants and legacy structure)
+function getProductPrice(product: NonNullable<Product>): number {
+  if (product.colorVariants && product.colorVariants.length > 0) {
+    return product.colorVariants[0].price;
+  }
+  return product.price ?? 0;
+}
 
 export default function ComparePage() {
   const allProducts = useQuery(api.products.getAllProducts);
@@ -93,7 +102,7 @@ export default function ComparePage() {
   ];
 
   const validProducts = selectedProducts.filter((p): p is NonNullable<typeof p> => p !== null);
-  const prices = validProducts.map((p) => p.price);
+  const prices = validProducts.map((p) => getProductPrice(p));
   const lowestPrice = prices.length > 0 ? Math.min(...prices) : 0;
 
   // Loading state
@@ -162,7 +171,7 @@ export default function ComparePage() {
               </div>
               <div>
                 <p className="font-medium text-emerald-900 dark:text-emerald-100">
-                  Best Value: {validProducts.find(p => p.price === lowestPrice)?.name}
+                  Best Value: {validProducts.find(p => getProductPrice(p) === lowestPrice)?.name}
                 </p>
                 <p className="text-sm text-emerald-700 dark:text-emerald-300">
                   ${lowestPrice.toFixed(2)} - Save up to ${(Math.max(...prices) - lowestPrice).toFixed(2)} compared to other options
@@ -425,7 +434,7 @@ export default function ComparePage() {
                           {product.name}
                         </p>
                         <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                          ${product.price.toFixed(2)} · {product.sourcePlatform}
+                          ${getProductPrice(product).toFixed(2)} · {product.sourcePlatform}
                         </p>
                       </div>
                     </button>

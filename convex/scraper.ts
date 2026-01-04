@@ -102,14 +102,18 @@ export const scrapePlatform = internalAction({
     let updated = 0;
 
     for (const product of existingProducts) {
+      // Get current price from colorVariants or legacy field
+      const currentPrice = product.colorVariants?.[0]?.price ?? product.price;
+      if (currentPrice === undefined) continue;
+
       // Simulate price fluctuation (5% chance of price change)
       if (Math.random() < 0.05) {
         const priceChange = (Math.random() - 0.5) * 0.2; // -10% to +10%
-        const newPrice = Math.round(product.price * (1 + priceChange) * 100) / 100;
+        const newPrice = Math.round(currentPrice * (1 + priceChange) * 100) / 100;
 
         await ctx.runMutation(internal.scraper.updateProductPrice, {
           productId: product._id,
-          oldPrice: product.price,
+          oldPrice: currentPrice,
           newPrice,
         });
 
@@ -142,15 +146,32 @@ export const getProductsByPlatform = internalQuery({
 });
 
 // Update product price and record history
+// Supports both new colorVariants structure and legacy fields
 export const updateProductPrice = internalMutation({
   args: {
     productId: v.id("products"),
     oldPrice: v.number(),
     newPrice: v.number(),
+    colorName: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    // Update the product price
-    await ctx.db.patch(args.productId, { price: args.newPrice });
+    const product = await ctx.db.get(args.productId);
+    if (!product) return;
+
+    // If product has colorVariants (new structure), update the matching color variant
+    if (product.colorVariants && product.colorVariants.length > 0) {
+      const targetColorName = args.colorName || product.colorVariants[0].colorName;
+      const updatedVariants = product.colorVariants.map(cv => {
+        if (cv.colorName === targetColorName) {
+          return { ...cv, price: args.newPrice };
+        }
+        return cv;
+      });
+      await ctx.db.patch(args.productId, { colorVariants: updatedVariants });
+    } else {
+      // Legacy: update price field directly
+      await ctx.db.patch(args.productId, { price: args.newPrice });
+    }
 
     // Record in price history
     await ctx.db.insert("price_history", {
@@ -319,6 +340,7 @@ interface RefreshedProductData {
   originalPrice?: number;
   description?: string;
   imageUrl?: string;
+  imageUrls?: string[];
   variants?: Array<{
     id: string;
     title: string;
@@ -333,6 +355,8 @@ interface RefreshedProductData {
     values: string[];
   }>;
   colorGroupId?: string;
+  colorName?: string;
+  colorHex?: string;
   colorVariants?: ColorVariantData[];
 }
 
@@ -345,6 +369,7 @@ function parseEverlaneProductJson(product: any, availabilityMap?: Map<number, bo
   colorName: string | undefined;
   colorHex: string | undefined;
   imageUrl: string | undefined;
+  imageUrls: string[] | undefined;
   variants: RefreshedProductData['variants'];
   options: RefreshedProductData['options'];
 } {
@@ -384,8 +409,9 @@ function parseEverlaneProductJson(product: any, availabilityMap?: Map<number, bo
   // Get color hex from color name
   const colorHex = getColorHex(colorName);
 
-  // Get main image
+  // Get main image and all images
   const imageUrl = product.images?.[0]?.src;
+  const imageUrls = product.images?.map((img: { src: string }) => img.src).filter(Boolean);
 
   // Build variants array
   const variants = product.variants.map((v: { id: number; title: string; price: string; option1: string | null; option2: string | null; option3: string | null }) => ({
@@ -414,38 +440,103 @@ function parseEverlaneProductJson(product: any, availabilityMap?: Map<number, bo
     colorName,
     colorHex,
     imageUrl,
+    imageUrls: imageUrls?.length > 0 ? imageUrls : undefined,
     variants,
     options: options?.length > 0 ? options : undefined,
   };
 }
 
-// Fetch all color variants from Everlane's collection page
-async function fetchEverlaneColorVariants(colorGroupId: string, currentHandle: string): Promise<ColorVariantData[]> {
+// Fetch all color variants from Everlane - search multiple collections
+async function fetchEverlaneColorVariants(colorGroupId: string, currentHandle: string, pageHtml?: string): Promise<ColorVariantData[]> {
   const colorVariants: ColorVariantData[] = [];
+  const foundHandles = new Set<string>();
 
   try {
-    // Everlane uses YGroup tags to group color variants
-    // We can search for products with the same YGroup tag
-    const searchUrl = `https://www.everlane.com/collections/all/products.json?limit=50`;
+    // Method 1: Try to extract color variant handles from HTML page
+    if (pageHtml) {
+      // Look for color swatch links in the HTML (pattern: /products/handle)
+      // Everlane typically has color swatches that are links to other product pages
+      const handleMatches = pageHtml.matchAll(/href=["']\/products\/([a-z0-9-]+)["']/gi);
+      for (const match of handleMatches) {
+        const handle = match[1];
+        if (handle !== currentHandle && !foundHandles.has(handle)) {
+          foundHandles.add(handle);
+        }
+      }
+    }
 
-    const response = await fetch(searchUrl, {
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
-        "Accept": "application/json",
-      },
-    });
+    // Method 2: Search multiple collections for products with same YGroup tag
+    // Different products appear in different collections on Everlane
+    const collectionsToSearch = [
+      "mens-sale",
+      "womens-sale",
+      "sale",
+      "all",
+      "mens-tops",
+      "womens-tops",
+      "mens-tees-and-tanks",
+      "womens-tees",
+      "mens-tees-short-sleeve",
+      "womens-tees-short-sleeve",
+      "mens-basics",
+      "womens-basics",
+      "mens-new-arrivals",
+      "womens-new-arrivals",
+      "best-sellers",
+    ];
 
-    if (!response.ok) return colorVariants;
-
-    const data = await response.json();
-    const products = data.products || [];
-
-    // Filter products that have the same YGroup tag
     const yGroupTag = `YGroup_${colorGroupId}`;
 
-    for (const product of products) {
-      const tags = product.tags || [];
-      if (tags.includes(yGroupTag) && product.handle !== currentHandle) {
+    for (const collection of collectionsToSearch) {
+      try {
+        const searchUrl = `https://www.everlane.com/collections/${collection}/products.json?limit=250`;
+
+        const response = await fetch(searchUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Accept": "application/json",
+          },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const products = data.products || [];
+
+          // Filter products that have the same YGroup tag
+          for (const product of products) {
+            const tags = product.tags || [];
+            // tags can be array or comma-separated string
+            const tagList = Array.isArray(tags) ? tags : (tags as string).split(",").map((t: string) => t.trim());
+            if (tagList.includes(yGroupTag) && product.handle !== currentHandle) {
+              foundHandles.add(product.handle);
+            }
+          }
+        }
+      } catch {
+        // Skip collections that fail
+      }
+
+      // If we found some variants, we can stop searching
+      if (foundHandles.size >= 4) break;
+    }
+
+    // Now fetch each color variant's data
+    for (const handle of foundHandles) {
+      try {
+        const variantUrl = `https://www.everlane.com/products/${handle}.json`;
+        const variantResponse = await fetch(variantUrl, {
+          headers: {
+            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            "Accept": "application/json",
+          },
+        });
+
+        if (!variantResponse.ok) continue;
+
+        const variantData = await variantResponse.json();
+        const product = variantData.product;
+        if (!product) continue;
+
         const parsed = parseEverlaneProductJson(product);
 
         // Extract proper product name (without color)
@@ -467,6 +558,8 @@ async function fetchEverlaneColorVariants(colorGroupId: string, currentHandle: s
             options: parsed.options,
           });
         }
+      } catch {
+        // Skip variants that fail to fetch
       }
     }
   } catch (error) {
@@ -500,8 +593,9 @@ async function fetchEverlaneProduct(sourceUrl: string): Promise<RefreshedProduct
 
     if (!product) return null;
 
-    // Try to get availability from HTML page
+    // Try to get availability from HTML page and save HTML for color variant extraction
     let availabilityMap: Map<number, boolean> | undefined;
+    let pageHtml: string | undefined;
     try {
       const htmlResponse = await fetch(sourceUrl, {
         headers: {
@@ -511,8 +605,8 @@ async function fetchEverlaneProduct(sourceUrl: string): Promise<RefreshedProduct
       });
 
       if (htmlResponse.ok) {
-        const html = await htmlResponse.text();
-        const variantMatch = html.match(/window\.OnwardWalletsCurrentProduct\s*=\s*(\{[\s\S]*?\});?\s*(?:window\.|<\/script>)/);
+        pageHtml = await htmlResponse.text();
+        const variantMatch = pageHtml.match(/window\.OnwardWalletsCurrentProduct\s*=\s*(\{[\s\S]*?\});?\s*(?:window\.|<\/script>)/);
 
         if (variantMatch) {
           const productData = JSON.parse(variantMatch[1]);
@@ -533,7 +627,7 @@ async function fetchEverlaneProduct(sourceUrl: string): Promise<RefreshedProduct
     // Fetch color variants if we have a colorGroupId
     let colorVariants: ColorVariantData[] | undefined;
     if (parsed.colorGroupId) {
-      colorVariants = await fetchEverlaneColorVariants(parsed.colorGroupId, handle);
+      colorVariants = await fetchEverlaneColorVariants(parsed.colorGroupId, handle, pageHtml);
     }
 
     return {
@@ -541,9 +635,12 @@ async function fetchEverlaneProduct(sourceUrl: string): Promise<RefreshedProduct
       originalPrice: parsed.originalPrice,
       description: parsed.description,
       imageUrl: parsed.imageUrl,
+      imageUrls: parsed.imageUrls,
       variants: parsed.variants,
       options: parsed.options,
       colorGroupId: parsed.colorGroupId,
+      colorName: parsed.colorName,
+      colorHex: parsed.colorHex,
       colorVariants: colorVariants && colorVariants.length > 0 ? colorVariants : undefined,
     };
   } catch (error) {
@@ -613,7 +710,6 @@ export const refreshProductFromSource = action({
     priceChanged: boolean;
     oldPrice?: number;
     newPrice?: number;
-    colorVariantsAdded?: number;
     error?: string;
   }> => {
     // Get the product
@@ -636,6 +732,11 @@ export const refreshProductFromSource = action({
       return { updated: false, priceChanged: false };
     }
 
+    // Get sourceUrl
+    if (!product.sourceUrl) {
+      return { updated: false, priceChanged: false, error: "No source URL" };
+    }
+
     // Fetch fresh data based on platform
     let refreshedData: RefreshedProductData | null = null;
     const platform = product.sourcePlatform?.toLowerCase() || "";
@@ -647,62 +748,34 @@ export const refreshProductFromSource = action({
     }
     // Add more platforms as needed
 
+    const currentPrice = product.price ?? 0;
+
     if (!refreshedData || refreshedData.price === undefined) {
       // Still record the check to avoid hammering the source
       await ctx.runMutation(internal.scraper.recordPriceCheck, {
         productId: args.productId,
-        price: product.price,
+        price: currentPrice,
       });
       return { updated: false, priceChanged: false };
     }
 
-    const oldPrice = product.price;
+    const oldPrice = currentPrice;
     const newPrice = refreshedData.price;
     const priceChanged = Math.abs(oldPrice - newPrice) > 0.01;
 
-    // Update the product with new data including description
+    // Update the product with fresh data
     await ctx.runMutation(internal.scraper.updateProductFromRefresh, {
       productId: args.productId,
       price: newPrice,
       originalPrice: refreshedData.originalPrice,
       description: refreshedData.description,
       imageUrl: refreshedData.imageUrl,
+      imageUrls: refreshedData.imageUrls,
       variants: refreshedData.variants,
       options: refreshedData.options,
-      colorGroupId: refreshedData.colorGroupId,
+      colorName: refreshedData.colorName,
+      colorHex: refreshedData.colorHex,
     });
-
-    // Add any missing color variants
-    let colorVariantsAdded = 0;
-    if (refreshedData.colorVariants && refreshedData.colorVariants.length > 0) {
-      for (const variant of refreshedData.colorVariants) {
-        const sourceUrl = `https://www.everlane.com/products/${variant.handle}`;
-
-        // Check if this color variant already exists
-        const result = await ctx.runMutation(internal.scraper.upsertColorVariant, {
-          sourceUrl,
-          name: variant.name,
-          description: variant.description,
-          brand: product.brand,
-          price: variant.price,
-          originalPrice: variant.originalPrice,
-          category: product.category,
-          gender: product.gender,
-          condition: product.condition,
-          sourcePlatform: product.sourcePlatform,
-          imageUrl: variant.imageUrl,
-          colorGroupId: variant.colorGroupId,
-          colorName: variant.colorName,
-          colorHex: variant.colorHex,
-          variants: variant.variants,
-          options: variant.options,
-        });
-
-        if (result.isNew) {
-          colorVariantsAdded++;
-        }
-      }
-    }
 
     // Record price check
     await ctx.runMutation(internal.scraper.recordPriceCheck, {
@@ -715,7 +788,6 @@ export const refreshProductFromSource = action({
       priceChanged,
       oldPrice: priceChanged ? oldPrice : undefined,
       newPrice: priceChanged ? newPrice : undefined,
-      colorVariantsAdded: colorVariantsAdded > 0 ? colorVariantsAdded : undefined,
     };
   },
 });
@@ -748,6 +820,7 @@ export const updateProductFromRefresh = internalMutation({
     originalPrice: v.optional(v.number()),
     description: v.optional(v.string()),
     imageUrl: v.optional(v.string()),
+    imageUrls: v.optional(v.array(v.string())),
     variants: v.optional(v.array(v.object({
       id: v.string(),
       title: v.string(),
@@ -761,9 +834,13 @@ export const updateProductFromRefresh = internalMutation({
       name: v.string(),
       values: v.array(v.string()),
     }))),
-    colorGroupId: v.optional(v.string()),
+    colorName: v.optional(v.string()),
+    colorHex: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
+    const product = await ctx.db.get(args.productId);
+    if (!product) return;
+
     const updates: Record<string, unknown> = { price: args.price };
 
     if (args.originalPrice !== undefined) {
@@ -775,14 +852,20 @@ export const updateProductFromRefresh = internalMutation({
     if (args.imageUrl !== undefined) {
       updates.imageUrl = args.imageUrl;
     }
+    if (args.imageUrls !== undefined) {
+      updates.imageUrls = args.imageUrls;
+    }
     if (args.variants !== undefined) {
       updates.variants = args.variants;
     }
     if (args.options !== undefined) {
       updates.options = args.options;
     }
-    if (args.colorGroupId !== undefined) {
-      updates.colorGroupId = args.colorGroupId;
+    if (args.colorName !== undefined) {
+      updates.colorName = args.colorName;
+    }
+    if (args.colorHex !== undefined) {
+      updates.colorHex = args.colorHex;
     }
 
     await ctx.db.patch(args.productId, updates);
@@ -878,5 +961,37 @@ export const recordPriceCheck = internalMutation({
       price: args.price,
       checkedAt: Date.now(),
     });
+  },
+});
+
+// Internal mutation to update all color variants at once
+export const updateAllColorVariants = internalMutation({
+  args: {
+    productId: v.id("products"),
+    colorVariants: v.array(v.object({
+      colorName: v.string(),
+      colorHex: v.optional(v.string()),
+      sourceUrl: v.string(),
+      imageUrl: v.optional(v.string()),
+      imageUrls: v.optional(v.array(v.string())),
+      price: v.number(),
+      originalPrice: v.optional(v.number()),
+      sizes: v.array(v.object({
+        size: v.string(),
+        available: v.boolean(),
+        price: v.optional(v.number()),
+        variantId: v.optional(v.string()),
+      })),
+    })),
+    description: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const updates: Record<string, unknown> = {
+      colorVariants: args.colorVariants,
+    };
+    if (args.description !== undefined && args.description.length > 0) {
+      updates.description = args.description;
+    }
+    await ctx.db.patch(args.productId, updates);
   },
 });

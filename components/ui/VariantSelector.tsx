@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
-import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 
 interface Variant {
   id: string;
@@ -19,10 +19,11 @@ interface ProductOption {
 }
 
 interface ColorVariant {
-  _id: string;
-  colorName?: string;
+  colorName: string;
   colorHex?: string;
   imageUrl?: string;
+  price?: number;
+  sizes?: Array<{ size: string; available: boolean }>;
 }
 
 interface VariantSelectorProps {
@@ -33,7 +34,9 @@ interface VariantSelectorProps {
   colorVariants?: ColorVariant[];
   currentProductId: string;
   onOptionsChange?: (options: Record<string, string>) => void;
+  onColorChange?: (colorName: string) => void;
   initialSelectedOptions?: Record<string, string>;
+  selectedColorName?: string;
 }
 
 export function VariantSelector({
@@ -44,8 +47,13 @@ export function VariantSelector({
   colorVariants = [],
   currentProductId,
   onOptionsChange,
+  onColorChange,
   initialSelectedOptions = {},
+  selectedColorName,
 }: VariantSelectorProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   // Track selected options
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>(initialSelectedOptions);
 
@@ -60,6 +68,15 @@ export function VariantSelector({
   const updateSelectedOptions = (newOptions: Record<string, string>) => {
     setSelectedOptions(newOptions);
     onOptionsChange?.(newOptions);
+  };
+
+  // Handle color selection - update URL query param
+  const handleColorSelect = (newColorName: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("color", newColorName);
+    params.set("fromVariant", "true");
+    router.replace(`/product/${currentProductId}?${params.toString()}`, { scroll: false });
+    onColorChange?.(newColorName);
   };
 
   // Check if a specific option combination is available
@@ -149,27 +166,29 @@ export function VariantSelector({
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               {colorVariants.length > 1 ? (
-                // Multiple separate products for each color
-                colorVariants.map((variant) => (
-                  <Link
-                    key={variant._id}
-                    href={`/product/${variant._id}?fromVariant=true`}
-                    replace
-                    className={`relative h-10 w-10 rounded-full border-2 transition-all hover:scale-110 ${
-                      variant._id === currentProductId
-                        ? "border-zinc-900 dark:border-white ring-2 ring-zinc-900/20 dark:ring-white/20"
-                        : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500"
-                    }`}
-                    title={variant.colorName || "Color variant"}
-                  >
-                    <span
-                      className="absolute inset-1 rounded-full"
-                      style={{
-                        backgroundColor: variant.colorHex || "#808080",
-                      }}
-                    />
-                  </Link>
-                ))
+                // Multiple color variants within the same product (new embedded structure)
+                colorVariants.map((variant) => {
+                  const isSelected = (selectedColorName || colorName) === variant.colorName;
+                  return (
+                    <button
+                      key={variant.colorName}
+                      onClick={() => handleColorSelect(variant.colorName)}
+                      className={`relative h-10 w-10 rounded-full border-2 transition-all hover:scale-110 ${
+                        isSelected
+                          ? "border-zinc-900 dark:border-white ring-2 ring-zinc-900/20 dark:ring-white/20"
+                          : "border-zinc-200 dark:border-zinc-700 hover:border-zinc-400 dark:hover:border-zinc-500"
+                      }`}
+                      title={variant.colorName || "Color variant"}
+                    >
+                      <span
+                        className="absolute inset-1 rounded-full"
+                        style={{
+                          backgroundColor: variant.colorHex || "#808080",
+                        }}
+                      />
+                    </button>
+                  );
+                })
               ) : colorValues.length > 0 ? (
                 // Color options within the same product (Shopify-style variants)
                 colorValues.map((color) => {

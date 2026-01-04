@@ -31,7 +31,8 @@ async function importProducts(products: ScrapedProduct[]): Promise<{ inserted: n
     // Process batch in parallel
     const results = await Promise.allSettled(
       batch.map(async (product) => {
-        const result = await client.mutation(api.products.upsertProduct, {
+        // Use legacy upsert for backwards compatibility with old scraper format
+        const result = await client.mutation(api.products.upsertProductLegacy, {
           name: product.name,
           description: product.description,
           brand: product.brand,

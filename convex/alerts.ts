@@ -98,7 +98,22 @@ export const checkPricesAndAlert = internalAction({
     for (const item of trackedItems) {
       if (!item.product || !item.targetPrice) continue;
 
-      const currentPrice = item.product.price;
+      // Get price from colorVariants (new structure) or legacy price field
+      let currentPrice: number | undefined;
+      if (item.product.colorVariants && item.product.colorVariants.length > 0) {
+        // New structure: get price from the tracked color variant or first variant
+        const colorName = item.colorName;
+        const variant = colorName
+          ? item.product.colorVariants.find(v => v.colorName === colorName)
+          : item.product.colorVariants[0];
+        currentPrice = variant?.price;
+      } else {
+        // Legacy structure: use direct price field
+        currentPrice = item.product.price;
+      }
+
+      if (currentPrice === undefined) continue;
+
       const previousPrice = item.lastKnownPrice || currentPrice;
 
       // Check if price dropped to or below target

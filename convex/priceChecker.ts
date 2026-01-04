@@ -13,7 +13,27 @@ export const getTrackedProductIds = internalQuery({
     const productsWithPrices = await Promise.all(
       uniqueProductIds.map(async (productId) => {
         const product = await ctx.db.get(productId);
-        return product ? { productId, currentPrice: product.price, sourceUrl: product.sourceUrl } : null;
+        if (!product) return null;
+
+        // Get price from colorVariants (new structure) or legacy price field
+        let currentPrice: number | undefined;
+        if (product.colorVariants && product.colorVariants.length > 0) {
+          currentPrice = product.colorVariants[0].price;
+        } else {
+          currentPrice = product.price;
+        }
+
+        // Get sourceUrl from colorVariants (new structure) or legacy field
+        let sourceUrl: string | undefined;
+        if (product.colorVariants && product.colorVariants.length > 0) {
+          sourceUrl = product.colorVariants[0].sourceUrl;
+        } else {
+          sourceUrl = product.sourceUrl;
+        }
+
+        if (currentPrice === undefined || sourceUrl === undefined) return null;
+
+        return { productId, currentPrice, sourceUrl };
       })
     );
 

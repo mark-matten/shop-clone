@@ -311,6 +311,35 @@ export function ProductSearch() {
   );
 
   const searchProducts = useAction(api.search.searchProducts);
+  const refreshProduct = useAction(api.scraper.refreshProductFromSource);
+
+  // Track which products we've already refreshed to avoid duplicate calls
+  const refreshedProductIds = useRef<Set<string>>(new Set());
+
+  // Refresh a batch of products in the background
+  const refreshProductBatch = useCallback(async (productIds: string[]) => {
+    // Filter out already refreshed products
+    const idsToRefresh = productIds.filter(id => !refreshedProductIds.current.has(id));
+    if (idsToRefresh.length === 0) return;
+
+    // Mark as refreshed immediately to prevent duplicate calls
+    idsToRefresh.forEach(id => refreshedProductIds.current.add(id));
+
+    // Refresh in parallel (but limit concurrency to avoid overwhelming the server)
+    const batchSize = 5;
+    for (let i = 0; i < idsToRefresh.length; i += batchSize) {
+      const batch = idsToRefresh.slice(i, i + batchSize);
+      await Promise.allSettled(
+        batch.map(async (id) => {
+          try {
+            await refreshProduct({ productId: id as Id<"products"> });
+          } catch (err) {
+            // Ignore individual refresh errors - product might not need refresh
+          }
+        })
+      );
+    }
+  }, [refreshProduct]);
 
   // Fetch user's favorites for showing heart state
   const favoriteIds = useQuery(
@@ -573,12 +602,19 @@ export function ProductSearch() {
 
     try {
       const result = await searchProducts({ searchText: query });
+      const products = result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[];
+
       setSearchResult({
-        products: result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[],
+        products,
         filter: result.filter as SearchFilter,
         totalResults: result.totalResults,
         partialMatches: result.partialMatches?.map((p) => ({ ...p, _id: p._id.toString() })) as Product[] | undefined,
       });
+
+      // Refresh products in the background to get fresh availability data
+      // Only refresh the first batch (initial display)
+      const initialProductIds = products.slice(0, 20).map(p => p._id);
+      refreshProductBatch(initialProductIds);
 
       // Save to search history
       if (clerkUser?.id) {
@@ -1006,7 +1042,13 @@ export function ProductSearch() {
                 {hasMore && (
                   <div className="mt-8 text-center">
                     <button
-                      onClick={() => setDisplayCount((prev) => prev + 20)}
+                      onClick={() => {
+                        const newDisplayCount = displayCount + 20;
+                        setDisplayCount(newDisplayCount);
+                        // Refresh the next batch of products
+                        const nextBatchIds = allProducts.slice(displayCount, newDisplayCount).map(p => p._id);
+                        refreshProductBatch(nextBatchIds);
+                      }}
                       className="rounded-lg border border-zinc-200 bg-white px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
                     >
                       Load More ({allProducts.length - displayCount} remaining)

@@ -42,7 +42,6 @@ interface Product {
   options?: ProductOption[];
   colorGroupId?: string;
   colorName?: string;
-  colorVariantCount?: number; // Number of color variants from backend grouping
 }
 
 interface ProductCardProps {
@@ -138,25 +137,7 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
     return 0;
   };
 
-  // Get color count from backend grouping (preferred) or fall back to options
-  const getColorCount = (): number => {
-    // Use backend colorVariantCount if available (from search grouping)
-    if (product.colorVariantCount && product.colorVariantCount > 1) {
-      return product.colorVariantCount;
-    }
-    // Fall back to options-based calculation for non-grouped products
-    const colorOption = product.options?.find(opt =>
-      opt.name.toLowerCase() === 'color' || opt.name.toLowerCase() === 'colour'
-    );
-    if (colorOption && colorOption.values.length > 1) {
-      return colorOption.values.length;
-    }
-    // Don't show "1 color" - it's not useful information
-    return 0;
-  };
-
   const sizeCount = getSizeCount();
-  const colorCount = getColorCount();
 
   // Sync favorite state with prop
   useEffect(() => {
@@ -306,9 +287,9 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
                   {genderLabels[product.gender]}
                 </span>
               )}
-              {colorCount > 0 && (
+              {product.colorName && (
                 <span className="rounded bg-indigo-100 px-2 py-0.5 text-xs text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300">
-                  {colorCount} {colorCount === 1 ? 'color' : 'colors'}
+                  {product.colorName}
                 </span>
               )}
               {sizeCount > 0 && (
