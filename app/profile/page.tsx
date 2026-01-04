@@ -3,21 +3,10 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useQuery, useMutation } from "convex/react";
-import { useUser } from "@clerk/nextjs";
+import { useUser, SignOutButton } from "@clerk/nextjs";
+import { useTheme } from "next-themes";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
-
-// Helper to get price from product (supports both colorVariants and legacy structure)
-function getProductPrice(product: {
-  colorVariants?: Array<{ price: number }> | null;
-  price?: number;
-}): number {
-  if (product.colorVariants && product.colorVariants.length > 0) {
-    return product.colorVariants[0].price;
-  }
-  return product.price ?? 0;
-}
 
 const sizeOptions = {
   women: {
@@ -121,17 +110,20 @@ function SizeRangeSelect({ label, options, minValue, maxValue, onMinChange, onMa
 
 export default function ProfilePage() {
   const { user: clerkUser, isLoaded } = useUser();
+  const { theme, setTheme, resolvedTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch for theme
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   const convexUser = useQuery(
     api.users.getUserByClerkId,
     clerkUser?.id ? { clerkId: clerkUser.id } : "skip"
   );
-  const trackedItems = useQuery(
-    api.tracking.getTrackedItems,
-    convexUser?._id ? { userId: convexUser._id } : "skip"
-  );
 
   const updatePreferences = useMutation(api.users.updateUserPreferences);
-  const untrackProduct = useMutation(api.tracking.untrackProduct);
   const updateEmailSettings = useMutation(api.users.updateEmailSettings);
 
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
@@ -216,11 +208,6 @@ export default function ProfilePage() {
     }
   };
 
-  const handleUntrack = async (productId: Id<"products">) => {
-    if (!convexUser?._id) return;
-    await untrackProduct({ userId: convexUser._id, productId });
-  };
-
   const handleEmailSettingsSave = async () => {
     if (!clerkUser?.id) return;
 
@@ -281,8 +268,6 @@ export default function ProfilePage() {
       </div>
     );
   }
-
-  const items = trackedItems || [];
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
@@ -438,93 +423,6 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* Tracked Items */}
-        <section className="mt-12">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                Tracked Items
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                {items.length} items being tracked
-              </p>
-            </div>
-          </div>
-
-          {items.length === 0 ? (
-            <div className="mt-4 rounded-xl border border-zinc-200 bg-white py-12 text-center dark:border-zinc-800 dark:bg-zinc-900">
-              <p className="text-zinc-500 dark:text-zinc-400">No tracked items yet</p>
-              <p className="mt-1 text-sm text-zinc-400">Click &quot;Track Price&quot; on products to start tracking</p>
-            </div>
-          ) : (
-            <div className="mt-4 space-y-4">
-              {items.map((item) => item.product && (
-                <div
-                  key={item._id}
-                  className="flex items-center gap-4 rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900"
-                >
-                  <div className="h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                    {item.product.imageUrl ? (
-                      <img
-                        src={item.product.imageUrl}
-                        alt={item.product.name}
-                        className="h-full w-full object-cover"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                        <svg className="h-8 w-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                        </svg>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <p className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400">
-                          {item.product.brand}
-                        </p>
-                        <h3 className="font-medium text-zinc-900 dark:text-white truncate">
-                          {item.product.name}
-                        </h3>
-                        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                          {item.product.sourcePlatform}
-                        </p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-lg font-semibold text-zinc-900 dark:text-white">
-                          ${getProductPrice(item.product).toFixed(2)}
-                        </p>
-                        {item.targetPrice && (
-                          <p className="text-xs text-zinc-400">
-                            Target: ${item.targetPrice.toFixed(2)}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-shrink-0 gap-2">
-                    <Link
-                      href={`/product/${item.productId}`}
-                      className="rounded-lg border border-zinc-200 px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      View
-                    </Link>
-                    <button
-                      onClick={() => handleUntrack(item.productId)}
-                      className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950"
-                    >
-                      Untrack
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </section>
-
         {/* Notification Settings */}
         <section className="mt-12">
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
@@ -648,6 +546,82 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
+          </div>
+        </section>
+
+        {/* Settings Section */}
+        <section className="mt-12">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+            Settings
+          </h2>
+          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+            Customize your app experience
+          </p>
+
+          <div className="mt-4 space-y-4">
+            {/* Dark Mode Toggle */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+                    {mounted && resolvedTheme === "dark" ? (
+                      <svg className="h-5 w-5 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-zinc-900 dark:text-white">
+                      Dark Mode
+                    </p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      {mounted && resolvedTheme === "dark" ? "Currently using dark theme" : "Currently using light theme"}
+                    </p>
+                  </div>
+                </div>
+                {mounted && (
+                  <label className="relative inline-flex cursor-pointer items-center">
+                    <input
+                      type="checkbox"
+                      checked={resolvedTheme === "dark"}
+                      onChange={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+                      className="peer sr-only"
+                    />
+                    <div className="h-6 w-11 rounded-full bg-zinc-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-zinc-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-zinc-900 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-zinc-500 dark:bg-zinc-700 dark:peer-checked:bg-white"></div>
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* Sign Out */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+                    <svg className="h-5 w-5 text-red-600 dark:text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                    </svg>
+                  </div>
+                  <div>
+                    <p className="font-medium text-zinc-900 dark:text-white">
+                      Sign Out
+                    </p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      Sign out of your account
+                    </p>
+                  </div>
+                </div>
+                <SignOutButton redirectUrl="/">
+                  <button className="rounded-lg border border-red-200 px-4 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30">
+                    Sign Out
+                  </button>
+                </SignOutButton>
+              </div>
+            </div>
           </div>
         </section>
       </main>

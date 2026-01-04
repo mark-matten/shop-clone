@@ -857,6 +857,7 @@ export function ProductSearch() {
           isLoading={isLoading}
           placeholder="Describe what you're looking for..."
           initialValue={currentSearchQuery}
+          hideExample={hasSearched}
         />
       </div>
 
@@ -877,132 +878,54 @@ export function ProductSearch() {
       )}
 
       {!isLoading && searchResult && (
-        <div className="mt-8">
-          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                  onClick={() => setShowFilters(!showFilters)}
-                  className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
-                    showFilters || (sidebarFilters && (sidebarFilters.brands.length > 0 || sidebarFilters.conditions.length > 0 || sidebarFilters.sizes.length > 0 || sidebarFilters.platforms.length > 0 || sidebarFilters.priceMin || sidebarFilters.priceMax))
-                      ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
-                      : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                  }`}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z" />
-                  </svg>
-                  Filters
-                  {sidebarFilters && (sidebarFilters.brands.length + sidebarFilters.conditions.length + sidebarFilters.sizes.length + sidebarFilters.platforms.length + (sidebarFilters.priceMin ? 1 : 0) + (sidebarFilters.priceMax ? 1 : 0)) > 0 && (
-                    <span className="ml-1 rounded-full bg-white px-1.5 py-0.5 text-xs text-zinc-900 dark:bg-zinc-900 dark:text-white">
-                      {sidebarFilters.brands.length + sidebarFilters.conditions.length + sidebarFilters.sizes.length + sidebarFilters.platforms.length + (sidebarFilters.priceMin ? 1 : 0) + (sidebarFilters.priceMax ? 1 : 0)}
-                    </span>
-                  )}
-                </button>
-              {clerkUser && convexUser?.preferences && (
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={showMySizesOnly}
-                    onChange={(e) => setShowMySizesOnly(e.target.checked)}
-                    className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
-                  />
-                  <span className="text-zinc-600 dark:text-zinc-400">My sizes only</span>
-                </label>
-              )}
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
-                Found{" "}
-                <span className="font-medium text-zinc-900 dark:text-white">
-                  {getFilteredAndSortedProducts().length}
-                </span>{" "}
-                {getFilteredAndSortedProducts().length === 1 ? "product" : "products"}
-              </p>
-            </div>
-            <div className="flex items-center gap-3">
-              {currentDisplayFilter && (
-                <SearchFilters filter={currentDisplayFilter} onRemoveFilter={handleRemoveFilter} />
-              )}
-
-              {/* Saved Searches Dropdown */}
-              {clerkUser && savedSearches && savedSearches.length > 0 && (
-                <div className="relative">
-                  <button
-                    onClick={() => setShowSavedSearchesDropdown(!showSavedSearchesDropdown)}
-                    className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                    </svg>
-                    Saved
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                    </svg>
-                  </button>
-                  {showSavedSearchesDropdown && (
-                    <div className="absolute right-0 z-20 mt-2 w-64 rounded-lg border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-800">
-                      <div className="max-h-64 overflow-y-auto p-2">
-                        {savedSearches.map((search) => (
-                          <div
-                            key={search._id}
-                            className="group flex items-center justify-between rounded-lg p-2 hover:bg-zinc-100 dark:hover:bg-zinc-700"
-                          >
-                            <button
-                              onClick={() => handleLoadSavedSearch(search)}
-                              className="flex-1 text-left"
-                            >
-                              <p className="text-sm font-medium text-zinc-900 dark:text-white">
-                                {search.name}
-                              </p>
-                              <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                                {search.query}
-                              </p>
-                            </button>
-                            <button
-                              onClick={() => deleteSavedSearch({ searchId: search._id, userId: convexUser!._id })}
-                              className="ml-2 p-1 text-zinc-400 opacity-0 transition-opacity hover:text-red-500 group-hover:opacity-100"
-                            >
-                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                              </svg>
-                            </button>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Save Search Button */}
-              {clerkUser && currentSearchQuery && (
-                <button
-                  onClick={() => {
-                    setSaveSearchName(currentSearchQuery);
-                    setShowSaveSearchModal(true);
-                  }}
-                  className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                  title="Save this search"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
-                  </svg>
-                  Save
-                </button>
-              )}
-
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
-              >
-                <option value="relevance">Sort: Relevance</option>
-                <option value="price_low">Price: Low to High</option>
-                <option value="price_high">Price: High to Low</option>
-                <option value="newest">Newest First</option>
-              </select>
-
-              <ViewToggle view={viewMode} onViewChange={setViewMode} />
-            </div>
+        <div className="mt-4">
+          {/* Line 1: Found XX products */}
+          <div className="mb-3">
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Found{" "}
+              <span className="font-medium text-zinc-900 dark:text-white">
+                {getFilteredAndSortedProducts().length}
+              </span>{" "}
+              {getFilteredAndSortedProducts().length === 1 ? "product" : "products"}
+            </p>
           </div>
+
+          {/* Line 2: My sizes only, Sort, View toggle */}
+          <div className="mb-3 flex items-center gap-3">
+            {clerkUser && convexUser?.preferences && (
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={showMySizesOnly}
+                  onChange={(e) => setShowMySizesOnly(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                />
+                <span className="text-zinc-600 dark:text-zinc-400">My sizes only</span>
+              </label>
+            )}
+
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+            >
+              <option value="relevance">Sort: Relevance</option>
+              <option value="price_low">Price: Low to High</option>
+              <option value="price_high">Price: High to Low</option>
+              <option value="newest">Newest First</option>
+            </select>
+
+            <ViewToggle view={viewMode} onViewChange={setViewMode} />
+          </div>
+
+          {/* Line 3: Active filters (horizontal scrollable) */}
+          {currentDisplayFilter && (
+            <div className="mb-4 overflow-x-auto">
+              <div className="whitespace-nowrap pb-2">
+                <SearchFilters filter={currentDisplayFilter} onRemoveFilter={handleRemoveFilter} />
+              </div>
+            </div>
+          )}
 
           <FilterDropdown
             isOpen={showFilters}

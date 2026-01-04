@@ -10,6 +10,7 @@ interface SearchBarProps {
   isLoading?: boolean;
   placeholder?: string;
   initialValue?: string;
+  hideExample?: boolean;
 }
 
 export function SearchBar({
@@ -17,6 +18,7 @@ export function SearchBar({
   isLoading = false,
   placeholder = "Search for products...",
   initialValue = "",
+  hideExample = false,
 }: SearchBarProps) {
   const [query, setQuery] = useState(initialValue);
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -263,20 +265,22 @@ export function SearchBar({
           </div>
         )}
       </div>
-      <p className="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
-        Try:{" "}
-        <button
-          type="button"
-          onClick={() => {
-            const exampleQuery = "women's black leather boots size 8 under $200";
-            setQuery(exampleQuery);
-            onSearch(exampleQuery);
-          }}
-          className="text-indigo-700 hover:text-indigo-800 hover:underline dark:text-indigo-300 dark:hover:text-indigo-200"
-        >
-          &quot;women&apos;s black leather boots size 8 under $200&quot;
-        </button>
-      </p>
+      {!hideExample && (
+        <p className="mt-3 text-center text-sm text-zinc-500 dark:text-zinc-400">
+          Try:{" "}
+          <button
+            type="button"
+            onClick={() => {
+              const exampleQuery = "women's black leather boots size 8 under $200";
+              setQuery(exampleQuery);
+              onSearch(exampleQuery);
+            }}
+            className="text-indigo-700 hover:text-indigo-800 hover:underline dark:text-indigo-300 dark:hover:text-indigo-200"
+          >
+            &quot;women&apos;s black leather boots size 8 under $200&quot;
+          </button>
+        </p>
+      )}
     </form>
   );
 }

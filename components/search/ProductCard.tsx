@@ -71,11 +71,15 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
   const { user } = useUser();
   const [isFavorite, setIsFavorite] = useState(isFavorited);
   const [isLoading, setIsLoading] = useState(false);
-  const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [showFavoriteModal, setShowFavoriteModal] = useState(false);
+  const [selectedSize, setSelectedSize] = useState("");
+  const [trackPrice, setTrackPrice] = useState(false);
+  const [trackType, setTrackType] = useState<"any" | "target">("any");
   const [targetPrice, setTargetPrice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
-  const toggleFavorite = useMutation(api.favorites.toggleFavorite);
+  const addFavorite = useMutation(api.favorites.addFavorite);
+  const removeFavorite = useMutation(api.favorites.removeFavorite);
   const trackProduct = useMutation(api.tracking.trackProduct);
   const untrackProduct = useMutation(api.tracking.untrackProduct);
 
@@ -134,38 +138,102 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
 
   const sizeCount = getSizeCount();
 
+  // Get available sizes for selection
+  const getAvailableSizes = (): string[] => {
+    const sizes: string[] = [];
+    // From variants (with availability)
+    if (product.variants && product.variants.length > 0) {
+      const seenSizes = new Set<string>();
+      product.variants.forEach(v => {
+        if (v.available && v.option1 && !seenSizes.has(v.option1)) {
+          seenSizes.add(v.option1);
+          sizes.push(v.option1);
+        }
+      });
+    }
+    // Fallback to sizes array
+    else if (product.sizes && product.sizes.length > 0) {
+      sizes.push(...product.sizes);
+    }
+    // Check options for Size
+    else {
+      const sizeOption = product.options?.find(opt =>
+        opt.name.toLowerCase() === 'size' || opt.name.toLowerCase() === 'sizes'
+      );
+      if (sizeOption) {
+        sizes.push(...sizeOption.values);
+      }
+    }
+    return sizes;
+  };
+
+  const availableSizes = getAvailableSizes();
+
   // Sync favorite state with prop
   useEffect(() => {
     setIsFavorite(isFavorited);
   }, [isFavorited]);
 
-  const handleTrackClick = (e: React.MouseEvent) => {
+  const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    if (!user?.id) return;
 
-    if (isTracked) {
-      handleUntrack();
+    if (isFavorite) {
+      // If already favorited, remove it directly
+      handleRemoveFavorite();
     } else {
-      setShowTrackingModal(true);
+      // Open modal to add with options
+      setShowFavoriteModal(true);
     }
   };
 
-  const handleTrack = async () => {
-    if (!convexUser?._id) {
-      return;
+  const handleRemoveFavorite = async () => {
+    if (!user?.id) return;
+    setIsLoading(true);
+    try {
+      await removeFavorite({
+        clerkId: user.id,
+        productId: product._id as Id<"products">,
+      });
+      setIsFavorite(false);
+    } catch (error) {
+      console.error("Failed to remove favorite:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  const handleSaveFavorite = async () => {
+    if (!user?.id || !convexUser?._id) return;
 
     setIsSaving(true);
     try {
-      await trackProduct({
-        userId: convexUser._id,
+      // Add to favorites with optional size
+      await addFavorite({
+        clerkId: user.id,
         productId: product._id as Id<"products">,
-        targetPrice: targetPrice ? parseFloat(targetPrice) : undefined,
+        selectedOptions: selectedSize ? { size: selectedSize } : undefined,
       });
-      setShowTrackingModal(false);
+      setIsFavorite(true);
+
+      // If tracking is enabled, also track the product
+      if (trackPrice) {
+        await trackProduct({
+          userId: convexUser._id,
+          productId: product._id as Id<"products">,
+          targetPrice: trackType === "target" && targetPrice ? parseFloat(targetPrice) : undefined,
+        });
+      }
+
+      // Reset and close modal
+      setShowFavoriteModal(false);
+      setSelectedSize("");
+      setTrackPrice(false);
+      setTrackType("any");
       setTargetPrice("");
     } catch (error) {
-      console.error("Failed to track product:", error);
+      console.error("Failed to save favorite:", error);
     } finally {
       setIsSaving(false);
     }
@@ -181,25 +249,6 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
       });
     } catch (error) {
       console.error("Failed to untrack product:", error);
-    }
-  };
-
-  const handleFavoriteClick = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!user?.id || isLoading) return;
-
-    setIsLoading(true);
-    try {
-      const result = await toggleFavorite({
-        clerkId: user.id,
-        productId: product._id as Id<"products">,
-      });
-      setIsFavorite(result.isFavorite);
-    } catch (error) {
-      console.error("Failed to toggle favorite:", error);
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -319,31 +368,10 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
           </div>
         </Link>
 
-        {/* Track button */}
-        <button
-          onClick={handleTrackClick}
-          className={`absolute left-2 top-2 rounded-full p-2 transition-all ${
-            isTracked
-              ? "bg-green-500 text-white"
-              : "bg-white/90 text-zinc-600 opacity-0 group-hover:opacity-100 hover:bg-white dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800"
-          }`}
-          title={isTracked ? "Stop tracking" : "Track price"}
-        >
-          {isTracked ? (
-            <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-          ) : (
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
-          )}
-        </button>
-
-        {/* Favorite button */}
+        {/* Favorite button (with tracking indicator) */}
         <button
           onClick={handleFavoriteClick}
-          className={`absolute left-2 top-12 rounded-full p-2 transition-all ${
+          className={`absolute left-2 top-2 rounded-full p-2 transition-all ${
             isFavorite
               ? "bg-red-500 text-white"
               : "bg-white/90 text-zinc-600 opacity-0 group-hover:opacity-100 hover:bg-white dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800"
@@ -364,16 +392,29 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
             />
           </svg>
         </button>
+
+        {/* Tracking indicator */}
+        {isTracked && (
+          <div className="absolute left-2 top-12 rounded-full bg-green-500 p-1.5" title="Tracking price">
+            <svg className="h-3 w-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
+          </div>
+        )}
       </div>
 
-      {/* Tracking Modal */}
-      {showTrackingModal && (
+      {/* Favorite Modal */}
+      {showFavoriteModal && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
           onClick={(e) => {
             e.preventDefault();
             e.stopPropagation();
-            setShowTrackingModal(false);
+            setShowFavoriteModal(false);
+            setSelectedSize("");
+            setTrackPrice(false);
+            setTrackType("any");
+            setTargetPrice("");
           }}
         >
           <div
@@ -381,46 +422,116 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
             onClick={(e) => e.stopPropagation()}
           >
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
-              Track this item
+              Add to Favorites
             </h3>
             <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-              Set a target price and we&apos;ll notify you when it drops.
+              {product.name}
             </p>
 
             {!user && (
               <div className="mt-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
-                Please sign in to track prices.
+                Please sign in to save favorites.
               </div>
             )}
 
-            <div className="mt-4">
-              <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Target Price
-              </label>
-              <div className="relative mt-1">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
-                <input
-                  type="text"
-                  inputMode="decimal"
-                  value={targetPrice}
-                  onChange={(e) => setTargetPrice(e.target.value)}
-                  placeholder="Enter target price"
-                  className="block w-full rounded-lg border border-zinc-300 bg-white py-2 pl-8 pr-3 text-zinc-900 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                />
+            {/* Size Selection */}
+            {availableSizes.length > 0 && (
+              <div className="mt-4">
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Size <span className="font-normal text-zinc-400">(optional)</span>
+                </label>
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {availableSizes.map((size) => (
+                    <button
+                      key={size}
+                      type="button"
+                      onClick={() => setSelectedSize(selectedSize === size ? "" : size)}
+                      className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                        selectedSize === size
+                          ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
+                          : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300"
+                      }`}
+                    >
+                      {size}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                Current price: ${product.price.toFixed(2)} | Leave empty to track any price drop
-              </p>
+            )}
+
+            {/* Price Tracking Toggle */}
+            <div className="mt-4">
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={trackPrice}
+                  onChange={(e) => setTrackPrice(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                />
+                <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Track price changes
+                </span>
+              </label>
             </div>
+
+            {/* Price Tracking Options */}
+            {trackPrice && (
+              <div className="mt-3 ml-7 space-y-3">
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="trackType"
+                      checked={trackType === "any"}
+                      onChange={() => setTrackType("any")}
+                      className="h-4 w-4 border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
+                    />
+                    <span className="text-sm text-zinc-600 dark:text-zinc-400">Any price drop</span>
+                  </label>
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="radio"
+                      name="trackType"
+                      checked={trackType === "target"}
+                      onChange={() => setTrackType("target")}
+                      className="h-4 w-4 border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600"
+                    />
+                    <span className="text-sm text-zinc-600 dark:text-zinc-400">Target price</span>
+                  </label>
+                  {trackType === "target" && (
+                    <div className="relative">
+                      <span className="absolute left-2 top-1/2 -translate-y-1/2 text-sm text-zinc-500">$</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        value={targetPrice}
+                        onChange={(e) => setTargetPrice(e.target.value)}
+                        placeholder={product.price.toFixed(0)}
+                        className="w-24 rounded-lg border border-zinc-300 bg-white py-1.5 pl-6 pr-2 text-sm text-zinc-900 focus:border-zinc-500 focus:outline-none dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="text-xs text-zinc-400">
+                  Current price: ${product.price.toFixed(2)}
+                </p>
+              </div>
+            )}
 
             <div className="mt-6 flex gap-3">
               <button
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  setShowTrackingModal(false);
+                  setShowFavoriteModal(false);
+                  setSelectedSize("");
+                  setTrackPrice(false);
+                  setTrackType("any");
+                  setTargetPrice("");
                 }}
-                className="flex-1 rounded-lg border border-zinc-300 py-2 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                className="flex-1 rounded-lg border border-zinc-300 py-2 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
               >
                 Cancel
               </button>
@@ -428,12 +539,12 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
                 onClick={(e) => {
                   e.preventDefault();
                   e.stopPropagation();
-                  handleTrack();
+                  handleSaveFavorite();
                 }}
                 disabled={isSaving || !user}
-                className="flex-1 rounded-lg bg-zinc-900 py-2 font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                className="flex-1 rounded-lg bg-red-500 py-2 font-medium text-white transition-colors hover:bg-red-600 disabled:opacity-50"
               >
-                {isSaving ? "Saving..." : "Start Tracking"}
+                {isSaving ? "Saving..." : "Add to Favorites"}
               </button>
             </div>
           </div>

@@ -145,10 +145,18 @@ export const getClosetItems = query({
       })
     );
 
-    // Filter out items where product no longer exists (for product-linked items) and sort by addedAt
+    // Filter out items where product no longer exists (for product-linked items) and sort by sortOrder or addedAt
     return itemsWithProducts
       .filter((item) => item.product !== null || item.source === "url" || item.source === "generated")
-      .sort((a, b) => b.addedAt - a.addedAt);
+      .sort((a, b) => {
+        // Sort by sortOrder if both have it, otherwise by addedAt
+        if (a.sortOrder !== undefined && b.sortOrder !== undefined) {
+          return a.sortOrder - b.sortOrder;
+        }
+        if (a.sortOrder !== undefined) return -1;
+        if (b.sortOrder !== undefined) return 1;
+        return b.addedAt - a.addedAt;
+      });
   },
 });
 

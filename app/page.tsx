@@ -28,7 +28,7 @@ function HomeContent() {
       {!hasSearchQuery && (
         <div className="mb-6 text-center animate-fade-in-down">
           <h1 className="text-5xl sm:text-6xl" style={{ fontFamily: 'var(--font-pacifico)' }}>
-            <span className="text-black dark:text-black">ar</span><span className="text-rose-400">moi</span>
+            <span className="text-black dark:text-white">ar</span><span className="text-rose-400">moi</span>
           </h1>
           <p className="mt-6 text-lg text-zinc-600 dark:text-zinc-400">
             Find the best deals for new and used clothing across thousands of brands and marketplaces.

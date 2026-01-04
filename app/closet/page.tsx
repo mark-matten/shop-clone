@@ -14,6 +14,7 @@ import {
   closestCenter,
   KeyboardSensor,
   PointerSensor,
+  TouchSensor,
   useSensor,
   useSensors,
   DragStartEvent,
@@ -225,20 +226,20 @@ function SortableListItem({
       style={style}
       className="group flex items-center gap-2 sm:gap-3 rounded-lg border border-zinc-200 bg-white p-1.5 sm:p-2 transition-colors hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700"
     >
-      {/* Drag Handle - hidden on mobile */}
+      {/* Drag Handle - visible on all devices */}
       <div
         {...attributes}
         {...listeners}
-        className="hidden sm:flex flex-shrink-0 cursor-grab rounded p-1 text-zinc-400 opacity-0 transition-opacity hover:bg-zinc-100 hover:text-zinc-600 group-hover:opacity-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 active:cursor-grabbing"
+        className="flex flex-shrink-0 cursor-grab rounded p-1.5 text-zinc-400 opacity-70 sm:opacity-0 transition-opacity hover:bg-zinc-100 hover:text-zinc-600 sm:group-hover:opacity-100 dark:hover:bg-zinc-800 dark:hover:text-zinc-300 active:cursor-grabbing touch-none"
       >
-        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
         </svg>
       </div>
 
       {/* Thumbnail */}
       <Link href={`/product/${product._id}?from=closet`} className="flex-shrink-0">
-        <div className="h-10 w-10 sm:h-14 sm:w-14 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+        <div className="h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
           {product.imageUrl ? (
             <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
           ) : (
@@ -260,10 +261,10 @@ function SortableListItem({
           <h3 className="truncate text-xs sm:text-sm font-medium text-zinc-900 dark:text-white">
             {product.name}
           </h3>
-          <div className="mt-0.5 sm:mt-1 flex flex-wrap items-center gap-0.5 sm:gap-1">
+          <div className="mt-1 flex flex-wrap items-center gap-1">
             {selectedColor && colorHex && (
               <span
-                className="inline-flex items-center gap-0.5 rounded border px-1 py-0.5 text-[10px] sm:text-xs font-medium"
+                className="inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] sm:text-xs font-medium leading-none"
                 style={{
                   backgroundColor: `${colorHex}20`,
                   color: getColorBadgeTextColor(colorHex),
@@ -271,61 +272,49 @@ function SortableListItem({
                 }}
               >
                 <span
-                  className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full border"
+                  className="h-2 w-2 rounded-full border flex-shrink-0"
                   style={{
                     backgroundColor: colorHex,
                     borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
                   }}
                 />
-                <span className="truncate max-w-[40px] sm:max-w-none">{selectedColor}</span>
+                <span className="truncate max-w-[50px] sm:max-w-none">{selectedColor}</span>
               </span>
             )}
             {selectedSize && (
-              <span className="rounded bg-blue-100 px-1 py-0.5 text-[10px] sm:text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 leading-none">
                 {selectedSize}
+              </span>
+            )}
+            {/* Status Badge inline */}
+            {item.isOwned ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+                <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Owned
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+                <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                Wishlist
               </span>
             )}
           </div>
         </div>
       </Link>
 
-      {/* Status Badge */}
-      <div className="flex-shrink-0">
-        {item.isOwned ? (
-          <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 sm:px-2 text-[10px] sm:text-xs font-medium text-white">
-            <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            Owned
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 sm:px-2 text-[10px] sm:text-xs font-medium text-white">
-            <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-            Wishlist
-          </span>
-        )}
-      </div>
-
-      {/* Action Buttons - always visible on mobile */}
-      <div className="flex flex-shrink-0 gap-0.5 sm:gap-1 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
+      {/* Action Button - Edit only */}
+      <div className="flex flex-shrink-0 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
         <button
           onClick={(e) => { e.preventDefault(); onEdit(item); }}
-          className="rounded-full p-1 sm:p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-red-400 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-400"
+          className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-rose-400 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-rose-400"
           title="Edit"
         >
-          <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-          </svg>
-        </button>
-        <button
-          onClick={(e) => { e.preventDefault(); onRemove(item); }}
-          className="rounded-full p-1 sm:p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-red-600 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-400"
-          title="Remove"
-        >
-          <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
           </svg>
         </button>
       </div>
@@ -370,13 +359,13 @@ function SortableItem({
       style={style}
       className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
     >
-      {/* Drag Handle - hidden on mobile to save space */}
+      {/* Drag Handle - visible on all devices */}
       <div
         {...attributes}
         {...listeners}
-        className="absolute left-1 top-1 sm:left-2 sm:top-2 z-10 cursor-grab rounded bg-white/80 p-1 sm:p-1.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 dark:bg-zinc-800/80 active:cursor-grabbing hidden sm:block"
+        className="absolute left-1 top-1 sm:left-2 sm:top-2 z-10 cursor-grab rounded bg-white/80 p-1.5 sm:p-1.5 shadow-sm transition-opacity opacity-70 sm:opacity-0 sm:group-hover:opacity-100 dark:bg-zinc-800/80 active:cursor-grabbing touch-none"
       >
-        <svg className="h-3 w-3 sm:h-4 sm:w-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+        <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 16h16" />
         </svg>
       </div>
@@ -397,17 +386,18 @@ function SortableItem({
             </div>
           )}
         </div>
-        <div className="p-2 sm:p-4">
-          <span className="text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400 truncate block">
+        <div className="p-2 sm:p-3">
+          <span className="text-[10px] sm:text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400 truncate block">
             {product.brand}
           </span>
-          <h3 className="mt-0.5 sm:mt-1 line-clamp-1 sm:line-clamp-2 text-xs sm:text-sm font-medium text-zinc-900 dark:text-white">
+          <h3 className="mt-0.5 line-clamp-1 sm:line-clamp-2 text-xs sm:text-sm font-medium text-zinc-900 dark:text-white">
             {product.name}
           </h3>
-          <div className="mt-1 flex flex-wrap gap-0.5 sm:gap-1">
+          {/* Badges row - aligned horizontally */}
+          <div className="mt-1.5 flex items-center gap-1 flex-wrap">
             {selectedColor && colorHex && (
               <span
-                className="inline-flex items-center gap-0.5 sm:gap-1 rounded border px-1 py-0.5 sm:px-2 text-[10px] sm:text-xs font-medium"
+                className="inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] sm:text-xs font-medium leading-none"
                 style={{
                   backgroundColor: `${colorHex}20`,
                   color: getColorBadgeTextColor(colorHex),
@@ -415,63 +405,51 @@ function SortableItem({
                 }}
               >
                 <span
-                  className="h-1.5 w-1.5 sm:h-2 sm:w-2 rounded-full border"
+                  className="h-2 w-2 rounded-full border flex-shrink-0"
                   style={{
                     backgroundColor: colorHex,
                     borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
                   }}
                 />
-                <span className="truncate max-w-[50px] sm:max-w-none">{selectedColor}</span>
+                <span className="truncate max-w-[45px] sm:max-w-none">{selectedColor}</span>
               </span>
             )}
             {selectedSize && (
-              <span className="rounded bg-blue-100 px-1 py-0.5 sm:px-2 text-[10px] sm:text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 leading-none">
                 {selectedSize}
+              </span>
+            )}
+            {/* Status Badge inline on mobile */}
+            {item.isOwned ? (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+                <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                </svg>
+                Owned
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+                <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                </svg>
+                Wishlist
               </span>
             )}
           </div>
         </div>
       </Link>
 
-      {/* Action Buttons - always visible on mobile, hover on desktop */}
-      <div className="absolute right-1 top-1 sm:right-2 sm:top-2 flex flex-col gap-0.5 sm:gap-1 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
+      {/* Action Button - Edit only, visible on mobile, hover on desktop */}
+      <div className="absolute right-1 top-1 sm:right-2 sm:top-2 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
         <button
           onClick={(e) => { e.preventDefault(); onEdit(item); }}
-          className="rounded-full bg-white/90 p-1 sm:p-2 text-zinc-600 shadow-sm hover:bg-white hover:text-red-400 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-400"
-          title="Edit size/color/category"
+          className="rounded-full bg-white/90 p-1.5 sm:p-2 text-zinc-600 shadow-sm hover:bg-white hover:text-rose-400 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-rose-400"
+          title="Edit"
         >
-          <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
         </button>
-        <button
-          onClick={(e) => { e.preventDefault(); onRemove(item); }}
-          className="rounded-full bg-white/90 p-1 sm:p-2 text-zinc-600 shadow-sm hover:bg-white hover:text-red-600 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-red-400"
-          title="Remove"
-        >
-          <svg className="h-3 w-3 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-          </svg>
-        </button>
-      </div>
-
-      {/* Status Badge */}
-      <div className="absolute right-1 bottom-1 sm:right-2 sm:bottom-4">
-        {item.isOwned ? (
-          <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-xs font-medium text-white">
-            <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3" fill="currentColor" viewBox="0 0 20 20">
-              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-            </svg>
-            Owned
-          </span>
-        ) : (
-          <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 sm:px-2 sm:py-1 text-[10px] sm:text-xs font-medium text-white">
-            <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-            </svg>
-            Wishlist
-          </span>
-        )}
       </div>
     </div>
   );
@@ -602,9 +580,12 @@ export default function ClosetPage() {
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
+  const [searchQuery, setSearchQuery] = useState("");
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [editOptions, setEditOptions] = useState<Record<string, string>>({});
   const [editCategory, setEditCategory] = useState<string>("");
+  const [editIsOwned, setEditIsOwned] = useState<boolean>(false);
+  const [editIsWishlist, setEditIsWishlist] = useState<boolean>(false);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [overCategory, setOverCategory] = useState<string | null>(null);
   const [showAddClothesModal, setShowAddClothesModal] = useState(false);
@@ -689,6 +670,7 @@ export default function ClosetPage() {
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 200, tolerance: 5 } }),
     useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
@@ -705,6 +687,8 @@ export default function ClosetPage() {
 
   const removeFromCloset = useMutation(api.closet.removeFromCloset);
   const removeFavorite = useMutation(api.favorites.removeFavorite);
+  const addToCloset = useMutation(api.closet.addToCloset);
+  const addFavorite = useMutation(api.favorites.addFavorite);
   const updateClosetItemOptions = useMutation(api.closet.updateClosetItemOptions);
   const updateFavoriteOptions = useMutation(api.favorites.updateFavoriteOptions);
   const updateClosetItemCategory = useMutation(api.closet.updateClosetItemCategory);
@@ -776,7 +760,7 @@ export default function ClosetPage() {
     };
   }, [combinedItems]);
 
-  // Filter by type
+  // Filter by type and search query
   const filteredByType = useMemo(() => {
     let items = combinedItems;
     if (typeFilter === "owned") {
@@ -784,10 +768,27 @@ export default function ClosetPage() {
     } else if (typeFilter === "wishlist") {
       items = items.filter(i => i.isWishlist && !i.isOwned);
     }
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      items = items.filter(i => {
+        const product = i.product;
+        if (!product) return false;
+        const searchableText = [
+          product.name,
+          product.brand,
+          product.colorName,
+          i.selectedOptions?.["Color"],
+          i.selectedOptions?.["Size"],
+          i.customCategory || product.category,
+        ].filter(Boolean).join(" ").toLowerCase();
+        return searchableText.includes(query);
+      });
+    }
     return items;
-  }, [combinedItems, typeFilter]);
+  }, [combinedItems, typeFilter, searchQuery]);
 
-  // Group items by normalized category key
+  // Group items by normalized category key and sort by sortOrder within each category
   const itemsByCategory = useMemo(() => {
     const groups: Record<string, CombinedItem[]> = {};
     for (const item of filteredByType) {
@@ -795,6 +796,17 @@ export default function ClosetPage() {
       const normalizedCat = getCategoryKey(rawCat);
       if (!groups[normalizedCat]) groups[normalizedCat] = [];
       groups[normalizedCat].push(item);
+    }
+    // Sort items within each category by sortOrder
+    for (const cat of Object.keys(groups)) {
+      groups[cat].sort((a, b) => {
+        if (a.sortOrder !== undefined && b.sortOrder !== undefined) {
+          return a.sortOrder - b.sortOrder;
+        }
+        if (a.sortOrder !== undefined) return -1;
+        if (b.sortOrder !== undefined) return 1;
+        return b.addedAt - a.addedAt;
+      });
     }
     return groups;
   }, [filteredByType]);
@@ -848,6 +860,32 @@ export default function ClosetPage() {
       ...(currentColor ? { Color: currentColor } : {}),
     });
     setEditCategory(currentCategory);
+    setEditIsOwned(item.isOwned);
+    setEditIsWishlist(item.isWishlist);
+  };
+
+  const closeEditModal = () => {
+    setEditingItem(null);
+    setEditOptions({});
+    setEditCategory("");
+    setEditIsOwned(false);
+    setEditIsWishlist(false);
+  };
+
+  const handleDeleteFromEdit = async () => {
+    if (!user?.id || !editingItem) return;
+    const message = editingItem.isOwned
+      ? "Remove this item from your closet?"
+      : "Remove this item from your wishlist?";
+    if (confirm(message)) {
+      if (editingItem.isOwned) {
+        await removeFromCloset({ clerkId: user.id, productId: editingItem.productId });
+      }
+      if (editingItem.isWishlist) {
+        await removeFavorite({ clerkId: user.id, productId: editingItem.productId });
+      }
+      closeEditModal();
+    }
   };
 
   const colorVariants = useQuery(
@@ -859,15 +897,45 @@ export default function ClosetPage() {
     if (!user?.id || !editingItem) return;
 
     const categoryChanged = editCategory !== editingItem.currentCategory;
+    const ownershipChanged = editIsOwned !== editingItem.isOwned || editIsWishlist !== editingItem.isWishlist;
 
-    if (editingItem.isOwned) {
+    // Handle ownership changes first
+    if (ownershipChanged) {
+      // If newly owned and wasn't before, add to closet
+      if (editIsOwned && !editingItem.isOwned) {
+        await addToCloset({
+          clerkId: user.id,
+          productId: editingItem.productId,
+          selectedOptions: editOptions,
+        });
+      }
+      // If no longer owned but was before, remove from closet
+      if (!editIsOwned && editingItem.isOwned) {
+        await removeFromCloset({ clerkId: user.id, productId: editingItem.productId });
+      }
+      // If newly wishlisted and wasn't before, add to favorites
+      if (editIsWishlist && !editingItem.isWishlist) {
+        await addFavorite({
+          clerkId: user.id,
+          productId: editingItem.productId,
+          selectedOptions: editOptions,
+        });
+      }
+      // If no longer wishlisted but was before, remove from favorites
+      if (!editIsWishlist && editingItem.isWishlist) {
+        await removeFavorite({ clerkId: user.id, productId: editingItem.productId });
+      }
+    }
+
+    // Update options/category for items that still exist
+    if (editIsOwned) {
       await updateClosetItemOptions({
         clerkId: user.id,
         productId: editingItem.productId,
         selectedOptions: editOptions,
         customCategory: categoryChanged ? editCategory : undefined,
       });
-    } else {
+    } else if (editIsWishlist) {
       await updateFavoriteOptions({
         clerkId: user.id,
         productId: editingItem.productId,
@@ -875,9 +943,8 @@ export default function ClosetPage() {
         customCategory: categoryChanged ? editCategory : undefined,
       });
     }
-    setEditingItem(null);
-    setEditOptions({});
-    setEditCategory("");
+
+    closeEditModal();
   };
 
   // Drag and drop handlers
@@ -907,9 +974,10 @@ export default function ClosetPage() {
     // Check if dropped on a category
     if (typeof over.id === "string" && over.id.startsWith("category-")) {
       const newCategory = over.id.replace("category-", "");
-      const currentCategory = activeItem.customCategory || activeItem.product?.category;
+      const currentCategoryRaw = activeItem.customCategory || activeItem.product?.category || "other";
+      const currentCategoryNormalized = getCategoryKey(currentCategoryRaw);
 
-      if (newCategory !== currentCategory) {
+      if (newCategory !== currentCategoryNormalized) {
         await updateClosetItemCategory({
           clerkId: user.id,
           productId: activeItem.productId,
@@ -923,16 +991,18 @@ export default function ClosetPage() {
     const overItem = combinedItems.find(i => i.productId === over.id);
     if (!overItem) return;
 
-    const activeCategory = activeItem.customCategory || activeItem.product?.category;
-    const overCategory = overItem.customCategory || overItem.product?.category;
+    const activeCategoryRaw = activeItem.customCategory || activeItem.product?.category || "other";
+    const overCategoryRaw = overItem.customCategory || overItem.product?.category || "other";
+    const activeCategoryNormalized = getCategoryKey(activeCategoryRaw);
+    const overCategoryNormalized = getCategoryKey(overCategoryRaw);
 
-    if (activeCategory === overCategory) {
-      // Reorder within category
-      const categoryItems = itemsByCategory[activeCategory] || [];
+    if (activeCategoryNormalized === overCategoryNormalized) {
+      // Reorder within category - use normalized key for lookup
+      const categoryItems = itemsByCategory[activeCategoryNormalized] || [];
       const oldIndex = categoryItems.findIndex(i => i.productId === active.id);
       const newIndex = categoryItems.findIndex(i => i.productId === over.id);
 
-      if (oldIndex !== newIndex) {
+      if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         const reordered = arrayMove(categoryItems, oldIndex, newIndex);
         const updates = reordered.map((item, index) => ({
           productId: item.productId,
@@ -945,7 +1015,7 @@ export default function ClosetPage() {
       await updateClosetItemCategory({
         clerkId: user.id,
         productId: activeItem.productId,
-        customCategory: overCategory,
+        customCategory: overCategoryNormalized,
       });
     }
   }, [combinedItems, itemsByCategory, user?.id, updateClosetItemCategory, updateClosetItemsOrder]);
@@ -1014,56 +1084,93 @@ export default function ClosetPage() {
               {stats.total} items · {stats.categoryCount} categories
             </p>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
             {/* Action Buttons */}
-            <button
-              onClick={() => setShowAddClothesModal(true)}
-              className="flex items-center gap-1 sm:gap-2 rounded-lg bg-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-rose-500"
-            >
-              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add
-            </button>
-            <button
-              onClick={() => setShowTryOnModal(true)}
-              className="flex items-center gap-1 sm:gap-2 rounded-lg border border-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-rose-400 transition-colors hover:bg-rose-400/10"
-            >
-              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-              </svg>
-              Try On
-            </button>
-            {/* View Toggle */}
+            <div className="flex items-center gap-2 sm:gap-3">
+              <button
+                onClick={() => setShowAddClothesModal(true)}
+                className="flex items-center gap-1 sm:gap-2 rounded-lg bg-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-rose-500"
+              >
+                <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Items
+              </button>
+              <button
+                onClick={() => setShowTryOnModal(true)}
+                className="flex items-center gap-1 sm:gap-2 rounded-lg border border-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-rose-400 transition-colors hover:bg-rose-400/10"
+              >
+                <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                Try On
+              </button>
+            </div>
+            {/* View Toggle - right side */}
             <div className="flex items-center gap-0.5 sm:gap-1 rounded-lg border border-zinc-200 p-0.5 sm:p-1 dark:border-zinc-700">
-            <button
-              onClick={() => setViewMode("grid")}
-              className={`rounded p-1 sm:p-1.5 transition-colors ${
-                viewMode === "grid"
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-              }`}
-              title="Grid view"
-            >
-              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-              </svg>
-            </button>
-            <button
-              onClick={() => setViewMode("list")}
-              className={`rounded p-1 sm:p-1.5 transition-colors ${
-                viewMode === "list"
-                  ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                  : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-              }`}
-              title="List view"
-            >
-              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-              </svg>
-            </button>
+              <button
+                onClick={() => setViewMode("grid")}
+                className={`rounded p-1 sm:p-1.5 transition-colors ${
+                  viewMode === "grid"
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                }`}
+                title="Grid view"
+              >
+                <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                </svg>
+              </button>
+              <button
+                onClick={() => setViewMode("list")}
+                className={`rounded p-1 sm:p-1.5 transition-colors ${
+                  viewMode === "list"
+                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                }`}
+                title="List view"
+              >
+                <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
+            </div>
           </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="mt-3 sm:mt-4">
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search your closet..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 pl-9 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
+            />
+            <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+            </svg>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            )}
           </div>
+          {searchQuery && (
+            <p className="mt-1.5 text-xs text-zinc-500 dark:text-zinc-400">
+              {filteredByType.length === 0 ? (
+                <span>No items match "{searchQuery}"</span>
+              ) : (
+                <span>Found {filteredByType.length} item{filteredByType.length !== 1 ? 's' : ''} matching "{searchQuery}"</span>
+              )}
+            </p>
+          )}
         </div>
 
         {/* Type Filter Buttons */}
@@ -1257,8 +1364,14 @@ export default function ClosetPage() {
 
       {/* Edit Modal */}
       {editingItem && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900 max-h-[90vh] overflow-y-auto">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={closeEditModal}
+        >
+          <div
+            className="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
               Edit Item
             </h3>
@@ -1267,7 +1380,45 @@ export default function ClosetPage() {
             </p>
 
             <div className="mt-4 space-y-4">
-              {/* Category Selection - available for both owned and wishlist items */}
+              {/* Status Selection - Owned or Wishlist */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Status
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditIsOwned(!editIsOwned)}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                      editIsOwned
+                        ? "border-purple-500 bg-purple-500 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                  >
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Owned
+                  </button>
+                  <button
+                    onClick={() => setEditIsWishlist(!editIsWishlist)}
+                    className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                      editIsWishlist
+                        ? "border-red-500 bg-red-500 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                  >
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    Wishlist
+                  </button>
+                </div>
+                {!editIsOwned && !editIsWishlist && (
+                  <p className="mt-1 text-xs text-red-500">Select at least one status or delete the item</p>
+                )}
+              </div>
+
+              {/* Category Selection */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Category
@@ -1275,7 +1426,7 @@ export default function ClosetPage() {
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-red-400 focus:outline-none focus:ring-1 focus:ring-purple-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 >
                   {CLOSET_CATEGORIES.map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -1302,7 +1453,7 @@ export default function ClosetPage() {
                           onClick={() => setEditOptions({ ...editOptions, Color: variant.colorName! })}
                           className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                             isSelected
-                              ? "border-red-400 ring-2 ring-purple-600"
+                              ? "border-rose-400 ring-2 ring-rose-400"
                               : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500"
                           }`}
                           title={variant.colorName}
@@ -1353,7 +1504,7 @@ export default function ClosetPage() {
                           onClick={() => setEditOptions({ ...editOptions, [option.name]: value })}
                           className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                             isSelected
-                              ? "border-red-400 bg-red-400 text-white"
+                              ? "border-rose-400 bg-rose-400 text-white"
                               : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:border-zinc-500"
                           }`}
                         >
@@ -1366,20 +1517,27 @@ export default function ClosetPage() {
               ))}
             </div>
 
+            {/* Action Buttons */}
             <div className="mt-6 flex gap-3">
               <button
-                onClick={() => {
-                  setEditingItem(null);
-                  setEditOptions({});
-                  setEditCategory("");
-                }}
-                className="flex-1 rounded-lg border border-zinc-300 py-2 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                onClick={handleDeleteFromEdit}
+                className="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950/30"
+                title="Delete item"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+              <button
+                onClick={closeEditModal}
+                className="flex-1 rounded-lg border border-zinc-300 py-2 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSaveEdit}
-                className="flex-1 rounded-lg bg-red-400 py-2 font-medium text-white transition-colors hover:bg-red-500"
+                disabled={!editIsOwned && !editIsWishlist}
+                className="flex-1 rounded-lg bg-rose-400 py-2 font-medium text-white transition-colors hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Save
               </button>

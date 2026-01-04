@@ -2,6 +2,9 @@
   "name": "shop-clone",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "scripts": {
     "dev": "npm-run-all --parallel dev:next dev:convex",
     "dev:next": "next dev",
@@ -35,7 +38,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.4.2",
-    "@testing-library/react": "^14.2.1",
+    "@testing-library/react": "^16.3.1",
     "@types/jest": "^29.5.12",
     "@types/node": "^20",
     "@types/react": "^19",

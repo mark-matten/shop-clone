@@ -12,7 +12,6 @@ export function Header() {
   const pathname = usePathname();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
@@ -70,25 +69,52 @@ export function Header() {
   return (
     <header className="border-b border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="text-2xl" style={{ fontFamily: 'var(--font-pacifico)' }}>
-          <span className="text-black dark:text-black">ar</span><span className="text-rose-400">moi</span>
+        <Link href="/" className="ml-2 text-2xl" style={{ fontFamily: 'var(--font-pacifico)' }}>
+          <span className="text-black dark:text-white">ar</span><span className="text-rose-400">moi</span>
         </Link>
 
-        {/* Mobile menu button */}
-        <button
-          onClick={() => setShowMobileMenu(!showMobileMenu)}
-          className="rounded-lg p-2 text-zinc-600 hover:bg-zinc-50 sm:hidden dark:text-zinc-400 dark:hover:bg-zinc-800"
-        >
-          {showMobileMenu ? (
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+        {/* Mobile navigation - inline icons */}
+        <nav className="flex items-center gap-1 sm:hidden">
+          <Link
+            href="/"
+            className={`rounded-lg p-2 transition-colors ${
+              pathname === "/"
+                ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+            title="Search"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
             </svg>
-          ) : (
-            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+          </Link>
+          <Link
+            href="/closet"
+            className={`rounded-lg p-2 transition-colors ${
+              pathname === "/closet"
+                ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+            title="My Closet"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6a2 2 0 100-4 2 2 0 000 4zM12 6v2m0 0l-8 6h16l-8-6z" />
             </svg>
-          )}
-        </button>
+          </Link>
+          <Link
+            href="/profile"
+            className={`rounded-lg p-2 transition-colors ${
+              pathname === "/profile"
+                ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+            title="Profile"
+          >
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+            </svg>
+          </Link>
+        </nav>
 
         <nav className="hidden items-center gap-1 sm:flex">
           <Link
@@ -362,137 +388,6 @@ export function Header() {
         />
       )}
 
-      {/* Mobile Menu */}
-      {showMobileMenu && (
-        <div className="border-b border-zinc-200 bg-white px-4 py-3 sm:hidden dark:border-zinc-800 dark:bg-zinc-900">
-          <nav className="flex flex-col gap-1">
-            <Link
-              href="/"
-              onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                pathname === "/"
-                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              }`}
-            >
-              Search
-            </Link>
-            {/* Hidden for now - Compare and Favorites moved to My Closet
-            <Link
-              href="/compare"
-              onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                pathname === "/compare"
-                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              }`}
-            >
-              Compare
-            </Link>
-            <Link
-              href="/favorites"
-              onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                pathname === "/favorites"
-                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              }`}
-            >
-              Favorites
-            </Link>
-            */}
-            <Link
-              href="/closet"
-              onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                pathname === "/closet"
-                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              }`}
-            >
-              My Closet
-            </Link>
-            {/* Hidden for now
-            <Link
-              href="/dashboard"
-              onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                pathname === "/dashboard"
-                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              }`}
-            >
-              Dashboard
-            </Link>
-            <Link
-              href="/tools"
-              onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                pathname === "/tools"
-                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              }`}
-            >
-              Tools
-            </Link>
-            */}
-            {/* Deals link - hidden for now
-            <Link
-              href="/coupons"
-              onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                pathname === "/coupons"
-                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              }`}
-            >
-              Deals
-            </Link>
-            */}
-            <Link
-              href="/profile"
-              onClick={() => setShowMobileMenu(false)}
-              className={`rounded-lg px-3 py-2 text-sm transition-colors ${
-                pathname === "/profile"
-                  ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
-                  : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              }`}
-            >
-              Profile
-            </Link>
-            {mounted && (
-              <button
-                onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                className="flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-              >
-                {resolvedTheme === "dark" ? (
-                  <>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                    </svg>
-                    Light Mode
-                  </>
-                ) : (
-                  <>
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                    </svg>
-                    Dark Mode
-                  </>
-                )}
-              </button>
-            )}
-            <SignOutButton redirectUrl="/">
-              <button
-                onClick={() => setShowMobileMenu(false)}
-                className="w-full rounded-lg px-3 py-2 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-              >
-                Sign out
-              </button>
-            </SignOutButton>
-          </nav>
-        </div>
-      )}
     </header>
   );
 }
