@@ -573,22 +573,52 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {/* Available in Other Colors */}
+            {/* Other Colors */}
             {otherColors && otherColors.length > 0 && (
               <div className="mt-6">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                  Available in Other Colors
+                  Other colors
                 </h3>
                 <div className="mt-3 flex flex-wrap gap-2">
-                  {otherColors.map((color) => (
-                    <Link
-                      key={color._id}
-                      href={`/product/${color._id}`}
-                      className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm font-medium text-zinc-700 transition-all hover:border-zinc-400 hover:shadow-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
-                    >
-                      {color.colorName}
-                    </Link>
-                  ))}
+                  {otherColors.map((color) => {
+                    // Get background color from colorHex or derive from color name
+                    const colorHexMap: Record<string, string> = {
+                      'black': '#000000', 'white': '#ffffff', 'grey': '#808080', 'gray': '#808080',
+                      'navy': '#1a237e', 'blue': '#0066cc', 'red': '#cc0000', 'green': '#228b22',
+                      'brown': '#8b4513', 'tan': '#d2b48c', 'beige': '#f5f5dc', 'cream': '#fffdd0',
+                      'pink': '#ffc0cb', 'purple': '#800080', 'orange': '#ff8c00', 'yellow': '#ffd700',
+                      'olive': '#808000', 'burgundy': '#800020', 'charcoal': '#36454f', 'khaki': '#c3b091',
+                      'coral': '#ff7f50', 'teal': '#008080', 'maroon': '#800000', 'mint': '#98ff98',
+                      'heather': '#b6b095', 'oatmeal': '#d4c4a8', 'bone': '#e3dac9', 'sand': '#c2b280',
+                    };
+                    let bgColor = color.colorHex;
+                    if (!bgColor) {
+                      const lowerColor = color.colorName.toLowerCase();
+                      for (const [key, hex] of Object.entries(colorHexMap)) {
+                        if (lowerColor.includes(key)) {
+                          bgColor = hex;
+                          break;
+                        }
+                      }
+                    }
+                    // Determine if text should be light or dark based on background
+                    const isLightBg = !bgColor || ['#ffffff', '#f5f5dc', '#fffdd0', '#d2b48c', '#ffc0cb', '#ffd700', '#98ff98', '#b6b095', '#d4c4a8', '#e3dac9', '#c2b280'].includes(bgColor);
+
+                    return (
+                      <Link
+                        key={color._id}
+                        href={`/product/${color._id}`}
+                        className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all hover:shadow-md ${
+                          bgColor
+                            ? `border-zinc-300 dark:border-zinc-600 ${isLightBg ? 'text-zinc-800' : 'text-white'}`
+                            : 'border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                        }`}
+                        style={bgColor ? { backgroundColor: bgColor } : undefined}
+                      >
+                        {color.colorName}
+                      </Link>
+                    );
+                  })}
                 </div>
               </div>
             )}
