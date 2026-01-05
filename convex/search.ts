@@ -276,10 +276,10 @@ export const filterProducts = query({
         }
       }
 
-      // Gender filter: include unisex products in men's or women's searches
+      // Gender filter: exclude products explicitly marked as the opposite gender
       if (args.gender) {
-        if (args.gender === "men" && product.gender !== "men" && product.gender !== "unisex") return false;
-        if (args.gender === "women" && product.gender !== "women" && product.gender !== "unisex") return false;
+        if (args.gender === "men" && product.gender === "women") return false;
+        if (args.gender === "women" && product.gender === "men") return false;
         if (args.gender === "unisex" && product.gender !== "unisex") return false;
       }
       if (args.condition && product.condition !== args.condition) return false;
@@ -1105,12 +1105,16 @@ export const filterProductsInternal = internalQuery({
           }
         }
 
-        // Gender filter: include unisex products in men's or women's searches
+        // Gender filter: exclude products explicitly marked as the opposite gender
+        // Products with undefined gender or "unisex" are included in both men's and women's searches
         if (args.gender) {
           // Normalize gender value (handle "mens", "men's", "womens", "women's")
           const normalizedGender = args.gender.toLowerCase().replace(/['s]+$/, '');
-          if (normalizedGender === "men" && product.gender !== "men" && product.gender !== "unisex") return null;
-          if (normalizedGender === "women" && product.gender !== "women" && product.gender !== "unisex") return null;
+          // If searching for men's, exclude products explicitly marked as women's only
+          if (normalizedGender === "men" && product.gender === "women") return null;
+          // If searching for women's, exclude products explicitly marked as men's only
+          if (normalizedGender === "women" && product.gender === "men") return null;
+          // If searching for unisex specifically, only show unisex products
           if (normalizedGender === "unisex" && product.gender !== "unisex") return null;
         }
         if (args.condition && product.condition !== args.condition) return null;

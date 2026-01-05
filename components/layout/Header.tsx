@@ -1,16 +1,22 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { SignOutButton, useUser } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
+// Keys for sessionStorage
+const SEARCH_CONTEXT_KEY = "armoi_search_context";
+const SCROLL_POSITION_KEY = "armoi_scroll_position";
+
 export function Header() {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
   const [showUserMenu, setShowUserMenu] = useState(false);
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -49,6 +55,79 @@ export function Header() {
     setMounted(true);
   }, []);
 
+  // Track search context (search page with query or product page)
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const query = searchParams.get("q");
+    const isSearchPage = pathname === "/" && query;
+    const isProductPage = pathname.startsWith("/product/");
+    const isHomePage = pathname === "/" && !query;
+
+    if (isSearchPage || isProductPage) {
+      // Save current URL as search context
+      const currentUrl = isSearchPage
+        ? `/?q=${encodeURIComponent(query)}`
+        : pathname;
+      sessionStorage.setItem(SEARCH_CONTEXT_KEY, currentUrl);
+    } else if (isHomePage) {
+      // Clear scroll position when on fresh home page (no search)
+      // but keep search context so user can get back to it
+      sessionStorage.removeItem(SCROLL_POSITION_KEY);
+    }
+  }, [pathname, searchParams]);
+
+  // Save scroll position when leaving search page
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const query = searchParams.get("q");
+    const isSearchPage = pathname === "/" && query;
+
+    if (isSearchPage) {
+      // Save scroll position on scroll
+      const handleScroll = () => {
+        sessionStorage.setItem(SCROLL_POSITION_KEY, window.scrollY.toString());
+      };
+
+      window.addEventListener("scroll", handleScroll, { passive: true });
+      return () => window.removeEventListener("scroll", handleScroll);
+    }
+  }, [pathname, searchParams]);
+
+  // Restore scroll position when returning to search page
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+
+    const query = searchParams.get("q");
+    const isSearchPage = pathname === "/" && query;
+
+    if (isSearchPage) {
+      // Small delay to allow content to render
+      const savedPosition = sessionStorage.getItem(SCROLL_POSITION_KEY);
+      if (savedPosition) {
+        setTimeout(() => {
+          window.scrollTo(0, parseInt(savedPosition, 10));
+        }, 100);
+      }
+    }
+  }, [pathname, searchParams]);
+
+  // Handle search icon click - navigate to saved context or home
+  const handleSearchClick = useCallback((e: React.MouseEvent) => {
+    if (typeof window === "undefined") return;
+
+    const savedContext = sessionStorage.getItem(SEARCH_CONTEXT_KEY);
+    const currentPath = pathname + (searchParams.get("q") ? `?q=${searchParams.get("q")}` : "");
+
+    // If we have a saved context and we're not already there, navigate to it
+    if (savedContext && savedContext !== currentPath && savedContext !== "/") {
+      e.preventDefault();
+      router.push(savedContext);
+    }
+    // Otherwise, the Link will navigate to "/" normally
+  }, [pathname, searchParams, router]);
+
   const unreadCount = alerts.filter((a) => !a.sentAt).length;
 
   const handleMarkAllRead = async () => {
@@ -70,7 +149,7 @@ export function Header() {
   return (
     <header className="border-b border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" className="ml-2">
+        <Link href="/" onClick={handleSearchClick} className="ml-2">
           <img src="/logo.svg" alt="armoi" className="h-12 w-auto mt-1" />
         </Link>
 
@@ -78,6 +157,7 @@ export function Header() {
         <nav className="flex items-center gap-1 sm:hidden">
           <Link
             href="/"
+            onClick={handleSearchClick}
             className={`rounded-lg p-2 transition-colors ${
               pathname === "/"
                 ? "bg-zinc-200 text-zinc-900 dark:bg-zinc-800 dark:text-white"
@@ -120,6 +200,7 @@ export function Header() {
         <nav className="hidden items-center gap-1 sm:flex">
           <Link
             href="/"
+            onClick={handleSearchClick}
             className={`rounded-lg px-3 py-2 text-sm transition-colors ${
               pathname === "/"
                 ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
