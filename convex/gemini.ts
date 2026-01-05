@@ -35,6 +35,7 @@ export const generateClothingImage = action({
     material: v.optional(v.string()),
     category: v.string(),
     size: v.optional(v.string()),
+    isWishlist: v.optional(v.boolean()), // true = wishlist, false/undefined = owned
   },
   handler: async (ctx, args) => {
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -152,6 +153,7 @@ export const generateClothingImage = action({
         size: args.size,
         generatedImageStorageId: storageId,
         userDescription: args.description,
+        isWishlist: args.isWishlist,
       }
     );
 
@@ -178,6 +180,7 @@ export const createGeneratedClosetItem = internalMutation({
     size: v.optional(v.string()),
     generatedImageStorageId: v.id("_storage"),
     userDescription: v.string(),
+    isWishlist: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     // Get or create user
@@ -201,7 +204,7 @@ export const createGeneratedClosetItem = internalMutation({
       ...existingItems.map((item) => item.sortOrder ?? 0)
     );
 
-    // Create closet item
+    // Create closet item (used for both owned and wishlist generated items)
     return await ctx.db.insert("closet_items", {
       userId: user._id,
       addedAt: Date.now(),
@@ -215,6 +218,7 @@ export const createGeneratedClosetItem = internalMutation({
       generatedImageStorageId: args.generatedImageStorageId,
       userDescription: args.userDescription,
       sortOrder: maxSortOrder + 1,
+      isWishlist: args.isWishlist || false,
     });
   },
 });

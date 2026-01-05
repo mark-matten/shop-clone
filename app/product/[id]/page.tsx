@@ -255,9 +255,26 @@ export default function ProductDetailPage() {
     // Check if this is a color/size variant navigation (not a related item click)
     const isFromVariant = searchParams.get("fromVariant") === "true";
 
+    // Check if we came from another product page (vs from search)
+    // The search context stores the last search/product URL
+    const searchContext = sessionStorage.getItem("armoi_search_context");
+    const cameFromProduct = searchContext?.startsWith("/product/");
+    const cameFromSearch = !cameFromProduct;
+
     // Get the current navigation stack from sessionStorage
     const navStackStr = sessionStorage.getItem("product_nav_stack");
     let navStack: { id: string; name: string }[] = navStackStr ? JSON.parse(navStackStr) : [];
+
+    // If we came from search (not from another product), clear the stack
+    // This ensures "Back to previous product" only shows for product-to-product navigation
+    if (cameFromSearch && !isFromVariant) {
+      navStack = [];
+      setPreviousProductId(null);
+      setPreviousProductName(null);
+      navStack.push({ id: productId, name: product.name });
+      sessionStorage.setItem("product_nav_stack", JSON.stringify(navStack));
+      return;
+    }
 
     // Find current product's position in the stack
     const currentIndex = navStack.findIndex(p => p.id === productId);

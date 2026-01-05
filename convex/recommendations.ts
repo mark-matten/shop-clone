@@ -137,21 +137,34 @@ export const getSimilarProducts = query({
     const product = await ctx.db.get(args.productId);
     if (!product) return [];
 
-    // Get products from same category
+    // Helper to check gender compatibility
+    // Products must match gender OR be unisex OR have undefined gender
+    const isGenderCompatible = (p: { gender?: "men" | "women" | "unisex" | null }) => {
+      // If current product has no gender, all products are compatible
+      if (!product.gender) return true;
+      // If candidate has no gender or is unisex, it's compatible
+      if (!p.gender || p.gender === "unisex") return true;
+      // If current product is unisex, all gendered products are compatible
+      if (product.gender === "unisex") return true;
+      // Otherwise, genders must match
+      return p.gender === product.gender;
+    };
+
+    // Get products from same category (prioritize this)
     const categoryProducts = await ctx.db
       .query("products")
       .withIndex("by_category", (q) => q.eq("category", product.category))
-      .take(20);
+      .take(40);
 
     // Get products from same brand
     const brandProducts = await ctx.db
       .query("products")
       .withIndex("by_brand", (q) => q.eq("brand", product.brand))
-      .take(10);
+      .take(20);
 
-    // Combine and filter out the current product
+    // Combine and filter out the current product + filter by gender
     const combined = [...categoryProducts, ...brandProducts].filter(
-      (p) => p._id !== args.productId
+      (p) => p._id !== args.productId && isGenderCompatible(p)
     );
 
     // Deduplicate
@@ -163,16 +176,33 @@ export const getSimilarProducts = query({
       return true;
     });
 
-    // Score by similarity (same brand = higher score)
-    const scored = unique.map((p) => ({
-      product: p,
-      score:
-        (p.brand === product.brand ? 2 : 0) +
-        (p.category === product.category ? 1 : 0) +
-        (p.gender === product.gender ? 1 : 0) +
-        (getProductPrice(p) !== undefined && getProductPrice(product) !== undefined &&
-          Math.abs(getProductPrice(p)! - getProductPrice(product)!) < 50 ? 1 : 0),
-    }));
+    // Score by similarity - prioritize category, material, then brand
+    const scored = unique.map((p) => {
+      let score = 0;
+
+      // Category match (highest priority)
+      if (p.category === product.category) score += 4;
+
+      // Material match (second priority)
+      if (product.material && p.material &&
+          p.material.toLowerCase() === product.material.toLowerCase()) {
+        score += 3;
+      }
+
+      // Same brand bonus
+      if (p.brand === product.brand) score += 2;
+
+      // Similar price range bonus
+      const pPrice = getProductPrice(p);
+      const productPrice = getProductPrice(product);
+      if (pPrice !== undefined && productPrice !== undefined) {
+        const priceDiff = Math.abs(pPrice - productPrice);
+        if (priceDiff < 25) score += 2;
+        else if (priceDiff < 50) score += 1;
+      }
+
+      return { product: p, score };
+    });
 
     // Sort by score and return top items
     const sorted = scored.sort((a, b) => b.score - a.score);

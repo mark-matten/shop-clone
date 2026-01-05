@@ -138,9 +138,18 @@ export const getClosetItems = query({
     const itemsWithProducts = await Promise.all(
       closetItems.map(async (item) => {
         const product = item.productId ? await ctx.db.get(item.productId) : null;
+
+        // For generated items, resolve the storage URL
+        let displayImageUrl: string | undefined = item.imageUrl;
+        if (item.source === "generated" && item.generatedImageStorageId) {
+          const storageUrl = await ctx.storage.getUrl(item.generatedImageStorageId);
+          displayImageUrl = storageUrl ?? undefined;
+        }
+
         return {
           ...item,
           product,
+          displayImageUrl,
         };
       })
     );

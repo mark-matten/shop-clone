@@ -701,19 +701,48 @@ export default function ClosetPage() {
 
     const itemMap = new Map<string, CombinedItem>();
 
-    // Add closet items (owned)
+    // Add closet items (owned) - includes product-linked, URL-sourced, and generated items
     for (const item of closetItems || []) {
-      if (!item.product) continue;
-      itemMap.set(item.product._id, {
-        productId: item.product._id,
-        product: item.product as CombinedItem["product"],
-        selectedOptions: item.selectedOptions,
-        customCategory: (item as any).customCategory,
-        sortOrder: (item as any).sortOrder,
-        isOwned: true,
-        isWishlist: false,
-        addedAt: item.addedAt,
-      });
+      // Handle product-linked items
+      if (item.product) {
+        itemMap.set(item.product._id, {
+          productId: item.product._id,
+          product: item.product as CombinedItem["product"],
+          selectedOptions: item.selectedOptions,
+          customCategory: (item as any).customCategory,
+          sortOrder: (item as any).sortOrder,
+          isOwned: true,
+          isWishlist: false,
+          addedAt: item.addedAt,
+        });
+      }
+      // Handle URL-sourced and generated items (no product reference)
+      else if ((item as any).source === "url" || (item as any).source === "generated") {
+        const typedItem = item as any;
+        const itemId = typedItem._id as string;
+        // For generated items, displayImageUrl is resolved from storage
+        const imageUrl = typedItem.displayImageUrl || typedItem.imageUrl;
+        // Check if this is a wishlist item (generated items can be wishlist)
+        const isWishlistItem = typedItem.isWishlist === true;
+        itemMap.set(itemId, {
+          productId: itemId as any, // Use item ID as pseudo-productId
+          product: {
+            _id: itemId as any,
+            name: typedItem.name || "Unknown Item",
+            brand: typedItem.brand || "Unknown",
+            price: 0,
+            imageUrl: imageUrl,
+            category: typedItem.customCategory || typedItem.category || "other",
+            colorName: typedItem.color,
+          },
+          selectedOptions: typedItem.size ? { Size: typedItem.size } : undefined,
+          customCategory: typedItem.customCategory || typedItem.category,
+          sortOrder: typedItem.sortOrder,
+          isOwned: !isWishlistItem, // Owned if not wishlist
+          isWishlist: isWishlistItem,
+          addedAt: typedItem.addedAt,
+        });
+      }
     }
 
     // Add/merge favorites (wishlist)

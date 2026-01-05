@@ -10,7 +10,8 @@ interface AddClothesModalProps {
   clerkId: string;
 }
 
-type Tab = "url" | "generate";
+type Tab = "describe" | "url";
+type OwnershipStatus = "owned" | "wishlist";
 
 const CATEGORIES = [
   "tops",
@@ -34,8 +35,93 @@ interface ScrapedProduct {
   material?: string;
 }
 
+// Known brand patterns for parsing
+const KNOWN_BRANDS = [
+  "J.Crew", "J Crew", "JCrew", "Everlane", "Uniqlo", "Zara", "H&M", "Nike", "Adidas",
+  "Levi's", "Levis", "Gap", "Banana Republic", "Old Navy", "Madewell", "Theory",
+  "Vince", "COS", "& Other Stories", "Massimo Dutti", "Aritzia", "AllSaints",
+  "Reformation", "Patagonia", "North Face", "Lululemon", "Athleta", "Ralph Lauren",
+  "Polo", "Tommy Hilfiger", "Calvin Klein", "Brooks Brothers", "Nordstrom", "Gucci",
+  "Prada", "Louis Vuitton", "Chanel", "Hermes", "Burberry", "Saint Laurent",
+  "Balenciaga", "Bottega Veneta", "Celine", "Dior", "Fendi", "Givenchy", "Valentino"
+];
+
+// Known materials for parsing
+const KNOWN_MATERIALS = [
+  "cotton", "wool", "silk", "linen", "cashmere", "polyester", "nylon", "leather",
+  "suede", "denim", "tweed", "velvet", "satin", "chiffon", "jersey", "fleece",
+  "corduroy", "canvas", "merino", "alpaca", "mohair", "chambray", "poplin",
+  "twill", "flannel", "rayon", "viscose", "spandex", "lycra", "elastane"
+];
+
+// Known colors for parsing
+const KNOWN_COLORS = [
+  "black", "white", "grey", "gray", "navy", "blue", "red", "green", "brown",
+  "tan", "beige", "cream", "pink", "rose", "purple", "orange", "yellow",
+  "olive", "burgundy", "charcoal", "khaki", "coral", "teal", "maroon", "mint",
+  "gold", "silver", "ivory", "indigo", "lavender", "mauve", "rust", "sage",
+  "taupe", "heather", "oatmeal", "camel", "cognac", "chocolate", "espresso"
+];
+
+// Category keywords for parsing
+const CATEGORY_KEYWORDS: Record<string, string[]> = {
+  tops: ["shirt", "tee", "t-shirt", "blouse", "sweater", "top", "polo", "henley", "tank", "cami", "cardigan", "pullover", "crewneck", "v-neck", "turtleneck", "hoodie", "sweatshirt"],
+  bottoms: ["pants", "jeans", "shorts", "skirt", "trousers", "chinos", "leggings", "joggers", "slacks"],
+  dresses: ["dress", "jumpsuit", "romper", "gown", "maxi", "midi", "mini dress"],
+  outerwear: ["jacket", "coat", "blazer", "vest", "parka", "windbreaker", "puffer", "peacoat", "trench", "overcoat"],
+  shoes: ["shoes", "boots", "sneakers", "heels", "sandals", "loafers", "flats", "mules", "slippers", "oxfords", "pumps"],
+  bags: ["bag", "tote", "purse", "backpack", "clutch", "satchel", "crossbody", "wallet", "handbag"],
+  accessories: ["hat", "scarf", "belt", "watch", "socks", "gloves", "sunglasses", "tie", "beanie", "cap", "jewelry", "necklace", "bracelet", "earrings"],
+  activewear: ["athletic", "sports", "workout", "yoga", "gym", "running", "training", "legging", "sports bra"],
+};
+
+// Parse description text to extract attributes
+function parseDescription(text: string): {
+  brand?: string;
+  color?: string;
+  material?: string;
+  category?: string;
+} {
+  const lowerText = text.toLowerCase();
+  const result: { brand?: string; color?: string; material?: string; category?: string } = {};
+
+  // Find brand (case-insensitive match but preserve original casing)
+  for (const brand of KNOWN_BRANDS) {
+    if (lowerText.includes(brand.toLowerCase())) {
+      result.brand = brand;
+      break;
+    }
+  }
+
+  // Find color
+  for (const color of KNOWN_COLORS) {
+    if (lowerText.includes(color)) {
+      result.color = color.charAt(0).toUpperCase() + color.slice(1);
+      break;
+    }
+  }
+
+  // Find material
+  for (const material of KNOWN_MATERIALS) {
+    if (lowerText.includes(material)) {
+      result.material = material.charAt(0).toUpperCase() + material.slice(1);
+      break;
+    }
+  }
+
+  // Find category
+  for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+    if (keywords.some(keyword => lowerText.includes(keyword))) {
+      result.category = category;
+      break;
+    }
+  }
+
+  return result;
+}
+
 export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalProps) {
-  const [activeTab, setActiveTab] = useState<Tab>("url");
+  const [activeTab, setActiveTab] = useState<Tab>("describe");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -45,15 +131,30 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [urlCategory, setUrlCategory] = useState("");
+  const [urlOwnership, setUrlOwnership] = useState<OwnershipStatus | null>(null);
 
-  // Generate Tab State
+  // Describe Tab State
   const [description, setDescription] = useState("");
   const [genBrand, setGenBrand] = useState("");
   const [genColor, setGenColor] = useState("");
   const [genMaterial, setGenMaterial] = useState("");
   const [genSize, setGenSize] = useState("");
-  const [genCategory, setGenCategory] = useState("tops");
+  const [genCategory, setGenCategory] = useState("");
+  const [descOwnership, setDescOwnership] = useState<OwnershipStatus | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
+  const [hasParsedDescription, setHasParsedDescription] = useState(false);
+
+  // Parse description when user moves to another field
+  const handleDescriptionBlur = useCallback(() => {
+    if (description.trim() && !hasParsedDescription) {
+      const parsed = parseDescription(description);
+      if (parsed.brand && !genBrand) setGenBrand(parsed.brand);
+      if (parsed.color && !genColor) setGenColor(parsed.color);
+      if (parsed.material && !genMaterial) setGenMaterial(parsed.material);
+      if (parsed.category && !genCategory) setGenCategory(parsed.category);
+      setHasParsedDescription(true);
+    }
+  }, [description, hasParsedDescription, genBrand, genColor, genMaterial, genCategory]);
 
   const addFromUrl = useMutation(api.closet.addFromUrl);
   const generateClothingImage = useAction(api.gemini.generateClothingImage);
@@ -64,13 +165,16 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
     setSelectedSize("");
     setSelectedColor("");
     setUrlCategory("");
+    setUrlOwnership(null);
     setDescription("");
     setGenBrand("");
     setGenColor("");
     setGenMaterial("");
     setGenSize("");
-    setGenCategory("tops");
+    setGenCategory("");
+    setDescOwnership(null);
     setGeneratedImage(null);
+    setHasParsedDescription(false);
     setError(null);
   }, []);
 
@@ -147,7 +251,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
 
   // Generate clothing image and add to closet
   const handleGenerate = async () => {
-    if (!description.trim() || !genCategory) return;
+    if (!description.trim() || !genCategory || !descOwnership) return;
 
     setIsLoading(true);
     setError(null);
@@ -161,6 +265,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
         material: genMaterial || undefined,
         category: genCategory,
         size: genSize || undefined,
+        isWishlist: descOwnership === "wishlist",
       });
 
       if (result.imageUrl) {
@@ -199,6 +304,16 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
         {/* Tabs */}
         <div className="flex border-b border-zinc-200 dark:border-zinc-800">
           <button
+            onClick={() => setActiveTab("describe")}
+            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+              activeTab === "describe"
+                ? "border-b-2 border-[#D4AF37] text-[#D4AF37]"
+                : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            }`}
+          >
+            Describe
+          </button>
+          <button
             onClick={() => setActiveTab("url")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === "url"
@@ -206,17 +321,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
                 : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
-            From URL
-          </button>
-          <button
-            onClick={() => setActiveTab("generate")}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
-              activeTab === "generate"
-                ? "border-b-2 border-[#D4AF37] text-[#D4AF37]"
-                : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-            }`}
-          >
-            Describe & Generate
+            Paste Link
           </button>
         </div>
 
@@ -228,7 +333,169 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
             </div>
           )}
 
-          {activeTab === "url" ? (
+          {activeTab === "describe" ? (
+            <div className="space-y-4">
+              {/* Description */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Description *
+                </label>
+                <textarea
+                  value={description}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    setHasParsedDescription(false);
+                  }}
+                  onBlur={handleDescriptionBlur}
+                  placeholder="e.g., Black cashmere J.Crew crewneck sweater"
+                  rows={2}
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  disabled={isLoading}
+                />
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Include brand, color, or material to auto-fill fields below
+                </p>
+              </div>
+
+              {/* Brand & Category Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Brand
+                  </label>
+                  <input
+                    type="text"
+                    value={genBrand}
+                    onChange={(e) => setGenBrand(e.target.value)}
+                    placeholder="e.g., J.Crew"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Category *
+                  </label>
+                  <select
+                    value={genCategory}
+                    onChange={(e) => setGenCategory(e.target.value)}
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    disabled={isLoading}
+                  >
+                    <option value="">Select category</option>
+                    {CATEGORIES.map((cat) => (
+                      <option key={cat} value={cat}>
+                        {cat.charAt(0).toUpperCase() + cat.slice(1)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Color & Material Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Color
+                  </label>
+                  <input
+                    type="text"
+                    value={genColor}
+                    onChange={(e) => setGenColor(e.target.value)}
+                    placeholder="e.g., Navy"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    disabled={isLoading}
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Material
+                  </label>
+                  <input
+                    type="text"
+                    value={genMaterial}
+                    onChange={(e) => setGenMaterial(e.target.value)}
+                    placeholder="e.g., Cashmere"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    disabled={isLoading}
+                  />
+                </div>
+              </div>
+
+              {/* Size */}
+              <div>
+                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Size
+                </label>
+                <input
+                  type="text"
+                  value={genSize}
+                  onChange={(e) => setGenSize(e.target.value)}
+                  placeholder="e.g., M or 32x30"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  disabled={isLoading}
+                />
+              </div>
+
+              {/* Ownership Status - Required */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Status *
+                </label>
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setDescOwnership("owned")}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all ${
+                      descOwnership === "owned"
+                        ? "border-purple-500 bg-purple-500 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                    disabled={isLoading}
+                  >
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    I Own This
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDescOwnership("wishlist")}
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all ${
+                      descOwnership === "wishlist"
+                        ? "border-red-500 bg-red-500 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                    disabled={isLoading}
+                  >
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                      <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    Wishlist
+                  </button>
+                </div>
+                {!descOwnership && (
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    Select whether you own this item or want to add it to your wishlist
+                  </p>
+                )}
+              </div>
+
+              {/* Generated Image Preview */}
+              {generatedImage && (
+                <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
+                  <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                    Generated Image
+                  </p>
+                  <img
+                    src={generatedImage}
+                    alt="Generated clothing"
+                    className="mx-auto h-48 w-48 rounded-lg object-cover"
+                  />
+                </div>
+              )}
+            </div>
+          ) : (
             <div className="space-y-4">
               {/* URL Input */}
               <div>
@@ -329,116 +596,45 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
                       ))}
                     </select>
                   </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {/* Description */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Description *
-                </label>
-                <textarea
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="e.g., Black cashmere crewneck sweater"
-                  rows={3}
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
-                  disabled={isLoading}
-                />
-              </div>
 
-              {/* Brand */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Brand
-                </label>
-                <input
-                  type="text"
-                  value={genBrand}
-                  onChange={(e) => setGenBrand(e.target.value)}
-                  placeholder="e.g., J.Crew"
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
-                  disabled={isLoading}
-                />
-              </div>
-
-              {/* Category */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Category *
-                </label>
-                <select
-                  value={genCategory}
-                  onChange={(e) => setGenCategory(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                  disabled={isLoading}
-                >
-                  {CATEGORIES.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat.charAt(0).toUpperCase() + cat.slice(1)}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Color & Material Row */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Color
-                  </label>
-                  <input
-                    type="text"
-                    value={genColor}
-                    onChange={(e) => setGenColor(e.target.value)}
-                    placeholder="e.g., Navy"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
-                    disabled={isLoading}
-                  />
-                </div>
-                <div>
-                  <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Material
-                  </label>
-                  <input
-                    type="text"
-                    value={genMaterial}
-                    onChange={(e) => setGenMaterial(e.target.value)}
-                    placeholder="e.g., Cashmere"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
-                    disabled={isLoading}
-                  />
-                </div>
-              </div>
-
-              {/* Size */}
-              <div>
-                <label className="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                  Size
-                </label>
-                <input
-                  type="text"
-                  value={genSize}
-                  onChange={(e) => setGenSize(e.target.value)}
-                  placeholder="e.g., M or 32x30"
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-[#D4AF37] focus:outline-none focus:ring-1 focus:ring-[#D4AF37] dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
-                  disabled={isLoading}
-                />
-              </div>
-
-              {/* Generated Image Preview */}
-              {generatedImage && (
-                <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
-                  <p className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                    Generated Image
-                  </p>
-                  <img
-                    src={generatedImage}
-                    alt="Generated clothing"
-                    className="mx-auto h-48 w-48 rounded-lg object-cover"
-                  />
+                  {/* Ownership Status for URL */}
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Status *
+                    </label>
+                    <div className="flex gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setUrlOwnership("owned")}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all ${
+                          urlOwnership === "owned"
+                            ? "border-purple-500 bg-purple-500 text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                        }`}
+                        disabled={isLoading}
+                      >
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        </svg>
+                        I Own This
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUrlOwnership("wishlist")}
+                        className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all ${
+                          urlOwnership === "wishlist"
+                            ? "border-red-500 bg-red-500 text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                        }`}
+                        disabled={isLoading}
+                      >
+                        <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                        Wishlist
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -454,21 +650,21 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
           >
             Cancel
           </button>
-          {activeTab === "url" ? (
-            <button
-              onClick={handleAddFromUrl}
-              disabled={!scrapedProduct || !selectedSize || !urlCategory || isLoading}
-              className="rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#C9A432] disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {isLoading ? "Adding..." : "Add to Closet"}
-            </button>
-          ) : (
+          {activeTab === "describe" ? (
             <button
               onClick={handleGenerate}
-              disabled={!description.trim() || !genCategory || isLoading}
+              disabled={!description.trim() || !genCategory || !descOwnership || isLoading}
               className="rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#C9A432] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? "Generating..." : "Generate & Add"}
+            </button>
+          ) : (
+            <button
+              onClick={handleAddFromUrl}
+              disabled={!scrapedProduct || !selectedSize || !urlCategory || !urlOwnership || isLoading}
+              className="rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#C9A432] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {isLoading ? "Adding..." : "Add to Closet"}
             </button>
           )}
         </div>

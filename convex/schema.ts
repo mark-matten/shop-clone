@@ -185,6 +185,8 @@ export default defineSchema({
     // For AI-generated items
     generatedImageStorageId: v.optional(v.id("_storage")),
     userDescription: v.optional(v.string()),
+    // Wishlist flag for user-added items (owned = false/undefined, wishlist = true)
+    isWishlist: v.optional(v.boolean()),
   })
     .index("by_userId", ["userId"])
     .index("by_productId", ["productId"])
