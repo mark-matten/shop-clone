@@ -43,6 +43,22 @@ interface Preferences {
   menBottomSizeMax: string;
 }
 
+// Format phone number as (XXX) XXX-XXXX
+function formatPhoneNumber(phone: string | undefined | null): string {
+  if (!phone) return "No phone number";
+  // Remove all non-digits
+  const digits = phone.replace(/\D/g, "");
+  // Handle US numbers (10 or 11 digits)
+  if (digits.length === 10) {
+    return `(${digits.slice(0, 3)}) ${digits.slice(3, 6)}-${digits.slice(6)}`;
+  }
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
+  }
+  // Return original if not a standard format
+  return phone;
+}
+
 const defaultPreferences: Preferences = {
   shopsMen: false,
   shopsWomen: false,
@@ -275,10 +291,10 @@ export default function ProfilePage() {
 
       <main className="mx-auto max-w-4xl px-4 py-8 sm:px-6 lg:px-8">
         <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Your Profile
+          {clerkUser.firstName ? `${clerkUser.firstName}'s Profile` : "Your Profile"}
         </h1>
         <p className="mt-1 text-zinc-600 dark:text-zinc-400">
-          {convexUser?.phoneNumber || clerkUser.primaryPhoneNumber?.phoneNumber || "No phone number"}
+          {formatPhoneNumber(convexUser?.phoneNumber || clerkUser.primaryPhoneNumber?.phoneNumber)}
         </p>
 
         {/* Shopping Preferences */}
@@ -286,14 +302,11 @@ export default function ProfilePage() {
           <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
             Shopping Preferences
           </h2>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            Select which clothing you shop for and set your size ranges
-          </p>
 
           {/* Gender Selection */}
           <div className="mt-4">
             <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-3">
-              I shop for: <span className="text-red-500">*</span>
+              I'm shopping for: <span className="text-red-500">*</span>
             </p>
             <div className="flex gap-4">
               <label className="flex items-center gap-3 cursor-pointer">

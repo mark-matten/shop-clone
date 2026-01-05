@@ -1074,9 +1074,9 @@ export default function ClosetPage() {
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       <Header />
 
-      <main id="main-content" className="mx-auto max-w-7xl px-4 py-4 sm:py-8 sm:px-6 lg:px-8">
+      <main id="main-content" className="mx-auto max-w-7xl px-4 py-2 sm:py-4 sm:px-6 lg:px-8">
         {/* Header with compact stats */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h1 className="text-xl sm:text-2xl font-bold text-zinc-900 dark:text-white">
               My Closet
@@ -1085,62 +1085,30 @@ export default function ClosetPage() {
               {stats.total} items · {stats.categoryCount} categories
             </p>
           </div>
-          <div className="flex items-center justify-between sm:justify-end gap-2 sm:gap-3">
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2 sm:gap-3">
-              <button
-                onClick={() => setShowAddClothesModal(true)}
-                className="flex items-center gap-1 sm:gap-2 rounded-lg bg-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-rose-500"
-              >
-                <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-                Add Items
-              </button>
-              <button
-                onClick={() => setShowTryOnModal(true)}
-                className="flex items-center gap-1 sm:gap-2 rounded-lg border border-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-rose-400 transition-colors hover:bg-rose-400/10"
-              >
-                <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-                Try On
-              </button>
-            </div>
-            {/* View Toggle - right side */}
-            <div className="flex items-center gap-0.5 sm:gap-1 rounded-lg border border-zinc-200 p-0.5 sm:p-1 dark:border-zinc-700">
-              <button
-                onClick={() => setViewMode("grid")}
-                className={`rounded p-1 sm:p-1.5 transition-colors ${
-                  viewMode === "grid"
-                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                }`}
-                title="Grid view"
-              >
-                <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-                </svg>
-              </button>
-              <button
-                onClick={() => setViewMode("list")}
-                className={`rounded p-1 sm:p-1.5 transition-colors ${
-                  viewMode === "list"
-                    ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
-                    : "text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                }`}
-                title="List view"
-              >
-                <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                </svg>
-              </button>
-            </div>
+          <div className="flex items-center gap-2 sm:gap-3">
+            <button
+              onClick={() => setShowAddClothesModal(true)}
+              className="flex items-center gap-1 sm:gap-2 rounded-lg bg-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-rose-500"
+            >
+              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Items
+            </button>
+            <button
+              onClick={() => setShowTryOnModal(true)}
+              className="flex items-center gap-1 sm:gap-2 rounded-lg border border-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-rose-400 transition-colors hover:bg-rose-400/10"
+            >
+              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Try On
+            </button>
           </div>
         </div>
 
         {/* Search Bar */}
-        <div className="mt-3 sm:mt-4">
+        <div className="mt-2 sm:mt-3">
           <div className="relative">
             <input
               type="text"
@@ -1175,7 +1143,7 @@ export default function ClosetPage() {
         </div>
 
         {/* Type Filter Buttons */}
-        <div className="mt-3 sm:mt-4 flex gap-1.5 sm:gap-2">
+        <div className="mt-2 sm:mt-3 flex gap-1.5 sm:gap-2">
           <button
             onClick={() => { setTypeFilter("all"); setSelectedCategory(null); }}
             className={`rounded-lg px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${
@@ -1215,7 +1183,7 @@ export default function ClosetPage() {
         </div>
 
         {/* Category Filter - Always show all categories with counts */}
-        <div className="mt-3 sm:mt-4 flex flex-wrap gap-1.5 sm:gap-2">
+        <div className="mt-2 sm:mt-3 flex flex-wrap gap-1.5 sm:gap-2">
           <button
             onClick={() => setSelectedCategory(null)}
             className={`rounded-full px-2 py-0.5 sm:px-3 sm:py-1 text-xs sm:text-sm font-medium transition-colors ${
@@ -1279,11 +1247,11 @@ export default function ClosetPage() {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="mt-4 space-y-2">
+            <div className="mt-2 space-y-1">
               {selectedCategory ? (
                 // Single category list
                 <SortableContext items={filteredItems.map(i => i.productId)} strategy={rectSortingStrategy}>
-                  <div className="space-y-2">
+                  <div className="space-y-1">
                     {filteredItems.map((item) => (
                       <SortableListItem
                         key={item.productId}
@@ -1324,11 +1292,11 @@ export default function ClosetPage() {
             onDragOver={handleDragOver}
             onDragEnd={handleDragEnd}
           >
-            <div className="mt-4 space-y-2">
+            <div className="mt-2 space-y-1">
               {selectedCategory ? (
                 // Single category view
                 <SortableContext items={filteredItems.map(i => i.productId)} strategy={rectSortingStrategy}>
-                  <div className="grid grid-cols-2 gap-2 sm:gap-4 lg:grid-cols-3 xl:grid-cols-4">
+                  <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
                     {filteredItems.map((item) => (
                       <SortableItem
                         key={item.productId}
@@ -1380,7 +1348,7 @@ export default function ClosetPage() {
               {editingItem.productName}
             </p>
 
-            <div className="mt-4 space-y-4">
+            <div className="mt-2 space-y-2">
               {/* Status Selection - Owned or Wishlist */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">

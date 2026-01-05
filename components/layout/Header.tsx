@@ -71,7 +71,7 @@ export function Header() {
     <header className="border-b border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
         <Link href="/" className="ml-2">
-          <img src="/logo.svg" alt="armoi" className="h-20 w-auto mt-1" />
+          <img src="/logo.svg" alt="armoi" className="h-12 w-auto mt-1" />
         </Link>
 
         {/* Mobile navigation - inline icons */}
@@ -98,7 +98,7 @@ export function Header() {
             }`}
             title="My Closet"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-6 w-6 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8a2 2 0 100-4 2 2 0 000 4zM12 8v2m0 0l-8 6h16l-8-6z" />
             </svg>
           </Link>
