@@ -73,9 +73,9 @@ export const generateClothingImage = action({
 
     const prompt = promptParts.join("\n");
 
-    // Call Nano Banana (non-Pro Gemini 2.0 Flash) API for image generation (cheaper)
+    // Call Nano Banana (Gemini 2.5 Flash Image) API for image generation
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
