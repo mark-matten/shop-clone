@@ -615,6 +615,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                       type="range"
                       min="90"
                       max="280"
+                      step="5"
                       value={modelWeight}
                       onChange={(e) => {
                         const val = Number(e.target.value);
