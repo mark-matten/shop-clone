@@ -735,7 +735,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
           {/* Category Tabs */}
           <div className="flex-shrink-0 overflow-x-auto">
-            <div className="flex gap-2 px-6 py-2 min-w-max">
+            <div className="flex gap-2 px-6 pt-3 pb-2 min-w-max">
               {CATEGORIES.map((cat) => {
                 const count = itemsByCategory[cat.id]?.length || 0;
                 const hasSelection = selectedByCategory.has(cat.id);
@@ -757,8 +757,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           </div>
 
           {/* Ownership Toggle & Search */}
-          <div className="flex-shrink-0 border-b border-zinc-200 px-6 py-2 dark:border-zinc-800">
-            <div className="flex gap-2 mb-2">
+          <div className="flex-shrink-0 border-b border-zinc-200 px-6 pt-2 pb-3 dark:border-zinc-800">
+            <div className="flex gap-2 mb-3">
               {(["all", "owned", "wishlist"] as const).map((filter) => (
                 <button
                   key={filter}
@@ -798,7 +798,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           </div>
 
           {/* Items Grid */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div className="flex-1 overflow-y-auto px-6 pt-3 pb-6">
             {currentCategoryItems.length > 0 ? (
               <div className="grid grid-cols-3 gap-3">
                 {currentCategoryItems.map((item) => {
