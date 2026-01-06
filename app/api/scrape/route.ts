@@ -5,25 +5,33 @@ export async function GET(request: NextRequest) {
   const url = searchParams.get("url");
   const platform = searchParams.get("platform");
 
+  console.log("[API/scrape] Request received - URL:", url, "Platform:", platform);
+
   if (!url) {
+    console.log("[API/scrape] Error: URL is required");
     return NextResponse.json({ error: "URL is required" }, { status: 400 });
   }
 
   try {
     if (platform === "everlane") {
+      console.log("[API/scrape] Scraping Everlane...");
       const product = await scrapeEverlane(url);
+      console.log("[API/scrape] Everlane success:", product.name);
       return NextResponse.json(product);
     } else if (platform === "jcrew") {
+      console.log("[API/scrape] Scraping J.Crew...");
       const product = await scrapeJCrew(url);
+      console.log("[API/scrape] J.Crew success:", product.name);
       return NextResponse.json(product);
     } else {
+      console.log("[API/scrape] Error: Unsupported platform");
       return NextResponse.json(
         { error: "Unsupported platform. Use everlane or jcrew." },
         { status: 400 }
       );
     }
   } catch (error) {
-    console.error("Scrape error:", error);
+    console.error("[API/scrape] Scrape error:", error);
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "Failed to scrape product" },
       { status: 500 }
