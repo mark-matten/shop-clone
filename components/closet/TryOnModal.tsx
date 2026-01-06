@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useMemo } from "react";
-import { useQuery, useAction } from "convex/react";
+import { useState, useMemo, useEffect, useCallback } from "react";
+import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PhotoManager } from "./PhotoManager";
@@ -109,6 +109,8 @@ function getCategoryKey(category: string): string {
   return "other";
 }
 
+type OwnershipFilter = "all" | "owned" | "wishlist";
+
 export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [selectedByCategory, setSelectedByCategory] = useState<Map<string, string>>(new Map());
   const [activeCategory, setActiveCategory] = useState("tops");
@@ -120,10 +122,44 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [selectedOutfitId, setSelectedOutfitId] = useState<Id<"outfit_images"> | null>(null);
   const [showPhotoManager, setShowPhotoManager] = useState(false);
 
+  // New state for search and filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [ownershipFilter, setOwnershipFilter] = useState<OwnershipFilter>("all");
+
+  // Generic model customization
+  const [modelHeight, setModelHeight] = useState(67); // inches (5'7")
+  const [modelWeight, setModelWeight] = useState(140); // lbs
+  const [modelSkinTone, setModelSkinTone] = useState(50); // 0-100 scale (light to dark)
+  const [otherDetails, setOtherDetails] = useState("");
+
   const closetItems = useQuery(api.closet.getAllClosetItems, { clerkId });
   const outfitHistory = useQuery(api.storage.getOutfitHistory, { clerkId, limit: 6 });
   const user = useQuery(api.users.getUserByClerkId, { clerkId });
   const generateTryOn = useAction(api.gemini.generateTryOnImage);
+  const updateModelPrefs = useMutation(api.users.updateModelPreferences);
+
+  // Load saved model preferences
+  const savedModelHeight = user?.preferences?.modelHeight;
+  const savedModelWeight = user?.preferences?.modelWeight;
+  const savedModelSkinTone = user?.preferences?.modelSkinTone;
+
+  // Sync local state with saved preferences on load
+  useEffect(() => {
+    if (savedModelHeight !== undefined) {
+      setModelHeight(savedModelHeight);
+    }
+    if (savedModelWeight !== undefined) {
+      setModelWeight(savedModelWeight);
+    }
+    if (savedModelSkinTone !== undefined) {
+      setModelSkinTone(savedModelSkinTone);
+    }
+  }, [savedModelHeight, savedModelWeight, savedModelSkinTone]);
+
+  // Save model preferences when sliders change (debounced effect)
+  const saveModelPrefs = (height: number, weight: number, skinTone: number) => {
+    updateModelPrefs({ clerkId, modelHeight: height, modelWeight: weight, modelSkinTone: skinTone });
+  };
 
   const userGender = useMemo(() => {
     if (!user?.preferences) return "female" as const;
@@ -133,17 +169,37 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     return "female" as const;
   }, [user]);
 
-  const itemsByCategory = useMemo(() => {
-    if (!closetItems) return {} as Record<string, ClosetItem[]>;
+  // Filter items by ownership and search query
+  const filteredClosetItems = useMemo(() => {
+    if (!closetItems) return [];
 
+    return (closetItems as ClosetItem[]).filter((item) => {
+      // Ownership filter
+      if (ownershipFilter === "owned" && !item.isOwned) return false;
+      if (ownershipFilter === "wishlist" && !item.isWishlist) return false;
+
+      // Search filter
+      if (searchQuery.trim()) {
+        const query = searchQuery.toLowerCase();
+        const nameMatch = item.displayName?.toLowerCase().includes(query);
+        const brandMatch = item.displayBrand?.toLowerCase().includes(query);
+        const categoryMatch = item.displayCategory?.toLowerCase().includes(query);
+        if (!nameMatch && !brandMatch && !categoryMatch) return false;
+      }
+
+      return true;
+    });
+  }, [closetItems, ownershipFilter, searchQuery]);
+
+  const itemsByCategory = useMemo(() => {
     const grouped: Record<string, ClosetItem[]> = {};
-    for (const item of closetItems as ClosetItem[]) {
+    for (const item of filteredClosetItems) {
       const categoryKey = getCategoryKey(item.displayCategory || "other");
       if (!grouped[categoryKey]) grouped[categoryKey] = [];
       grouped[categoryKey].push(item);
     }
     return grouped;
-  }, [closetItems]);
+  }, [filteredClosetItems]);
 
   const itemsById = useMemo(() => {
     if (!closetItems) return new Map<string, ClosetItem>();
@@ -210,6 +266,11 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
         userPhotoStorageId: modelMode === "user" ? selectedPhotoStorageId ?? undefined : undefined,
         useGenericModel: modelMode === "generic",
         gender: userGender,
+        // Model customization (only used for generic model)
+        modelHeight: modelMode === "generic" ? modelHeight : undefined,
+        modelWeight: modelMode === "generic" ? modelWeight : undefined,
+        modelSkinTone: modelMode === "generic" ? modelSkinTone : undefined,
+        otherDetails: otherDetails.trim() || undefined,
       });
 
       if (result.imageUrl) {
@@ -228,6 +289,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     setGeneratedOutfit(null);
     setSelectedOutfitId(null);
     setShowPhotoManager(false);
+    setSearchQuery("");
+    setOwnershipFilter("all");
+    setOtherDetails("");
     onClose();
   };
 
@@ -517,11 +581,93 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   My Photo
                 </button>
               </div>
+
+              {/* Generic Model Customization */}
+              {modelMode === "generic" && (
+                <div className="mt-4 space-y-3">
+                  {/* Height Slider */}
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                      <span>Height</span>
+                      <span>{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="54"
+                      max="78"
+                      value={modelHeight}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setModelHeight(val);
+                      }}
+                      onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                    />
+                  </div>
+                  {/* Weight Slider */}
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                      <span>Weight</span>
+                      <span>{modelWeight} lbs</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="90"
+                      max="280"
+                      value={modelWeight}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setModelWeight(val);
+                      }}
+                      onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                    />
+                  </div>
+                  {/* Skin Tone Slider */}
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                      <span>Skin Tone</span>
+                      <span>{modelSkinTone < 20 ? "Fair" : modelSkinTone < 40 ? "Light" : modelSkinTone < 60 ? "Medium" : modelSkinTone < 80 ? "Tan" : "Deep"}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={modelSkinTone}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setModelSkinTone(val);
+                      }}
+                      onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                      style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
+                    />
+                  </div>
+                </div>
+              )}
+
               {modelMode === "user" && showPhotoManager && (
                 <div className="mt-4">
                   <PhotoManager clerkId={clerkId} onSelectPhoto={handleSelectPhoto} selectedPhotoId={selectedPhotoId} />
                 </div>
               )}
+
+              {/* Other Details Input */}
+              <div className="mt-4">
+                <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                  Other Details (optional)
+                </label>
+                <input
+                  type="text"
+                  value={otherDetails}
+                  onChange={(e) => setOtherDetails(e.target.value)}
+                  placeholder="e.g., cuffed pants, shirt tucked in, sleeves rolled up"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                />
+              </div>
             </div>
           </div>
 
@@ -546,6 +692,49 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
               </svg>
             </button>
+          </div>
+
+          {/* Search and Filters */}
+          <div className="flex-shrink-0 border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
+            {/* Search Input */}
+            <div className="relative mb-3">
+              <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search items..."
+                className="w-full rounded-lg border border-zinc-300 bg-white py-2 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+              />
+              {searchQuery && (
+                <button
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+            {/* Ownership Toggle */}
+            <div className="flex gap-2">
+              {(["all", "owned", "wishlist"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setOwnershipFilter(filter)}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
+                    ownershipFilter === filter
+                      ? "bg-rose-400 text-white"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                  }`}
+                >
+                  {filter === "all" ? "All" : filter === "owned" ? "Owned" : "Wishlist"}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* Category Tabs */}

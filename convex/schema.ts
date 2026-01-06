@@ -43,6 +43,10 @@ export default defineSchema({
       emailPriceDrops: v.optional(v.boolean()),
       emailTargetReached: v.optional(v.boolean()),
       emailWeeklyDigest: v.optional(v.boolean()),
+      // Virtual try-on model preferences
+      modelHeight: v.optional(v.number()), // inches
+      modelWeight: v.optional(v.number()), // lbs
+      modelSkinTone: v.optional(v.number()), // 0-100 scale
     }),
   })
     .index("by_clerkId", ["clerkId"])

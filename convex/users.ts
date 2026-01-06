@@ -118,3 +118,31 @@ export const updateEmailSettings = mutation({
     return await ctx.db.patch(user._id, updates);
   },
 });
+
+export const updateModelPreferences = mutation({
+  args: {
+    clerkId: v.string(),
+    modelHeight: v.optional(v.number()),
+    modelWeight: v.optional(v.number()),
+    modelSkinTone: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return await ctx.db.patch(user._id, {
+      preferences: {
+        ...user.preferences,
+        modelHeight: args.modelHeight ?? user.preferences.modelHeight,
+        modelWeight: args.modelWeight ?? user.preferences.modelWeight,
+        modelSkinTone: args.modelSkinTone ?? user.preferences.modelSkinTone,
+      },
+    });
+  },
+});

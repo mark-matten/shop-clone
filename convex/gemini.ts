@@ -231,6 +231,11 @@ export const generateTryOnImage = action({
     userPhotoStorageId: v.optional(v.id("_storage")),
     useGenericModel: v.boolean(),
     gender: v.optional(v.union(v.literal("female"), v.literal("male"))),
+    // Model customization (for generic model)
+    modelHeight: v.optional(v.number()), // inches
+    modelWeight: v.optional(v.number()), // lbs
+    modelSkinTone: v.optional(v.number()), // 0-100 scale
+    otherDetails: v.optional(v.string()), // e.g., "cuffed pants, shirt tucked in"
   },
   handler: async (ctx, args) => {
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
@@ -259,19 +264,47 @@ export const generateTryOnImage = action({
     const modelGender = args.gender || "female";
     const genderDescription = modelGender === "male" ? "male" : "female";
 
+    // Helper to convert height in inches to feet/inches description
+    const formatHeight = (inches: number) => {
+      const feet = Math.floor(inches / 12);
+      const remainingInches = inches % 12;
+      return `${feet}'${remainingInches}"`;
+    };
+
+    // Helper to convert skin tone (0-100) to description
+    const getSkinToneDescription = (tone: number) => {
+      if (tone < 20) return "fair/light";
+      if (tone < 40) return "light-medium";
+      if (tone < 60) return "medium";
+      if (tone < 80) return "medium-dark";
+      return "dark/deep";
+    };
+
     if (args.userPhotoStorageId && !args.useGenericModel) {
       promptParts.push(
-        `Generate a fashion photo of a real ${genderDescription} person wearing an outfit.`,
+        `Generate a FULL BODY fashion photo of a real ${genderDescription} person wearing an outfit.`,
         "Use the provided reference photo to match the person's appearance, face, and body type exactly.",
-        "Show the person's face clearly - this is the user trying on clothes virtually.",
+        "Show the person's face clearly with a friendly, moderate smile.",
         "IMPORTANT: Use a real human model, NOT a mannequin or faceless figure.",
         ""
       );
     } else {
+      // Build model description for generic model
+      const modelDescParts = [`a real ${genderDescription} model`];
+      if (args.modelHeight) {
+        modelDescParts.push(`approximately ${formatHeight(args.modelHeight)} tall`);
+      }
+      if (args.modelWeight) {
+        modelDescParts.push(`with a ${args.modelWeight < 130 ? "slim" : args.modelWeight < 170 ? "average" : args.modelWeight < 200 ? "athletic" : "full"} build (around ${args.modelWeight} lbs)`);
+      }
+      if (args.modelSkinTone !== undefined) {
+        modelDescParts.push(`with ${getSkinToneDescription(args.modelSkinTone)} skin tone`);
+      }
+
       promptParts.push(
-        `Generate a fashion photo of a real ${genderDescription} model wearing an outfit.`,
-        "Use an attractive, professional model with a natural, relaxed pose.",
-        "Show the model's face clearly. Style it as a fashion catalog or e-commerce photo.",
+        `Generate a FULL BODY fashion photo of ${modelDescParts.join(", ")} wearing an outfit.`,
+        "The model should have a friendly, moderate smile and relaxed, natural pose.",
+        "Show the ENTIRE body from head to toe, standing upright.",
         "IMPORTANT: Use a real human model, NOT a mannequin or faceless figure.",
         ""
       );
@@ -287,14 +320,22 @@ export const generateTryOnImage = action({
       promptParts.push(`- ${desc.join(" ")}`);
     }
 
+    // Add other details if specified (e.g., "cuffed pants, shirt tucked in")
+    if (args.otherDetails) {
+      promptParts.push("", `Styling details: ${args.otherDetails}`);
+    }
+
     promptParts.push(
       "",
-      "Style requirements:",
-      "- Natural, relaxed pose",
-      "- Well-lit, professional fashion photography",
-      "- Clean, simple background (studio or minimal setting)",
+      "STRICT Style requirements:",
+      "- FULL BODY shot showing head to toe, model standing upright",
+      "- Relaxed, natural standing pose with slight weight shift",
+      "- Friendly, moderate smile on face",
+      "- Neutral, clean background (solid light gray or white studio backdrop)",
+      "- Even, consistent studio lighting from multiple angles",
+      "- No harsh shadows or dramatic lighting",
       "- The clothing items should be clearly visible and recognizable",
-      "- High quality, editorial style"
+      "- High quality, professional fashion photography"
     );
 
     const textPrompt = promptParts.join("\n");
