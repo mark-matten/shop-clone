@@ -596,7 +596,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 <div className="mt-3 space-y-2">
                   {/* Gender Toggle */}
                   <div>
-                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-0.5">
                       <span>Gender</span>
                     </div>
                     <div className="flex gap-2">
@@ -624,7 +624,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   </div>
                   {/* Height Slider */}
                   <div>
-                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
                       <span>Height</span>
                       <span>{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
                     </div>
@@ -644,7 +644,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   </div>
                   {/* Weight Slider */}
                   <div>
-                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
                       <span>Weight</span>
                       <span>{modelWeight} lbs</span>
                     </div>
@@ -665,7 +665,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   </div>
                   {/* Skin Tone Slider */}
                   <div>
-                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
                       <span>Skin Tone</span>
                       <span>{modelSkinTone < 20 ? "Fair" : modelSkinTone < 40 ? "Light" : modelSkinTone < 60 ? "Medium" : modelSkinTone < 80 ? "Tan" : "Deep"}</span>
                     </div>
