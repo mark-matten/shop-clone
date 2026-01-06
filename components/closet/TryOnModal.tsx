@@ -121,6 +121,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [generatedOutfit, setGeneratedOutfit] = useState<string | null>(null);
   const [selectedOutfitId, setSelectedOutfitId] = useState<Id<"outfit_images"> | null>(null);
   const [showPhotoManager, setShowPhotoManager] = useState(false);
+  const [showLightbox, setShowLightbox] = useState(false);
 
   // New state for search and filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -317,10 +318,10 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       >
         {/* ===== MOBILE LAYOUT ===== */}
         <div className="flex sm:hidden flex-col h-full">
-          {/* Mobile Header */}
+          {/* Mobile Header - Your Closet */}
           <div className="flex-shrink-0 flex items-center justify-between border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
             <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
-              Virtual Try-On
+              Your Closet
             </h2>
             <button
               onClick={handleClose}
@@ -336,7 +337,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           <div className="flex-1 flex flex-col min-h-0 border-b border-zinc-200 dark:border-zinc-800">
             {/* Category Tabs */}
             <div className="flex-shrink-0 overflow-x-auto border-b border-zinc-100 dark:border-zinc-800">
-              <div className="flex gap-1 px-2 py-1.5 min-w-max">
+              <div className="flex gap-1.5 px-3 py-2 min-w-max">
                 {CATEGORIES.map((cat) => {
                   const count = itemsByCategory[cat.id]?.length || 0;
                   const hasSelection = selectedByCategory.has(cat.id);
@@ -362,13 +363,13 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
             </div>
 
             {/* Ownership Filter & Search */}
-            <div className="flex-shrink-0 px-2 py-1.5 border-b border-zinc-100 dark:border-zinc-800">
-              <div className="flex gap-1.5 mb-1.5">
+            <div className="flex-shrink-0 px-3 py-2 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex gap-2 mb-2">
                 {(["all", "owned", "wishlist"] as const).map((filter) => (
                   <button
                     key={filter}
                     onClick={() => setOwnershipFilter(filter)}
-                    className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                    className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                       ownershipFilter === filter
                         ? "bg-rose-400 text-white"
                         : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
@@ -379,23 +380,23 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 ))}
               </div>
               <div className="relative">
-                <svg className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full rounded-md border border-zinc-200 bg-white py-1 pl-7 pr-2 text-xs text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  placeholder="Search items..."
+                  className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
               </div>
             </div>
 
             {/* Items Grid - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-2">
+            <div className="flex-1 overflow-y-auto p-3">
               {currentCategoryItems.length > 0 ? (
-                <div className="grid grid-cols-4 gap-1.5">
+                <div className="grid grid-cols-3 gap-2">
                   {currentCategoryItems.map((item) => {
                     const categoryKey = getCategoryKey(item.displayCategory || "other");
                     const isSelected = selectedByCategory.get(categoryKey) === item._id;
@@ -405,30 +406,51 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                       <button
                         key={item._id}
                         onClick={() => toggleItemSelection(item)}
-                        className={`relative aspect-square overflow-hidden rounded-lg border-2 transition-all ${
+                        className={`relative overflow-hidden rounded-xl border-2 transition-all ${
                           isSelected
-                            ? "border-rose-400 ring-1 ring-rose-400/30"
+                            ? "border-rose-400 ring-2 ring-rose-400/30"
                             : otherSelectedInCategory
                             ? "border-transparent opacity-40"
                             : "border-transparent"
                         }`}
                       >
-                        {item.displayImageUrl ? (
-                          <img
-                            src={item.displayImageUrl}
-                            alt={item.displayName || "Closet item"}
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
-                            <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        <div className="aspect-square">
+                          {item.displayImageUrl ? (
+                            <img
+                              src={item.displayImageUrl}
+                              alt={item.displayName || "Closet item"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+                              <svg className="h-6 w-6 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        {/* Product Name */}
+                        <div className="bg-white/90 dark:bg-zinc-900/90 px-1.5 py-1">
+                          <p className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 truncate">
+                            {item.displayName || "Unnamed"}
+                          </p>
+                        </div>
+                        {/* Owned/Wishlist Icon */}
+                        <div className="absolute left-1 top-1 rounded-full bg-white/90 p-0.5 shadow-sm dark:bg-zinc-900/90">
+                          {item.isOwned ? (
+                            <svg className="h-3 w-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
-                          </div>
-                        )}
+                          ) : item.isWishlist ? (
+                            <svg className="h-3 w-3 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                            </svg>
+                          ) : null}
+                        </div>
+                        {/* Selection Indicator */}
                         {isSelected && (
-                          <div className="absolute right-0.5 top-0.5 rounded-full bg-rose-400 p-0.5">
-                            <svg className="h-2.5 w-2.5 text-white" fill="currentColor" viewBox="0 0 20 20">
+                          <div className="absolute right-1 top-1 rounded-full bg-rose-400 p-0.5">
+                            <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           </div>
@@ -450,13 +472,18 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
             </div>
           </div>
 
-          {/* Mobile Preview Section (Bottom) */}
-          <div className="flex-shrink-0 bg-zinc-50 dark:bg-zinc-800/50">
-            {/* Selected Items Row */}
-            <div className="px-2 py-2">
+          {/* Mobile Preview Section (Bottom) - Virtual Try-On */}
+          <div className="flex-shrink-0 bg-zinc-50 dark:bg-zinc-800/50 max-h-[45vh] overflow-y-auto">
+            {/* Virtual Try-On Header */}
+            <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-700">
+              <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Virtual Try-On</h3>
+            </div>
+
+            {/* Selected Items Preview */}
+            <div className="px-3 py-3">
               {isGenerating ? (
-                <div className="flex items-center justify-center py-4 gap-2">
-                  <svg className="h-6 w-6 animate-spin text-rose-400" fill="none" viewBox="0 0 24 24">
+                <div className="flex items-center justify-center py-6 gap-2">
+                  <svg className="h-8 w-8 animate-spin text-rose-400" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
@@ -467,142 +494,140 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   <img
                     src={generatedOutfit}
                     alt="Generated outfit"
-                    className="h-32 rounded-lg object-contain shadow-md"
+                    className="h-40 rounded-xl object-contain shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setShowLightbox(true)}
                   />
                   <button
                     onClick={() => setGeneratedOutfit(null)}
-                    className="absolute -right-1 -top-1 rounded-full bg-zinc-900 p-1 text-white shadow"
+                    className="absolute -right-1 -top-1 rounded-full bg-zinc-900 p-1.5 text-white shadow"
                   >
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
               ) : selectedItems.length > 0 ? (
-                <div className="flex gap-1.5 overflow-x-auto pb-1">
+                <div className="flex gap-3 overflow-x-auto pt-2 pb-1">
                   {selectedItems.map((item) => {
                     const categoryKey = getCategoryKey(item.displayCategory || "other");
                     return (
-                      <div key={item._id} className="relative flex-shrink-0 h-14 w-14 rounded-lg overflow-hidden border-2 border-rose-400">
-                        {item.displayImageUrl ? (
-                          <img src={item.displayImageUrl} alt={item.displayName || ""} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="h-full w-full bg-zinc-200 dark:bg-zinc-700" />
-                        )}
+                      <div key={item._id} className="relative flex-shrink-0 w-20">
+                        <div className="h-20 w-20 rounded-xl overflow-hidden border-2 border-rose-400">
+                          {item.displayImageUrl ? (
+                            <img src={item.displayImageUrl} alt={item.displayName || ""} className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="h-full w-full bg-zinc-200 dark:bg-zinc-700" />
+                          )}
+                        </div>
                         <button
                           onClick={() => removeSelectedItem(categoryKey)}
-                          className="absolute right-0 top-0 rounded-bl-md bg-red-500 p-0.5 text-white"
+                          className="absolute right-0 top-0 -translate-y-1/2 translate-x-1/2 rounded-full bg-red-500 p-1 text-white shadow z-10"
                         >
-                          <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
-                        <div className="absolute inset-x-0 bottom-0 bg-black/60 px-1 py-0.5">
-                          <p className="text-[8px] text-white capitalize truncate">{categoryKey}</p>
-                        </div>
+                        <p className="mt-1 text-[10px] text-zinc-600 dark:text-zinc-400 truncate text-center">{item.displayName || categoryKey}</p>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-center text-xs text-zinc-500 py-2">
+                <p className="text-center text-sm text-zinc-500 py-4">
                   Select items above to create an outfit
                 </p>
               )}
             </div>
 
             {/* Model Selection */}
-            <div className="px-2 py-1.5 border-t border-zinc-200 dark:border-zinc-700">
-              <div className="flex gap-1.5 mb-1.5">
+            <div className="px-3 py-2 border-t border-zinc-200 dark:border-zinc-700 space-y-2">
+              {/* Model Type Toggle */}
+              <div className="flex gap-2">
                 <button
                   onClick={() => { setModelMode("generic"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
-                  className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
                 >
                   Generic Model
                 </button>
                 <button
                   onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
-                  className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
                 >
                   My Photo
                 </button>
               </div>
 
-              {/* Generic Model Options */}
+              {/* Generic Model Options - One per row */}
               {modelMode === "generic" && (
-                <div className="space-y-1.5">
-                  {/* Gender & Height Row */}
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => setModelGender("male")}
-                          className={`flex-1 rounded-md px-2 py-0.5 text-xs font-medium ${modelGender === "male" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
-                        >
-                          M
-                        </button>
-                        <button
-                          onClick={() => setModelGender("female")}
-                          className={`flex-1 rounded-md px-2 py-0.5 text-xs font-medium ${modelGender === "female" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
-                        >
-                          F
-                        </button>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-zinc-500 w-6">{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
-                        <input
-                          type="range"
-                          min="54"
-                          max="78"
-                          value={modelHeight}
-                          onChange={(e) => setModelHeight(Number(e.target.value))}
-                          onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                          className="flex-1 h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
-                        />
-                      </div>
+                <div className="space-y-2">
+                  {/* Gender */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Gender</span>
+                    <div className="flex-1 flex gap-2">
+                      <button
+                        onClick={() => setModelGender("male")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "male" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                      >
+                        Male
+                      </button>
+                      <button
+                        onClick={() => setModelGender("female")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "female" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                      >
+                        Female
+                      </button>
                     </div>
                   </div>
-                  {/* Weight & Skin Tone Row */}
-                  <div className="flex gap-2">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-zinc-500 w-7">{modelWeight}lb</span>
-                        <input
-                          type="range"
-                          min="90"
-                          max="280"
-                          step="5"
-                          value={modelWeight}
-                          onChange={(e) => setModelWeight(Number(e.target.value))}
-                          onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                          className="flex-1 h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
-                        />
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] text-zinc-500 w-7">Skin</span>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          value={modelSkinTone}
-                          onChange={(e) => setModelSkinTone(Number(e.target.value))}
-                          onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                          className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer accent-rose-400"
-                          style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
-                        />
-                      </div>
-                    </div>
+                  {/* Height */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Height</span>
+                    <span className="text-xs text-zinc-900 dark:text-white w-10">{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
+                    <input
+                      type="range"
+                      min="54"
+                      max="78"
+                      value={modelHeight}
+                      onChange={(e) => setModelHeight(Number(e.target.value))}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                    />
+                  </div>
+                  {/* Weight */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Weight</span>
+                    <span className="text-xs text-zinc-900 dark:text-white w-10">{modelWeight} lbs</span>
+                    <input
+                      type="range"
+                      min="90"
+                      max="280"
+                      step="5"
+                      value={modelWeight}
+                      onChange={(e) => setModelWeight(Number(e.target.value))}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                    />
+                  </div>
+                  {/* Skin Tone */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Skin Tone</span>
+                    <span className="text-xs text-zinc-900 dark:text-white w-10">{modelSkinTone < 20 ? "Fair" : modelSkinTone < 40 ? "Light" : modelSkinTone < 60 ? "Med" : modelSkinTone < 80 ? "Tan" : "Deep"}</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={modelSkinTone}
+                      onChange={(e) => setModelSkinTone(Number(e.target.value))}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="flex-1 h-2 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                      style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
+                    />
                   </div>
                 </div>
               )}
 
               {/* Photo Manager for User Mode */}
               {modelMode === "user" && showPhotoManager && (
-                <div className="mt-1.5">
+                <div className="mt-2">
                   <PhotoManager clerkId={clerkId} onSelectPhoto={handleSelectPhoto} selectedPhotoId={selectedPhotoId} />
                 </div>
               )}
@@ -613,16 +638,16 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 value={otherDetails}
                 onChange={(e) => setOtherDetails(e.target.value)}
                 placeholder="Other details (e.g., cuffed pants, tucked shirt)"
-                className="w-full mt-1.5 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
               />
             </div>
 
             {/* Generate Button */}
-            <div className="px-2 py-2">
+            <div className="px-3 py-3">
               <button
                 onClick={handleGenerate}
                 disabled={selectedByCategory.size === 0 || isGenerating}
-                className="w-full rounded-lg bg-rose-400 px-4 py-2.5 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-xl bg-rose-400 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {isGenerating ? "Generating..." : selectedByCategory.size > 0 ? `Generate Outfit (${selectedByCategory.size})` : "Select items to try on"}
               </button>
@@ -651,7 +676,12 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 </div>
               ) : generatedOutfit ? (
                 <div className="relative flex justify-center">
-                  <img src={generatedOutfit} alt="Generated outfit" className="max-h-[50vh] rounded-xl object-contain shadow-lg" />
+                  <img
+                    src={generatedOutfit}
+                    alt="Generated outfit"
+                    className="max-h-[50vh] rounded-xl object-contain shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                    onClick={() => setShowLightbox(true)}
+                  />
                   <button
                     onClick={() => setGeneratedOutfit(null)}
                     className="absolute -right-2 -top-2 rounded-full bg-zinc-900 p-1.5 text-white shadow-lg hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
@@ -1032,6 +1062,29 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           )}
         </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {showLightbox && generatedOutfit && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
+          onClick={() => setShowLightbox(false)}
+        >
+          <button
+            onClick={() => setShowLightbox(false)}
+            className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
+          >
+            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+          <img
+            src={generatedOutfit}
+            alt="Generated outfit - full view"
+            className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain"
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
+      )}
     </div>
   );
 }

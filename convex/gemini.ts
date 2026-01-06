@@ -425,7 +425,7 @@ export const generateTryOnImage = action({
       }
     }
 
-    // Call Nano Banana Pro (Gemini 3 Pro Image) API for outfit generation
+    // Call Nano Banana (Gemini 2.5 Flash Image) API for outfit generation
     const requestBody = {
       contents: [
         {
@@ -434,17 +434,13 @@ export const generateTryOnImage = action({
       ],
       generationConfig: {
         responseModalities: ["TEXT", "IMAGE"],
-        imageConfig: {
-          aspectRatio: "4:3",
-          imageSize: "2K",
-        },
       },
     };
 
-    console.log("Nano Banana Pro request - items:", validItems.length, "parts:", contentParts.length);
+    console.log("Nano Banana request - items:", validItems.length, "parts:", contentParts.length);
 
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
