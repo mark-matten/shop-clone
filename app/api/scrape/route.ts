@@ -52,8 +52,10 @@ async function scrapeEverlane(url: string) {
 
   const productSlug = pathParts[productsIndex + 1];
 
-  // Fetch the product JSON from Everlane API
-  const apiUrl = `https://www.everlane.com/api/v2/products/${productSlug}`;
+  // Everlane now uses Shopify - use the .json endpoint
+  const apiUrl = `https://www.everlane.com/products/${productSlug}.json`;
+  console.log("[scrapeEverlane] Fetching:", apiUrl);
+
   const response = await fetch(apiUrl, {
     headers: {
       "Accept": "application/json",
@@ -72,14 +74,25 @@ async function scrapeEverlane(url: string) {
     throw new Error("Product not found in API response");
   }
 
-  // Extract sizes from variants
+  // Extract sizes from variants or options
   const sizes: string[] = [];
   const sizeSet = new Set<string>();
 
-  if (product.variants) {
+  // Try to get sizes from options first (Shopify format)
+  const sizeOption = product.options?.find((opt: { name: string }) =>
+    opt.name.toLowerCase() === "size"
+  );
+  if (sizeOption?.values) {
+    for (const size of sizeOption.values) {
+      if (!sizeSet.has(size)) {
+        sizeSet.add(size);
+        sizes.push(size);
+      }
+    }
+  } else if (product.variants) {
+    // Fallback to variants
     for (const variant of product.variants) {
-      // Try different option fields for size
-      const size = variant.option1 || variant.option2 || variant.title;
+      const size = variant.option1 || variant.title;
       if (size && !sizeSet.has(size)) {
         sizeSet.add(size);
         sizes.push(size);
@@ -87,36 +100,54 @@ async function scrapeEverlane(url: string) {
     }
   }
 
-  // Get color from product
-  const colorName = product.color?.name || product.colorDisplayName;
+  // Get color from title or tags
+  let colorName = "";
+  const titleParts = (product.title || "").split("|");
+  if (titleParts.length > 1) {
+    colorName = titleParts[1].trim();
+  }
 
-  // Determine category from product data
+  // Determine category from product_type or tags
   let category = "other";
-  const name = (product.title || product.name || "").toLowerCase();
-  const productCategory = (product.category || "").toLowerCase();
+  const productType = (product.product_type || "").toLowerCase();
+  const tags = (product.tags || "").toLowerCase();
+  const name = (product.title || "").toLowerCase();
 
-  if (name.includes("boot") || name.includes("shoe") || name.includes("sneaker") || name.includes("loafer") || name.includes("flat") || productCategory.includes("shoes")) {
+  if (productType.includes("shoe") || productType.includes("boot") || tags.includes("shoes") || name.includes("boot") || name.includes("shoe") || name.includes("sneaker") || name.includes("loafer") || name.includes("flat")) {
     category = "shoes";
-  } else if (name.includes("jacket") || name.includes("coat") || name.includes("blazer") || productCategory.includes("outerwear")) {
+  } else if (productType.includes("jacket") || productType.includes("coat") || productType.includes("outerwear") || tags.includes("outerwear") || name.includes("jacket") || name.includes("coat") || name.includes("blazer")) {
     category = "outerwear";
-  } else if (name.includes("dress") || productCategory.includes("dresses")) {
+  } else if (productType.includes("dress") || tags.includes("dresses") || name.includes("dress")) {
     category = "dresses";
-  } else if (name.includes("pant") || name.includes("jean") || name.includes("short") || name.includes("skirt") || productCategory.includes("bottoms")) {
+  } else if (productType.includes("pant") || productType.includes("jean") || productType.includes("short") || productType.includes("skirt") || tags.includes("bottoms") || name.includes("pant") || name.includes("jean") || name.includes("short") || name.includes("skirt")) {
     category = "bottoms";
-  } else if (name.includes("shirt") || name.includes("blouse") || name.includes("top") || name.includes("sweater") || name.includes("tee") || productCategory.includes("tops")) {
+  } else if (productType.includes("sweater") || productType.includes("shirt") || productType.includes("top") || productType.includes("tee") || tags.includes("tops") || name.includes("shirt") || name.includes("blouse") || name.includes("top") || name.includes("sweater") || name.includes("tee") || name.includes("crew") || name.includes("pullover")) {
     category = "tops";
-  } else if (name.includes("bag") || name.includes("tote") || name.includes("backpack")) {
+  } else if (productType.includes("bag") || tags.includes("bags") || name.includes("bag") || name.includes("tote") || name.includes("backpack")) {
     category = "bags";
   }
 
+  // Extract material from tags if available
+  let material = "";
+  const fabricMatch = tags.match(/fabric:\s*(\w+)/);
+  if (fabricMatch) {
+    material = fabricMatch[1].charAt(0).toUpperCase() + fabricMatch[1].slice(1);
+  }
+
+  // Get image URL from Shopify format
+  const imageUrl = product.image?.src || product.images?.[0]?.src;
+
+  // Clean up title (remove color suffix after |)
+  const cleanTitle = titleParts[0].trim();
+
   return {
-    name: product.title || product.name,
+    name: cleanTitle,
     brand: "Everlane",
-    imageUrl: product.photos?.[0]?.src || product.primaryPhoto?.src,
+    imageUrl,
     sizes,
     colors: colorName ? [colorName] : [],
     category,
-    material: product.fabric || product.material,
+    material,
   };
 }
 
