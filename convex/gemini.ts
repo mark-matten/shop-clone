@@ -310,7 +310,9 @@ export const generateTryOnImage = action({
       );
     }
 
-    promptParts.push("Outfit items:");
+    promptParts.push(
+      "Outfit items (reference images provided below - MATCH EXACTLY):"
+    );
 
     for (const item of validItems) {
       const desc = [item.name];
@@ -327,14 +329,21 @@ export const generateTryOnImage = action({
 
     promptParts.push(
       "",
-      "STRICT Style requirements:",
+      "CRITICAL - Clothing Accuracy Requirements:",
+      "- MATCH EXACT COLOR of each item from reference images (no color substitutions)",
+      "- MATCH EXACT FIT AND SILHOUETTE (slim, relaxed, oversized, cropped, etc.)",
+      "- MATCH EXACT STYLE AND DESIGN (neckline, collar, buttons, pockets, seams, patterns)",
+      "- MATCH EXACT TEXTURE AND MATERIAL appearance (knit, woven, leather, denim, etc.)",
+      "- MATCH EXACT DETAILS (stitching, hardware, logos, embellishments)",
+      "- Each clothing item must be RECOGNIZABLE as the specific item from the reference",
+      "",
+      "Photo Style Requirements:",
       "- FULL BODY shot showing head to toe, model standing upright",
       "- Relaxed, natural standing pose with slight weight shift",
       "- Friendly, moderate smile on face",
       "- Neutral, clean background (solid light gray or white studio backdrop)",
       "- Even, consistent studio lighting from multiple angles",
       "- No harsh shadows or dramatic lighting",
-      "- The clothing items should be clearly visible and recognizable",
       "- High quality, professional fashion photography"
     );
 
@@ -381,8 +390,11 @@ export const generateTryOnImage = action({
               data: base64,
             },
           });
+          const itemDesc = [item.name];
+          if (item.color) itemDesc.push(`in ${item.color}`);
+          if (item.material) itemDesc.push(`made of ${item.material}`);
           contentParts.push({
-            text: `(Above is the ${item.category || "clothing item"}: ${item.name})`,
+            text: `(REFERENCE IMAGE for ${item.category || "clothing item"}: ${itemDesc.join(" ")} - MATCH THIS EXACT ITEM: color, fit, texture, design, and all details)`,
           });
         }
       } else if (itemWithImage.imageUrl) {
@@ -400,8 +412,11 @@ export const generateTryOnImage = action({
                 data: base64,
               },
             });
+            const itemDesc = [item.name];
+            if (item.color) itemDesc.push(`in ${item.color}`);
+            if (item.material) itemDesc.push(`made of ${item.material}`);
             contentParts.push({
-              text: `(Above is the ${item.category || "clothing item"}: ${item.name})`,
+              text: `(REFERENCE IMAGE for ${item.category || "clothing item"}: ${itemDesc.join(" ")} - MATCH THIS EXACT ITEM: color, fit, texture, design, and all details)`,
             });
           }
         } catch (e) {
