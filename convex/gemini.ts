@@ -62,15 +62,13 @@ export const generateClothingImage = action({
 
     promptParts.push(
       "",
-      "STRICT Requirements for e-commerce product photography:",
-      "- Pure white (#FFFFFF) seamless background with NO shadows, gradients, or textures",
-      "- Flat lay or ghost mannequin style (invisible mannequin)",
-      "- Even, diffused studio lighting from all sides - NO dramatic shadows or highlights",
-      "- Neutral, consistent color temperature (5500K daylight)",
-      "- No human models, hands, or body parts - just the clothing item",
-      "- Item perfectly centered and filling 80% of the frame",
-      "- Sharp focus on the entire garment",
-      "- Amazon/Nordstrom product listing style photography"
+      "Requirements for product photography:",
+      "- Soft neutral background - can be light gray, beige, cream, or a subtle gradient",
+      "- FLAT LAY style: item laid flat on a surface, photographed from directly above",
+      "- Even, soft studio lighting - no harsh shadows",
+      "- No human models, mannequins, or body parts - just the clothing item",
+      "- Item centered in frame with some breathing room around edges",
+      "- Clean, minimalist aesthetic"
     );
 
     const prompt = promptParts.join("\n");
