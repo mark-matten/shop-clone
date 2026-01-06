@@ -318,8 +318,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       >
         {/* ===== MOBILE LAYOUT ===== */}
         <div className="flex sm:hidden flex-col h-full">
-          {/* Mobile Header - Your Closet */}
-          <div className="flex-shrink-0 flex items-center justify-between border-b border-zinc-200 px-3 py-2 dark:border-zinc-800">
+          {/* Mobile Header - Your Closet (with safe area padding for browser chrome) */}
+          <div className="flex-shrink-0 flex items-center justify-between border-b border-zinc-200 px-3 py-3 pt-4 dark:border-zinc-800">
             <h2 className="text-base font-semibold text-zinc-900 dark:text-white">
               Your Closet
             </h2>
@@ -507,7 +507,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   </button>
                 </div>
               ) : selectedItems.length > 0 ? (
-                <div className="flex gap-3 overflow-x-auto pt-2 pb-1">
+                <div className="flex gap-3 overflow-x-auto pt-3 pb-1 px-1">
                   {selectedItems.map((item) => {
                     const categoryKey = getCategoryKey(item.displayCategory || "other");
                     return (

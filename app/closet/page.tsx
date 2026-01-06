@@ -525,18 +525,18 @@ function CategorySection({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl border-2 border-dashed p-2 sm:p-3 transition-colors ${
+      className={`rounded-xl border-2 border-dashed p-1.5 sm:p-2 transition-colors ${
         isOver
           ? "border-red-400 bg-red-50 dark:bg-red-900/20"
           : "border-transparent"
       }`}
     >
-      <h3 className="mb-2 sm:mb-3 text-sm sm:text-lg font-semibold capitalize text-zinc-900 dark:text-white">
+      <h3 className="mb-1.5 sm:mb-2 text-sm sm:text-lg font-semibold capitalize text-zinc-900 dark:text-white">
         {category} ({items.length})
       </h3>
       {items.length > 0 ? (
         <SortableContext items={items.map(i => i.productId)} strategy={rectSortingStrategy}>
-          <div className="flex gap-3 overflow-x-auto pb-2 -mx-2 px-2 sm:-mx-3 sm:px-3 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
+          <div className="flex gap-3 overflow-x-auto pb-2 -mx-1.5 px-1.5 sm:-mx-2 sm:px-2 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
             {items.map((item) => (
               <div key={item.productId} className="flex-shrink-0 w-36 sm:w-44">
                 <SortableItem
@@ -550,8 +550,8 @@ function CategorySection({
           </div>
         </SortableContext>
       ) : (
-        <div className="flex h-16 sm:h-24 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-xs sm:text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-          Drag items here
+        <div className="flex h-16 sm:h-20 items-center justify-center rounded-lg border border-dashed border-zinc-300 text-xs sm:text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+          No items
         </div>
       )}
     </div>
@@ -579,17 +579,17 @@ function ListCategorySection({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-xl border-2 border-dashed p-2 sm:p-3 transition-colors ${
+      className={`rounded-xl border-2 border-dashed p-1.5 sm:p-2 transition-colors ${
         isOver
           ? "border-red-400 bg-red-50 dark:bg-red-900/20"
           : "border-transparent"
       }`}
     >
-      <h3 className="mb-2 text-sm sm:text-lg font-semibold capitalize text-zinc-900 dark:text-white">
+      <h3 className="mb-1.5 text-sm sm:text-lg font-semibold capitalize text-zinc-900 dark:text-white">
         {category} ({items.length})
       </h3>
       <SortableContext items={items.map(i => i.productId)} strategy={rectSortingStrategy}>
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {items.map((item) => (
             <SortableListItem
               key={item.productId}
@@ -1110,21 +1110,10 @@ export default function ClosetPage() {
     if (!over || !user?.id) return;
 
     const activeItem = combinedItems.find(i => i.productId === active.id);
-    if (!activeItem || !activeItem.isOwned) return; // Only owned items can be reordered/recategorized
+    if (!activeItem || !activeItem.isOwned) return; // Only owned items can be reordered
 
-    // Check if dropped on a category
+    // Ignore drops on category headers - only allow reordering within same category
     if (typeof over.id === "string" && over.id.startsWith("category-")) {
-      const newCategory = over.id.replace("category-", "");
-      const currentCategoryRaw = activeItem.customCategory || activeItem.product?.category || "other";
-      const currentCategoryNormalized = getCategoryKey(currentCategoryRaw);
-
-      if (newCategory !== currentCategoryNormalized) {
-        await updateClosetItemCategory({
-          clerkId: user.id,
-          productId: activeItem.productId,
-          customCategory: newCategory,
-        });
-      }
       return;
     }
 
@@ -1137,8 +1126,8 @@ export default function ClosetPage() {
     const activeCategoryNormalized = getCategoryKey(activeCategoryRaw);
     const overCategoryNormalized = getCategoryKey(overCategoryRaw);
 
+    // Only allow reordering within the same category
     if (activeCategoryNormalized === overCategoryNormalized) {
-      // Reorder within category - use normalized key for lookup
       const categoryItems = itemsByCategory[activeCategoryNormalized] || [];
       const oldIndex = categoryItems.findIndex(i => i.productId === active.id);
       const newIndex = categoryItems.findIndex(i => i.productId === over.id);
@@ -1151,15 +1140,9 @@ export default function ClosetPage() {
         }));
         await updateClosetItemsOrder({ clerkId: user.id, items: updates });
       }
-    } else {
-      // Move to different category
-      await updateClosetItemCategory({
-        clerkId: user.id,
-        productId: activeItem.productId,
-        customCategory: overCategoryNormalized,
-      });
     }
-  }, [combinedItems, itemsByCategory, user?.id, updateClosetItemCategory, updateClosetItemsOrder]);
+    // Cross-category drops are ignored - items stay in their original category
+  }, [combinedItems, itemsByCategory, user?.id, updateClosetItemsOrder]);
 
   const activeItem = activeId ? combinedItems.find(i => i.productId === activeId) : null;
 
