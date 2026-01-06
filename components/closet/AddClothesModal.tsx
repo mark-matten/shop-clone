@@ -12,6 +12,7 @@ interface AddClothesModalProps {
 
 type Tab = "describe" | "url";
 type OwnershipStatus = "owned" | "wishlist";
+type GenderOption = "men" | "women" | "unisex";
 
 const CATEGORIES = [
   "tops",
@@ -132,6 +133,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
   const [selectedColor, setSelectedColor] = useState("");
   const [urlCategory, setUrlCategory] = useState("");
   const [urlOwnership, setUrlOwnership] = useState<OwnershipStatus | null>(null);
+  const [urlGender, setUrlGender] = useState<GenderOption | null>(null);
 
   // Describe Tab State
   const [description, setDescription] = useState("");
@@ -141,6 +143,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
   const [genSize, setGenSize] = useState("");
   const [genCategory, setGenCategory] = useState("");
   const [descOwnership, setDescOwnership] = useState<OwnershipStatus | null>(null);
+  const [descGender, setDescGender] = useState<GenderOption | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [hasParsedDescription, setHasParsedDescription] = useState(false);
 
@@ -166,6 +169,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
     setSelectedColor("");
     setUrlCategory("");
     setUrlOwnership(null);
+    setUrlGender(null);
     setDescription("");
     setGenBrand("");
     setGenColor("");
@@ -173,6 +177,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
     setGenSize("");
     setGenCategory("");
     setDescOwnership(null);
+    setDescGender(null);
     setGeneratedImage(null);
     setHasParsedDescription(false);
     setError(null);
@@ -251,7 +256,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
 
   // Generate clothing image and add to closet
   const handleGenerate = async () => {
-    if (!description.trim() || !genCategory || !descOwnership) return;
+    if (!description.trim() || !genCategory || !descOwnership || !descGender) return;
 
     setIsLoading(true);
     setError(null);
@@ -265,6 +270,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
         material: genMaterial || undefined,
         category: genCategory,
         size: genSize || undefined,
+        gender: descGender,
         isWishlist: descOwnership === "wishlist",
       });
 
@@ -481,6 +487,51 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
                 )}
               </div>
 
+              {/* Gender - Required */}
+              <div>
+                <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                  Gender *
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setDescGender("men")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                      descGender === "men"
+                        ? "border-[#D4AF37] bg-[#D4AF37] text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                    disabled={isLoading}
+                  >
+                    M
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDescGender("women")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                      descGender === "women"
+                        ? "border-[#D4AF37] bg-[#D4AF37] text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                    disabled={isLoading}
+                  >
+                    F
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDescGender("unisex")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                      descGender === "unisex"
+                        ? "border-[#D4AF37] bg-[#D4AF37] text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                    disabled={isLoading}
+                  >
+                    M/F
+                  </button>
+                </div>
+              </div>
+
               {/* Generated Image Preview */}
               {generatedImage && (
                 <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
@@ -635,6 +686,51 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
                       </button>
                     </div>
                   </div>
+
+                  {/* Gender for URL - Required */}
+                  <div>
+                    <label className="mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Gender *
+                    </label>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setUrlGender("men")}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                          urlGender === "men"
+                            ? "border-[#D4AF37] bg-[#D4AF37] text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                        }`}
+                        disabled={isLoading}
+                      >
+                        M
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUrlGender("women")}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                          urlGender === "women"
+                            ? "border-[#D4AF37] bg-[#D4AF37] text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                        }`}
+                        disabled={isLoading}
+                      >
+                        F
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setUrlGender("unisex")}
+                        className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                          urlGender === "unisex"
+                            ? "border-[#D4AF37] bg-[#D4AF37] text-white"
+                            : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                        }`}
+                        disabled={isLoading}
+                      >
+                        M/F
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
@@ -653,7 +749,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
           {activeTab === "describe" ? (
             <button
               onClick={handleGenerate}
-              disabled={!description.trim() || !genCategory || !descOwnership || isLoading}
+              disabled={!description.trim() || !genCategory || !descOwnership || !descGender || isLoading}
               className="rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#C9A432] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? "Generating..." : "Generate & Add"}
@@ -661,7 +757,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
           ) : (
             <button
               onClick={handleAddFromUrl}
-              disabled={!scrapedProduct || !selectedSize || !urlCategory || !urlOwnership || isLoading}
+              disabled={!scrapedProduct || !selectedSize || !urlCategory || !urlOwnership || !urlGender || isLoading}
               className="rounded-lg bg-[#D4AF37] px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-[#C9A432] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? "Adding..." : "Add to Closet"}

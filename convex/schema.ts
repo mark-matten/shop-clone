@@ -181,6 +181,7 @@ export default defineSchema({
     color: v.optional(v.string()),
     material: v.optional(v.string()),
     category: v.optional(v.string()),
+    gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
     sourceUrl: v.optional(v.string()), // Original URL for URL-sourced items
     // For AI-generated items
     generatedImageStorageId: v.optional(v.id("_storage")),

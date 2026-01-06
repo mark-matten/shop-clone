@@ -25,7 +25,7 @@ interface ClosetItemWithImage {
   imageUrl: string | null;
 }
 
-// Generate a clothing image from description using Gemini 2.5 Flash
+// Generate a clothing image from description using Nano Banana (non-Pro for cost savings)
 export const generateClothingImage = action({
   args: {
     clerkId: v.string(),
@@ -35,6 +35,7 @@ export const generateClothingImage = action({
     material: v.optional(v.string()),
     category: v.string(),
     size: v.optional(v.string()),
+    gender: v.union(v.literal("men"), v.literal("women"), v.literal("unisex")),
     isWishlist: v.optional(v.boolean()), // true = wishlist, false/undefined = owned
   },
   handler: async (ctx, args) => {
@@ -72,9 +73,9 @@ export const generateClothingImage = action({
 
     const prompt = promptParts.join("\n");
 
-    // Call Nano Banana Pro (Gemini 3 Pro Image) API for image generation
+    // Call Nano Banana (non-Pro Gemini 2.0 Flash) API for image generation (cheaper)
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-preview-image-generation:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {
@@ -151,6 +152,7 @@ export const generateClothingImage = action({
         material: args.material,
         category: args.category,
         size: args.size,
+        gender: args.gender,
         generatedImageStorageId: storageId,
         userDescription: args.description,
         isWishlist: args.isWishlist,
@@ -178,6 +180,7 @@ export const createGeneratedClosetItem = internalMutation({
     material: v.optional(v.string()),
     category: v.string(),
     size: v.optional(v.string()),
+    gender: v.union(v.literal("men"), v.literal("women"), v.literal("unisex")),
     generatedImageStorageId: v.id("_storage"),
     userDescription: v.string(),
     isWishlist: v.optional(v.boolean()),
@@ -215,6 +218,7 @@ export const createGeneratedClosetItem = internalMutation({
       material: args.material,
       category: args.category,
       size: args.size,
+      gender: args.gender,
       generatedImageStorageId: args.generatedImageStorageId,
       userDescription: args.userDescription,
       sortOrder: maxSortOrder + 1,
