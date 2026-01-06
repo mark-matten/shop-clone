@@ -288,10 +288,11 @@ export const updateClosetItemOptions = mutation({
 });
 
 // Update closet item category (for drag-and-drop)
+// Supports both product-linked items (productId) and user-added items (closet item ID)
 export const updateClosetItemCategory = mutation({
   args: {
     clerkId: v.string(),
-    productId: v.id("products"),
+    productId: v.string(), // Can be product ID or closet item ID for user-added items
     customCategory: v.string(),
   },
   handler: async (ctx, args) => {
@@ -304,12 +305,27 @@ export const updateClosetItemCategory = mutation({
       throw new Error("User not found");
     }
 
-    const item = await ctx.db
-      .query("closet_items")
-      .withIndex("by_userId_productId", (q) =>
-        q.eq("userId", user._id).eq("productId", args.productId)
-      )
-      .first();
+    let item = null;
+
+    // First, try to get the item directly by ID (for user-added items)
+    try {
+      const directItem = await ctx.db.get(args.productId as any);
+      if (directItem && (directItem as any).userId === user._id) {
+        item = directItem;
+      }
+    } catch {
+      // Not a valid closet_items ID, try as product ID
+    }
+
+    // If not found directly, try to find by productId (for product-linked items)
+    if (!item) {
+      item = await ctx.db
+        .query("closet_items")
+        .withIndex("by_userId_productId", (q) =>
+          q.eq("userId", user._id).eq("productId", args.productId as any)
+        )
+        .first();
+    }
 
     if (item) {
       await ctx.db.patch(item._id, {
@@ -320,11 +336,12 @@ export const updateClosetItemCategory = mutation({
 });
 
 // Update sort order for multiple items (for drag-and-drop reordering)
+// Supports both product-linked items (productId) and user-added items (closet item ID)
 export const updateClosetItemsOrder = mutation({
   args: {
     clerkId: v.string(),
     items: v.array(v.object({
-      productId: v.id("products"),
+      productId: v.string(), // Can be product ID or closet item ID for user-added items
       sortOrder: v.number(),
       customCategory: v.optional(v.string()),
     })),
@@ -340,12 +357,27 @@ export const updateClosetItemsOrder = mutation({
     }
 
     for (const update of args.items) {
-      const item = await ctx.db
-        .query("closet_items")
-        .withIndex("by_userId_productId", (q) =>
-          q.eq("userId", user._id).eq("productId", update.productId)
-        )
-        .first();
+      let item = null;
+
+      // First, try to get the item directly by ID (for user-added items)
+      try {
+        const directItem = await ctx.db.get(update.productId as any);
+        if (directItem && (directItem as any).userId === user._id) {
+          item = directItem;
+        }
+      } catch {
+        // Not a valid closet_items ID, try as product ID
+      }
+
+      // If not found directly, try to find by productId (for product-linked items)
+      if (!item) {
+        item = await ctx.db
+          .query("closet_items")
+          .withIndex("by_userId_productId", (q) =>
+            q.eq("userId", user._id).eq("productId", update.productId as any)
+          )
+          .first();
+      }
 
       if (item) {
         const patchData: { sortOrder: number; customCategory?: string } = {

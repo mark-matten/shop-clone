@@ -1460,14 +1460,14 @@ export default function ClosetPage() {
             </p>
 
             <div className="mt-2 space-y-2">
-              {/* Status Selection - Owned or Wishlist */}
+              {/* Status Selection - Owned or Wishlist (mutually exclusive) */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                   Status
                 </label>
                 <div className="flex gap-2">
                   <button
-                    onClick={() => setEditIsOwned(!editIsOwned)}
+                    onClick={() => { setEditIsOwned(true); setEditIsWishlist(false); }}
                     className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       editIsOwned
                         ? "border-purple-500 bg-purple-500 text-white"
@@ -1480,7 +1480,7 @@ export default function ClosetPage() {
                     Owned
                   </button>
                   <button
-                    onClick={() => setEditIsWishlist(!editIsWishlist)}
+                    onClick={() => { setEditIsWishlist(true); setEditIsOwned(false); }}
                     className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       editIsWishlist
                         ? "border-red-500 bg-red-500 text-white"
@@ -1493,9 +1493,6 @@ export default function ClosetPage() {
                     Wishlist
                   </button>
                 </div>
-                {!editIsOwned && !editIsWishlist && (
-                  <p className="mt-1 text-xs text-red-500">Select at least one status or delete the item</p>
-                )}
               </div>
 
               {/* Category Selection */}
