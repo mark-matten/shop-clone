@@ -723,19 +723,35 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
         {/* Right Panel - Closet */}
         <div className="hidden sm:flex w-1/2 flex-col overflow-hidden">
-          <div className="flex-shrink-0 h-[60px] flex items-center justify-between border-b border-zinc-200 px-6 dark:border-zinc-800">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Your Closet</h2>
-            <button onClick={handleClose} className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200">
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Search and Filters */}
-          <div className="flex-shrink-0 border-b border-zinc-200 px-6 py-3 dark:border-zinc-800">
+          {/* Header, Filters, Search - compact section */}
+          <div className="flex-shrink-0 border-b border-zinc-200 px-6 py-2 dark:border-zinc-800">
+            {/* Title Row */}
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Your Closet</h2>
+              <button onClick={handleClose} className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            {/* Ownership Toggle */}
+            <div className="flex gap-2 mb-2">
+              {(["all", "owned", "wishlist"] as const).map((filter) => (
+                <button
+                  key={filter}
+                  onClick={() => setOwnershipFilter(filter)}
+                  className={`flex-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
+                    ownershipFilter === filter
+                      ? "bg-rose-400 text-white"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                  }`}
+                >
+                  {filter === "all" ? "All" : filter === "owned" ? "Owned" : "Wishlist"}
+                </button>
+              ))}
+            </div>
             {/* Search Input */}
-            <div className="relative mb-3">
+            <div className="relative">
               <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
@@ -744,7 +760,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search items..."
-                className="w-full rounded-lg border border-zinc-300 bg-white py-2 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                className="w-full rounded-lg border border-zinc-300 bg-white py-1.5 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
               />
               {searchQuery && (
                 <button
@@ -756,22 +772,6 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   </svg>
                 </button>
               )}
-            </div>
-            {/* Ownership Toggle */}
-            <div className="flex gap-2">
-              {(["all", "owned", "wishlist"] as const).map((filter) => (
-                <button
-                  key={filter}
-                  onClick={() => setOwnershipFilter(filter)}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-                    ownershipFilter === filter
-                      ? "bg-rose-400 text-white"
-                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
-                  }`}
-                >
-                  {filter === "all" ? "All" : filter === "owned" ? "Owned" : "Wishlist"}
-                </button>
-              ))}
             </div>
           </div>
 
