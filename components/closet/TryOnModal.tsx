@@ -723,18 +723,41 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
         {/* Right Panel - Closet */}
         <div className="hidden sm:flex w-1/2 flex-col overflow-hidden">
-          {/* Header, Filters, Search - compact section */}
-          <div className="flex-shrink-0 border-b border-zinc-200 px-6 py-2 dark:border-zinc-800">
-            {/* Title Row */}
-            <div className="flex items-center justify-between mb-2">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Your Closet</h2>
-              <button onClick={handleClose} className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
+          {/* Header - matches left side height */}
+          <div className="flex-shrink-0 h-[60px] flex items-center justify-between border-b border-zinc-200 px-6 dark:border-zinc-800">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Your Closet</h2>
+            <button onClick={handleClose} className="rounded-full p-2 text-zinc-500 hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200">
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+
+          {/* Category Tabs */}
+          <div className="flex-shrink-0 overflow-x-auto">
+            <div className="flex gap-2 px-6 py-2 min-w-max">
+              {CATEGORIES.map((cat) => {
+                const count = itemsByCategory[cat.id]?.length || 0;
+                const hasSelection = selectedByCategory.has(cat.id);
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => setActiveCategory(cat.id)}
+                    className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap ${
+                      activeCategory === cat.id ? "bg-rose-400 text-white"
+                        : hasSelection ? "bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400"
+                        : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    {cat.label}{count > 0 && <span className="ml-1 text-xs opacity-70">({count})</span>}{hasSelection && <span className="ml-1">✓</span>}
+                  </button>
+                );
+              })}
             </div>
-            {/* Ownership Toggle */}
+          </div>
+
+          {/* Ownership Toggle & Search */}
+          <div className="flex-shrink-0 border-b border-zinc-200 px-6 py-2 dark:border-zinc-800">
             <div className="flex gap-2 mb-2">
               {(["all", "owned", "wishlist"] as const).map((filter) => (
                 <button
@@ -750,7 +773,6 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 </button>
               ))}
             </div>
-            {/* Search Input */}
             <div className="relative">
               <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -772,29 +794,6 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   </svg>
                 </button>
               )}
-            </div>
-          </div>
-
-          {/* Category Tabs */}
-          <div className="flex-shrink-0 overflow-x-auto border-b border-zinc-200 dark:border-zinc-800">
-            <div className="flex gap-2 px-6 py-3 min-w-max">
-              {CATEGORIES.map((cat) => {
-                const count = itemsByCategory[cat.id]?.length || 0;
-                const hasSelection = selectedByCategory.has(cat.id);
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => setActiveCategory(cat.id)}
-                    className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap ${
-                      activeCategory === cat.id ? "bg-rose-400 text-white"
-                        : hasSelection ? "bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400"
-                        : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
-                    }`}
-                  >
-                    {cat.label}{count > 0 && <span className="ml-1 text-xs opacity-70">({count})</span>}{hasSelection && <span className="ml-1">✓</span>}
-                  </button>
-                );
-              })}
             </div>
           </div>
 
