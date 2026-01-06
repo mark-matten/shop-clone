@@ -51,7 +51,7 @@ export const addToCloset = mutation({
 export const removeFromCloset = mutation({
   args: {
     clerkId: v.string(),
-    productId: v.id("products"),
+    productId: v.string(), // Can be product ID or closet item ID for user-added items
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -63,14 +63,33 @@ export const removeFromCloset = mutation({
       throw new Error("User not found");
     }
 
-    const item = await ctx.db
-      .query("closet_items")
-      .withIndex("by_userId_productId", (q) =>
-        q.eq("userId", user._id).eq("productId", args.productId)
-      )
-      .first();
+    let item = null;
+
+    // First, try to get the item directly by ID (for user-added items)
+    try {
+      const directItem = await ctx.db.get(args.productId as any);
+      if (directItem && (directItem as any).userId === user._id) {
+        item = directItem;
+      }
+    } catch {
+      // Not a valid closet_items ID, try as product ID
+    }
+
+    // If not found directly, try to find by productId (for product-linked items)
+    if (!item) {
+      item = await ctx.db
+        .query("closet_items")
+        .withIndex("by_userId_productId", (q) =>
+          q.eq("userId", user._id).eq("productId", args.productId as any)
+        )
+        .first();
+    }
 
     if (item) {
+      // If it's a generated item, also delete the stored image
+      if ((item as any).source === "generated" && (item as any).generatedImageStorageId) {
+        await ctx.storage.delete((item as any).generatedImageStorageId);
+      }
       await ctx.db.delete(item._id);
     }
   },
