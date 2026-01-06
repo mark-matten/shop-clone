@@ -173,6 +173,7 @@ interface CombinedItem {
   isWishlist: boolean;
   addedAt: number;
   isUserAdded?: boolean; // true for URL-sourced or generated items (no real product)
+  sourceUrl?: string; // Original URL for URL-sourced items
 }
 
 interface EditingItem {
@@ -312,18 +313,26 @@ function SortableListItem({
         </svg>
       </div>
 
-      {/* Thumbnail - Link only for product-linked items */}
+      {/* Thumbnail - Link for product-linked and URL-sourced items */}
       {item.isUserAdded ? (
         <div className="flex-shrink-0">{thumbnailContent}</div>
+      ) : item.sourceUrl ? (
+        <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
+          {thumbnailContent}
+        </a>
       ) : (
         <Link href={`/product/${product._id}?from=closet`} className="flex-shrink-0">
           {thumbnailContent}
         </Link>
       )}
 
-      {/* Info - Link only for product-linked items */}
+      {/* Info - Link for product-linked and URL-sourced items */}
       {item.isUserAdded ? (
         <div className="min-w-0 flex-1">{infoContent}</div>
+      ) : item.sourceUrl ? (
+        <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1">
+          {infoContent}
+        </a>
       ) : (
         <Link href={`/product/${product._id}?from=closet`} className="min-w-0 flex-1">
           {infoContent}
@@ -466,9 +475,13 @@ function SortableItem({
         </svg>
       </div>
 
-      {/* Card content - Link only for product-linked items */}
+      {/* Card content - Link for product-linked and URL-sourced items */}
       {item.isUserAdded ? (
         <div>{cardContent}</div>
+      ) : item.sourceUrl ? (
+        <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
+          {cardContent}
+        </a>
       ) : (
         <Link href={`/product/${product._id}?from=closet`}>
           {cardContent}
@@ -764,6 +777,8 @@ export default function ClosetPage() {
         const imageUrl = typedItem.displayImageUrl || typedItem.imageUrl;
         // Check if this is a wishlist item (generated items can be wishlist)
         const isWishlistItem = typedItem.isWishlist === true;
+        // URL-sourced items have a sourceUrl we can link to
+        const isUrlSourced = typedItem.source === "url";
         itemMap.set(itemId, {
           productId: itemId as any, // Use item ID as pseudo-productId
           product: {
@@ -781,7 +796,8 @@ export default function ClosetPage() {
           isOwned: !isWishlistItem, // Owned if not wishlist
           isWishlist: isWishlistItem,
           addedAt: typedItem.addedAt,
-          isUserAdded: true, // Mark as user-added (not linked to real product)
+          isUserAdded: !isUrlSourced, // Only generated items are truly "user-added" (no link)
+          sourceUrl: isUrlSourced ? typedItem.sourceUrl : undefined, // Store original URL for URL-sourced items
         });
       }
     }
