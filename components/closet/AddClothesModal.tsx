@@ -258,7 +258,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
 
   // Add URL-sourced item to closet
   const handleAddFromUrl = async () => {
-    if (!scrapedProduct || !selectedSize || !urlCategory) return;
+    if (!scrapedProduct || !selectedSize || !urlCategory || !urlOwnership || !urlGender) return;
 
     setIsLoading(true);
     setError(null);
@@ -274,6 +274,8 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
         material: scrapedProduct.material,
         category: urlCategory,
         sourceUrl: url,
+        gender: urlGender,
+        isWishlist: urlOwnership === "wishlist",
       });
 
       handleClose();

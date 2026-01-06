@@ -440,7 +440,7 @@ export const getClosetStats = query({
   },
 });
 
-// Add item from scraped URL
+// Add item from scraped URL - creates a product and links closet item to it
 export const addFromUrl = mutation({
   args: {
     clerkId: v.string(),
@@ -452,6 +452,8 @@ export const addFromUrl = mutation({
     material: v.optional(v.string()),
     category: v.string(),
     sourceUrl: v.string(),
+    gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
+    isWishlist: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -461,6 +463,33 @@ export const addFromUrl = mutation({
 
     if (!user) {
       throw new Error("User not found");
+    }
+
+    // Check if a product already exists with this sourceUrl
+    let product = await ctx.db
+      .query("products")
+      .withIndex("by_sourceUrl", (q) => q.eq("sourceUrl", args.sourceUrl))
+      .first();
+
+    // If no existing product, create one
+    if (!product) {
+      const productId = await ctx.db.insert("products", {
+        name: args.name,
+        brand: args.brand,
+        description: `${args.brand} ${args.name}`,
+        category: args.category,
+        condition: "new",
+        sourcePlatform: new URL(args.sourceUrl).hostname.replace("www.", ""),
+        sourceUrl: args.sourceUrl,
+        imageUrl: args.imageUrl,
+        imageUrls: [args.imageUrl],
+        colorName: args.color,
+        material: args.material,
+        gender: args.gender,
+        // Store size as array for consistency
+        sizes: args.size ? [args.size] : [],
+      });
+      product = await ctx.db.get(productId);
     }
 
     // Get next sort order
@@ -474,20 +503,18 @@ export const addFromUrl = mutation({
       ...existingItems.map((item) => item.sortOrder ?? 0)
     );
 
+    // Create closet item linked to product
     return await ctx.db.insert("closet_items", {
       userId: user._id,
+      productId: product!._id,
       addedAt: Date.now(),
       source: "url",
-      name: args.name,
-      brand: args.brand,
-      imageUrl: args.imageUrl,
-      size: args.size,
-      color: args.color,
-      material: args.material,
-      category: args.category,
-      sourceUrl: args.sourceUrl,
+      selectedSize: args.size,
+      colorName: args.color,
+      customCategory: args.category,
       sortOrder: maxSortOrder + 1,
       wornCount: 0,
+      isWishlist: args.isWishlist ?? false,
     });
   },
 });
