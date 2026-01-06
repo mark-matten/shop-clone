@@ -361,6 +361,37 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
               </div>
             </div>
 
+            {/* Ownership Filter & Search */}
+            <div className="flex-shrink-0 px-2 py-1.5 border-b border-zinc-100 dark:border-zinc-800">
+              <div className="flex gap-1.5 mb-1.5">
+                {(["all", "owned", "wishlist"] as const).map((filter) => (
+                  <button
+                    key={filter}
+                    onClick={() => setOwnershipFilter(filter)}
+                    className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+                      ownershipFilter === filter
+                        ? "bg-rose-400 text-white"
+                        : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                    }`}
+                  >
+                    {filter === "all" ? "All" : filter === "owned" ? "Owned" : "Wishlist"}
+                  </button>
+                ))}
+              </div>
+              <div className="relative">
+                <svg className="absolute left-2 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full rounded-md border border-zinc-200 bg-white py-1 pl-7 pr-2 text-xs text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                />
+              </div>
+            </div>
+
             {/* Items Grid - Scrollable */}
             <div className="flex-1 overflow-y-auto p-2">
               {currentCategoryItems.length > 0 ? (
@@ -480,8 +511,114 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
               )}
             </div>
 
+            {/* Model Selection */}
+            <div className="px-2 py-1.5 border-t border-zinc-200 dark:border-zinc-700">
+              <div className="flex gap-1.5 mb-1.5">
+                <button
+                  onClick={() => { setModelMode("generic"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
+                  className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                >
+                  Generic Model
+                </button>
+                <button
+                  onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
+                  className={`flex-1 rounded-md px-2 py-1 text-xs font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                >
+                  My Photo
+                </button>
+              </div>
+
+              {/* Generic Model Options */}
+              {modelMode === "generic" && (
+                <div className="space-y-1.5">
+                  {/* Gender & Height Row */}
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <div className="flex gap-1">
+                        <button
+                          onClick={() => setModelGender("male")}
+                          className={`flex-1 rounded-md px-2 py-0.5 text-xs font-medium ${modelGender === "male" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                        >
+                          M
+                        </button>
+                        <button
+                          onClick={() => setModelGender("female")}
+                          className={`flex-1 rounded-md px-2 py-0.5 text-xs font-medium ${modelGender === "female" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                        >
+                          F
+                        </button>
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-zinc-500 w-6">{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
+                        <input
+                          type="range"
+                          min="54"
+                          max="78"
+                          value={modelHeight}
+                          onChange={(e) => setModelHeight(Number(e.target.value))}
+                          onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                          className="flex-1 h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  {/* Weight & Skin Tone Row */}
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-zinc-500 w-7">{modelWeight}lb</span>
+                        <input
+                          type="range"
+                          min="90"
+                          max="280"
+                          step="5"
+                          value={modelWeight}
+                          onChange={(e) => setModelWeight(Number(e.target.value))}
+                          onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                          className="flex-1 h-1.5 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                        />
+                      </div>
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] text-zinc-500 w-7">Skin</span>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={modelSkinTone}
+                          onChange={(e) => setModelSkinTone(Number(e.target.value))}
+                          onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                          className="flex-1 h-1.5 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                          style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Photo Manager for User Mode */}
+              {modelMode === "user" && showPhotoManager && (
+                <div className="mt-1.5">
+                  <PhotoManager clerkId={clerkId} onSelectPhoto={handleSelectPhoto} selectedPhotoId={selectedPhotoId} />
+                </div>
+              )}
+
+              {/* Other Details */}
+              <input
+                type="text"
+                value={otherDetails}
+                onChange={(e) => setOtherDetails(e.target.value)}
+                placeholder="Other details (e.g., cuffed pants, tucked shirt)"
+                className="w-full mt-1.5 rounded-md border border-zinc-200 bg-white px-2 py-1 text-xs text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+              />
+            </div>
+
             {/* Generate Button */}
-            <div className="px-2 pb-2">
+            <div className="px-2 py-2">
               <button
                 onClick={handleGenerate}
                 disabled={selectedByCategory.size === 0 || isGenerating}
