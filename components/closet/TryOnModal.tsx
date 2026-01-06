@@ -575,17 +575,17 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
             </div>
 
             {/* Model Selection */}
-            <div className="border-t border-zinc-200 p-4 dark:border-zinc-800">
+            <div className="border-t border-zinc-200 px-4 py-3 dark:border-zinc-800">
               <div className="flex gap-2">
                 <button
                   onClick={() => { setModelMode("generic"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
-                  className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
                 >
                   Generic Model
                 </button>
                 <button
                   onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
-                  className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
                 >
                   My Photo
                 </button>
@@ -593,7 +593,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
               {/* Generic Model Customization */}
               {modelMode === "generic" && (
-                <div className="mt-4 space-y-3">
+                <div className="mt-3 space-y-2">
                   {/* Gender Toggle */}
                   <div>
                     <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
@@ -688,22 +688,22 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
               )}
 
               {modelMode === "user" && showPhotoManager && (
-                <div className="mt-4">
+                <div className="mt-3">
                   <PhotoManager clerkId={clerkId} onSelectPhoto={handleSelectPhoto} selectedPhotoId={selectedPhotoId} />
                 </div>
               )}
 
               {/* Other Details Input */}
-              <div className="mt-4">
-                <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+              <div className="mt-3">
+                <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-0.5">
                   Other Details (optional)
                 </label>
                 <input
                   type="text"
                   value={otherDetails}
                   onChange={(e) => setOtherDetails(e.target.value)}
-                  placeholder="e.g., cuffed pants, shirt tucked in, sleeves rolled up"
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  placeholder="e.g., cuffed pants, shirt tucked in"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                 />
               </div>
             </div>
