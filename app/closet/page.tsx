@@ -758,14 +758,27 @@ export default function ClosetPage() {
     for (const item of closetItems || []) {
       // Handle product-linked items
       if (item.product) {
+        // Build selectedOptions from various sources
+        const typedItem = item as any;
+        let selectedOptions = item.selectedOptions || {};
+
+        // Add selectedSize if available and not already in options
+        if (typedItem.selectedSize && !selectedOptions["Size"]) {
+          selectedOptions = { ...selectedOptions, Size: typedItem.selectedSize };
+        }
+        // Add colorName if available and not already in options
+        if (typedItem.colorName && !selectedOptions["Color"] && !selectedOptions["Colour"]) {
+          selectedOptions = { ...selectedOptions, Color: typedItem.colorName };
+        }
+
         itemMap.set(item.product._id, {
           productId: item.product._id,
           product: item.product as CombinedItem["product"],
-          selectedOptions: item.selectedOptions,
-          customCategory: (item as any).customCategory,
-          sortOrder: (item as any).sortOrder,
-          isOwned: true,
-          isWishlist: false,
+          selectedOptions: Object.keys(selectedOptions).length > 0 ? selectedOptions : undefined,
+          customCategory: typedItem.customCategory,
+          sortOrder: typedItem.sortOrder,
+          isOwned: !typedItem.isWishlist,
+          isWishlist: typedItem.isWishlist === true,
           addedAt: item.addedAt,
         });
       }
