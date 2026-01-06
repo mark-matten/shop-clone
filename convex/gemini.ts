@@ -93,10 +93,6 @@ export const generateClothingImage = action({
           ],
           generationConfig: {
             responseModalities: ["TEXT", "IMAGE"],
-            imageConfig: {
-              aspectRatio: "1:1",
-              imageSize: "1K",
-            },
           },
         }),
       }

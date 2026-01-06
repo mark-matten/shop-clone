@@ -132,7 +132,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
   const [selectedSize, setSelectedSize] = useState("");
   const [selectedColor, setSelectedColor] = useState("");
   const [urlCategory, setUrlCategory] = useState("");
-  const [urlOwnership, setUrlOwnership] = useState<OwnershipStatus | null>(null);
+  const [urlOwnership, setUrlOwnership] = useState<OwnershipStatus>("owned");
   const [urlGender, setUrlGender] = useState<GenderOption | null>(null);
 
   // Describe Tab State
@@ -142,7 +142,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
   const [genMaterial, setGenMaterial] = useState("");
   const [genSize, setGenSize] = useState("");
   const [genCategory, setGenCategory] = useState("");
-  const [descOwnership, setDescOwnership] = useState<OwnershipStatus | null>(null);
+  const [descOwnership, setDescOwnership] = useState<OwnershipStatus>("owned");
   const [descGender, setDescGender] = useState<GenderOption | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [hasParsedDescription, setHasParsedDescription] = useState(false);
@@ -187,7 +187,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
     setSelectedSize("");
     setSelectedColor("");
     setUrlCategory("");
-    setUrlOwnership(null);
+    setUrlOwnership("owned");
     setUrlGender(null);
     setDescription("");
     setGenBrand("");
@@ -195,7 +195,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
     setGenMaterial("");
     setGenSize("");
     setGenCategory("");
-    setDescOwnership(null);
+    setDescOwnership("owned");
     setDescGender(null);
     setGeneratedImage(null);
     setHasParsedDescription(false);
@@ -784,7 +784,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
               disabled={!description.trim() || !genCategory || !descOwnership || !descGender || isLoading}
               className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isLoading ? "Generating..." : "Generate & Add"}
+              {isLoading ? "Adding..." : "Add to Closet"}
             </button>
           ) : (
             <button
