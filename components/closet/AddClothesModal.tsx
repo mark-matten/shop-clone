@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useCallback } from "react";
-import { useMutation, useAction } from "convex/react";
+import { useState, useCallback, useEffect } from "react";
+import { useMutation, useAction, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
 interface AddClothesModalProps {
@@ -161,6 +161,25 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
 
   const addFromUrl = useMutation(api.closet.addFromUrl);
   const generateClothingImage = useAction(api.gemini.generateClothingImage);
+
+  // Query user preferences to default gender
+  const user = useQuery(api.users.getUserByClerkId, { clerkId });
+
+  // Set default gender based on user preferences when modal opens
+  useEffect(() => {
+    if (isOpen && user?.preferences) {
+      const { shopsMen, shopsWomen } = user.preferences;
+      // Only default if user has exactly one gender preference set
+      if (shopsMen && !shopsWomen) {
+        setDescGender("men");
+        setUrlGender("men");
+      } else if (shopsWomen && !shopsMen) {
+        setDescGender("women");
+        setUrlGender("women");
+      }
+      // If both or neither, don't default (leave as null)
+    }
+  }, [isOpen, user]);
 
   const resetForm = useCallback(() => {
     setUrl("");

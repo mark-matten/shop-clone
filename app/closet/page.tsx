@@ -172,6 +172,7 @@ interface CombinedItem {
   isOwned: boolean;
   isWishlist: boolean;
   addedAt: number;
+  isUserAdded?: boolean; // true for URL-sourced or generated items (no real product)
 }
 
 interface EditingItem {
@@ -182,8 +183,13 @@ interface EditingItem {
   colorGroupId?: string;
   currentColor?: string;
   currentCategory: string;
+  currentSize?: string;
+  currentGender?: "men" | "women" | "unisex";
+  currentMaterial?: string;
   isOwned: boolean;
   isWishlist: boolean;
+  isUserAdded?: boolean; // true for URL-sourced or generated items
+  closetItemId?: string; // ID for user-added items
 }
 
 type TypeFilter = "all" | "owned" | "wishlist";
@@ -220,6 +226,75 @@ function SortableListItem({
   const selectedSize = item.selectedOptions?.["Size"];
   const colorHex = selectedColor ? getColorFromName(selectedColor) : null;
 
+  // Content for thumbnail
+  const thumbnailContent = (
+    <div className="h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
+      {product.imageUrl ? (
+        <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
+      ) : (
+        <div className="flex h-full w-full items-center justify-center text-zinc-400">
+          <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+          </svg>
+        </div>
+      )}
+    </div>
+  );
+
+  // Content for info section
+  const infoContent = (
+    <div className="min-w-0">
+      <p className="text-[10px] sm:text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400 truncate">
+        {product.brand}
+      </p>
+      <h3 className="truncate text-xs sm:text-sm font-medium text-zinc-900 dark:text-white">
+        {product.name}
+      </h3>
+      <div className="mt-1 flex flex-wrap items-center gap-1">
+        {selectedColor && colorHex && (
+          <span
+            className="inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] sm:text-xs font-medium leading-none"
+            style={{
+              backgroundColor: `${colorHex}20`,
+              color: getColorBadgeTextColor(colorHex),
+              borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+            }}
+          >
+            <span
+              className="h-2 w-2 rounded-full border flex-shrink-0"
+              style={{
+                backgroundColor: colorHex,
+                borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+              }}
+            />
+            <span className="truncate max-w-[50px] sm:max-w-none">{selectedColor}</span>
+          </span>
+        )}
+        {selectedSize && (
+          <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 leading-none">
+            {selectedSize}
+          </span>
+        )}
+        {/* Status Badge inline */}
+        {item.isOwned ? (
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+            <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+            </svg>
+            Owned
+          </span>
+        ) : (
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+            <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+              <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+            </svg>
+            Wishlist
+          </span>
+        )}
+      </div>
+    </div>
+  );
+
   return (
     <div
       ref={setNodeRef}
@@ -237,74 +312,23 @@ function SortableListItem({
         </svg>
       </div>
 
-      {/* Thumbnail */}
-      <Link href={`/product/${product._id}?from=closet`} className="flex-shrink-0">
-        <div className="h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-          {product.imageUrl ? (
-            <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-zinc-400">
-              <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-          )}
-        </div>
-      </Link>
+      {/* Thumbnail - Link only for product-linked items */}
+      {item.isUserAdded ? (
+        <div className="flex-shrink-0">{thumbnailContent}</div>
+      ) : (
+        <Link href={`/product/${product._id}?from=closet`} className="flex-shrink-0">
+          {thumbnailContent}
+        </Link>
+      )}
 
-      {/* Info */}
-      <Link href={`/product/${product._id}?from=closet`} className="min-w-0 flex-1">
-        <div className="min-w-0">
-          <p className="text-[10px] sm:text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400 truncate">
-            {product.brand}
-          </p>
-          <h3 className="truncate text-xs sm:text-sm font-medium text-zinc-900 dark:text-white">
-            {product.name}
-          </h3>
-          <div className="mt-1 flex flex-wrap items-center gap-1">
-            {selectedColor && colorHex && (
-              <span
-                className="inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] sm:text-xs font-medium leading-none"
-                style={{
-                  backgroundColor: `${colorHex}20`,
-                  color: getColorBadgeTextColor(colorHex),
-                  borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
-                }}
-              >
-                <span
-                  className="h-2 w-2 rounded-full border flex-shrink-0"
-                  style={{
-                    backgroundColor: colorHex,
-                    borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
-                  }}
-                />
-                <span className="truncate max-w-[50px] sm:max-w-none">{selectedColor}</span>
-              </span>
-            )}
-            {selectedSize && (
-              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 leading-none">
-                {selectedSize}
-              </span>
-            )}
-            {/* Status Badge inline */}
-            {item.isOwned ? (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
-                <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                Owned
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
-                <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-                Wishlist
-              </span>
-            )}
-          </div>
-        </div>
-      </Link>
+      {/* Info - Link only for product-linked items */}
+      {item.isUserAdded ? (
+        <div className="min-w-0 flex-1">{infoContent}</div>
+      ) : (
+        <Link href={`/product/${product._id}?from=closet`} className="min-w-0 flex-1">
+          {infoContent}
+        </Link>
+      )}
 
       {/* Action Button - Edit only */}
       <div className="flex flex-shrink-0 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
@@ -353,6 +377,78 @@ function SortableItem({
   const selectedSize = item.selectedOptions?.["Size"];
   const colorHex = selectedColor ? getColorFromName(selectedColor) : null;
 
+  // Content for the card
+  const cardContent = (
+    <>
+      <div className="aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
+        {product.imageUrl ? (
+          <img
+            src={product.imageUrl}
+            alt={product.name}
+            className="h-full w-full object-cover transition-transform group-hover:scale-105"
+          />
+        ) : (
+          <div className="flex h-full w-full items-center justify-center text-zinc-400">
+            <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+          </div>
+        )}
+      </div>
+      <div className="p-2 sm:p-3">
+        <span className="text-[10px] sm:text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400 truncate block">
+          {product.brand}
+        </span>
+        <h3 className="mt-0.5 line-clamp-1 sm:line-clamp-2 text-xs sm:text-sm font-medium text-zinc-900 dark:text-white">
+          {product.name}
+        </h3>
+        {/* Badges row - aligned horizontally */}
+        <div className="mt-1.5 flex items-center gap-1 flex-wrap">
+          {selectedColor && colorHex && (
+            <span
+              className="inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] sm:text-xs font-medium leading-none"
+              style={{
+                backgroundColor: `${colorHex}20`,
+                color: getColorBadgeTextColor(colorHex),
+                borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+              }}
+            >
+              <span
+                className="h-2 w-2 rounded-full border flex-shrink-0"
+                style={{
+                  backgroundColor: colorHex,
+                  borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
+                }}
+              />
+              <span className="truncate max-w-[45px] sm:max-w-none">{selectedColor}</span>
+            </span>
+          )}
+          {selectedSize && (
+            <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 leading-none">
+              {selectedSize}
+            </span>
+          )}
+          {/* Status Badge inline on mobile */}
+          {item.isOwned ? (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+              <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+              </svg>
+              Owned
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+              <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+              </svg>
+              Wishlist
+            </span>
+          )}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <div
       ref={setNodeRef}
@@ -370,74 +466,14 @@ function SortableItem({
         </svg>
       </div>
 
-      <Link href={`/product/${product._id}?from=closet`}>
-        <div className="aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-          {product.imageUrl ? (
-            <img
-              src={product.imageUrl}
-              alt={product.name}
-              className="h-full w-full object-cover transition-transform group-hover:scale-105"
-            />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-zinc-400">
-              <svg className="h-12 w-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-              </svg>
-            </div>
-          )}
-        </div>
-        <div className="p-2 sm:p-3">
-          <span className="text-[10px] sm:text-xs font-medium uppercase text-zinc-500 dark:text-zinc-400 truncate block">
-            {product.brand}
-          </span>
-          <h3 className="mt-0.5 line-clamp-1 sm:line-clamp-2 text-xs sm:text-sm font-medium text-zinc-900 dark:text-white">
-            {product.name}
-          </h3>
-          {/* Badges row - aligned horizontally */}
-          <div className="mt-1.5 flex items-center gap-1 flex-wrap">
-            {selectedColor && colorHex && (
-              <span
-                className="inline-flex items-center gap-0.5 rounded border px-1.5 py-0.5 text-[10px] sm:text-xs font-medium leading-none"
-                style={{
-                  backgroundColor: `${colorHex}20`,
-                  color: getColorBadgeTextColor(colorHex),
-                  borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
-                }}
-              >
-                <span
-                  className="h-2 w-2 rounded-full border flex-shrink-0"
-                  style={{
-                    backgroundColor: colorHex,
-                    borderColor: isLightColor(colorHex) ? '#d1d5db' : 'transparent'
-                  }}
-                />
-                <span className="truncate max-w-[45px] sm:max-w-none">{selectedColor}</span>
-              </span>
-            )}
-            {selectedSize && (
-              <span className="rounded bg-blue-100 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-blue-700 dark:bg-blue-900/30 dark:text-blue-300 leading-none">
-                {selectedSize}
-              </span>
-            )}
-            {/* Status Badge inline on mobile */}
-            {item.isOwned ? (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
-                <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                </svg>
-                Owned
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-0.5 rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
-                <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                </svg>
-                Wishlist
-              </span>
-            )}
-          </div>
-        </div>
-      </Link>
+      {/* Card content - Link only for product-linked items */}
+      {item.isUserAdded ? (
+        <div>{cardContent}</div>
+      ) : (
+        <Link href={`/product/${product._id}?from=closet`}>
+          {cardContent}
+        </Link>
+      )}
 
       {/* Action Button - Edit only, visible on mobile, hover on desktop */}
       <div className="absolute right-1 top-1 sm:right-2 sm:top-2 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
@@ -585,6 +621,9 @@ export default function ClosetPage() {
   const [editingItem, setEditingItem] = useState<EditingItem | null>(null);
   const [editOptions, setEditOptions] = useState<Record<string, string>>({});
   const [editCategory, setEditCategory] = useState<string>("");
+  const [editSize, setEditSize] = useState<string>("");
+  const [editGender, setEditGender] = useState<"men" | "women" | "unisex" | null>(null);
+  const [editMaterial, setEditMaterial] = useState<string>("");
   const [editIsOwned, setEditIsOwned] = useState<boolean>(false);
   const [editIsWishlist, setEditIsWishlist] = useState<boolean>(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -691,6 +730,7 @@ export default function ClosetPage() {
   const addToCloset = useMutation(api.closet.addToCloset);
   const addFavorite = useMutation(api.favorites.addFavorite);
   const updateClosetItemOptions = useMutation(api.closet.updateClosetItemOptions);
+  const updateClosetItem = useMutation(api.closet.updateClosetItem);
   const updateFavoriteOptions = useMutation(api.favorites.updateFavoriteOptions);
   const updateClosetItemCategory = useMutation(api.closet.updateClosetItemCategory);
   const updateClosetItemsOrder = useMutation(api.closet.updateClosetItemsOrder);
@@ -741,6 +781,7 @@ export default function ClosetPage() {
           isOwned: !isWishlistItem, // Owned if not wishlist
           isWishlist: isWishlistItem,
           addedAt: typedItem.addedAt,
+          isUserAdded: true, // Mark as user-added (not linked to real product)
         });
       }
     }
@@ -874,6 +915,16 @@ export default function ClosetPage() {
     if (!item.product) return;
     const currentColor = item.selectedOptions?.["Color"] || item.selectedOptions?.["Colour"] || item.product.colorName;
     const currentCategory = item.customCategory || item.product.category;
+    // Get size from selectedOptions or from product options
+    const currentSize = item.selectedOptions?.["Size"] || "";
+    // Get gender and material from product (for user-added items they're stored directly)
+    const currentGender = (item.product as any).gender as "men" | "women" | "unisex" | undefined;
+    const currentMaterial = (item.product as any).material as string | undefined;
+    // Check if this is a user-added item (URL-sourced or generated)
+    const isUserAdded = typeof item.productId === "string" &&
+      (item.productId.toString().startsWith("url-") || item.productId.toString().startsWith("gen-") ||
+       !item.productId.toString().includes("products"));
+
     setEditingItem({
       productId: item.product._id,
       productName: item.product.name,
@@ -882,14 +933,22 @@ export default function ClosetPage() {
       colorGroupId: item.product.colorGroupId,
       currentColor,
       currentCategory,
+      currentSize,
+      currentGender,
+      currentMaterial,
       isOwned: item.isOwned,
       isWishlist: item.isWishlist,
+      isUserAdded,
+      closetItemId: isUserAdded ? item.productId.toString() : undefined,
     });
     setEditOptions({
       ...item.selectedOptions,
       ...(currentColor ? { Color: currentColor } : {}),
     });
     setEditCategory(currentCategory);
+    setEditSize(currentSize);
+    setEditGender(currentGender || null);
+    setEditMaterial(currentMaterial || "");
     setEditIsOwned(item.isOwned);
     setEditIsWishlist(item.isWishlist);
   };
@@ -898,6 +957,9 @@ export default function ClosetPage() {
     setEditingItem(null);
     setEditOptions({});
     setEditCategory("");
+    setEditSize("");
+    setEditGender(null);
+    setEditMaterial("");
     setEditIsOwned(false);
     setEditIsWishlist(false);
   };
@@ -927,7 +989,16 @@ export default function ClosetPage() {
     if (!user?.id || !editingItem) return;
 
     const categoryChanged = editCategory !== editingItem.currentCategory;
+    const sizeChanged = editSize !== (editingItem.currentSize || "");
+    const genderChanged = editGender !== editingItem.currentGender;
+    const materialChanged = editMaterial !== (editingItem.currentMaterial || "");
     const ownershipChanged = editIsOwned !== editingItem.isOwned || editIsWishlist !== editingItem.isWishlist;
+
+    // Include size in options
+    const updatedOptions = {
+      ...editOptions,
+      ...(editSize ? { Size: editSize } : {}),
+    };
 
     // Handle ownership changes first
     if (ownershipChanged) {
@@ -936,7 +1007,7 @@ export default function ClosetPage() {
         await addToCloset({
           clerkId: user.id,
           productId: editingItem.productId,
-          selectedOptions: editOptions,
+          selectedOptions: updatedOptions,
         });
       }
       // If no longer owned but was before, remove from closet
@@ -948,7 +1019,7 @@ export default function ClosetPage() {
         await addFavorite({
           clerkId: user.id,
           productId: editingItem.productId,
-          selectedOptions: editOptions,
+          selectedOptions: updatedOptions,
         });
       }
       // If no longer wishlisted but was before, remove from favorites
@@ -962,14 +1033,25 @@ export default function ClosetPage() {
       await updateClosetItemOptions({
         clerkId: user.id,
         productId: editingItem.productId,
-        selectedOptions: editOptions,
+        selectedOptions: updatedOptions,
         customCategory: categoryChanged ? editCategory : undefined,
       });
+
+      // For user-added items, also update size, gender, and material directly
+      if (editingItem.isUserAdded && editingItem.closetItemId && (sizeChanged || genderChanged || materialChanged)) {
+        await updateClosetItem({
+          clerkId: user.id,
+          itemId: editingItem.closetItemId as any,
+          size: sizeChanged ? editSize : undefined,
+          gender: genderChanged && editGender ? editGender : undefined,
+          material: materialChanged ? editMaterial : undefined,
+        });
+      }
     } else if (editIsWishlist) {
       await updateFavoriteOptions({
         clerkId: user.id,
         productId: editingItem.productId,
-        selectedOptions: editOptions,
+        selectedOptions: updatedOptions,
         customCategory: categoryChanged ? editCategory : undefined,
       });
     }
@@ -1434,6 +1516,96 @@ export default function ClosetPage() {
                 </select>
               </div>
 
+              {/* Size Input/Selection */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Size
+                </label>
+                {/* For product-linked items with Size options, show buttons */}
+                {!editingItem.isUserAdded && editingItem.options.find(o => o.name === "Size") ? (
+                  <div className="flex flex-wrap gap-2">
+                    {editingItem.options.find(o => o.name === "Size")!.values.map((value) => {
+                      const isSelected = editOptions["Size"] === value;
+                      return (
+                        <button
+                          key={value}
+                          onClick={() => setEditOptions({ ...editOptions, Size: value })}
+                          className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                            isSelected
+                              ? "border-rose-400 bg-rose-400 text-white"
+                              : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:border-zinc-500"
+                          }`}
+                        >
+                          {value}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  /* For user-added items or products without Size option, show text input */
+                  <input
+                    type="text"
+                    value={editSize}
+                    onChange={(e) => setEditSize(e.target.value)}
+                    placeholder="e.g., M, L, 32x30"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  />
+                )}
+              </div>
+
+              {/* Gender Selection */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Gender
+                </label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setEditGender("men")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                      editGender === "men"
+                        ? "border-rose-400 bg-rose-400 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                  >
+                    M
+                  </button>
+                  <button
+                    onClick={() => setEditGender("women")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                      editGender === "women"
+                        ? "border-rose-400 bg-rose-400 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                  >
+                    F
+                  </button>
+                  <button
+                    onClick={() => setEditGender("unisex")}
+                    className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
+                      editGender === "unisex"
+                        ? "border-rose-400 bg-rose-400 text-white"
+                        : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
+                    }`}
+                  >
+                    M/F
+                  </button>
+                </div>
+              </div>
+
+              {/* Material Input */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                  Material
+                </label>
+                <input
+                  type="text"
+                  value={editMaterial}
+                  onChange={(e) => setEditMaterial(e.target.value)}
+                  placeholder="e.g., Cotton, Wool, Polyester"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                />
+              </div>
+
               {/* Color selection from variants */}
               {colorVariants && colorVariants.length > 1 && (
                 <div>
@@ -1487,8 +1659,8 @@ export default function ClosetPage() {
                 </div>
               )}
 
-              {/* Size and other options */}
-              {editingItem.options.map((option) => (
+              {/* Other options (excluding Size which is handled above) */}
+              {editingItem.options.filter(o => o.name !== "Size").map((option) => (
                 <div key={option.name}>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     {option.name}

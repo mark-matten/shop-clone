@@ -501,6 +501,7 @@ export const updateClosetItem = mutation({
     color: v.optional(v.string()),
     material: v.optional(v.string()),
     category: v.optional(v.string()),
+    gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
     notes: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -525,6 +526,7 @@ export const updateClosetItem = mutation({
     if (args.color !== undefined) updates.color = args.color;
     if (args.material !== undefined) updates.material = args.material;
     if (args.category !== undefined) updates.category = args.category;
+    if (args.gender !== undefined) (updates as any).gender = args.gender;
     if (args.notes !== undefined) updates.notes = args.notes;
 
     await ctx.db.patch(args.itemId, updates);
