@@ -130,6 +130,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [modelHeight, setModelHeight] = useState(67); // inches (5'7")
   const [modelWeight, setModelWeight] = useState(140); // lbs
   const [modelSkinTone, setModelSkinTone] = useState(50); // 0-100 scale (light to dark)
+  const [modelGender, setModelGender] = useState<"male" | "female">("female");
   const [otherDetails, setOtherDetails] = useState("");
 
   const closetItems = useQuery(api.closet.getAllClosetItems, { clerkId });
@@ -154,7 +155,15 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     if (savedModelSkinTone !== undefined) {
       setModelSkinTone(savedModelSkinTone);
     }
-  }, [savedModelHeight, savedModelWeight, savedModelSkinTone]);
+    // Set default gender based on user profile
+    if (user?.preferences) {
+      if (user.preferences.shopsMen && !user.preferences.shopsWomen) {
+        setModelGender("male");
+      } else {
+        setModelGender("female");
+      }
+    }
+  }, [savedModelHeight, savedModelWeight, savedModelSkinTone, user?.preferences]);
 
   // Save model preferences when sliders change (debounced effect)
   const saveModelPrefs = (height: number, weight: number, skinTone: number) => {
@@ -265,7 +274,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
         productIds,
         userPhotoStorageId: modelMode === "user" ? selectedPhotoStorageId ?? undefined : undefined,
         useGenericModel: modelMode === "generic",
-        gender: userGender,
+        gender: modelMode === "generic" ? modelGender : userGender,
         // Model customization (only used for generic model)
         modelHeight: modelMode === "generic" ? modelHeight : undefined,
         modelWeight: modelMode === "generic" ? modelWeight : undefined,
@@ -585,6 +594,34 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
               {/* Generic Model Customization */}
               {modelMode === "generic" && (
                 <div className="mt-4 space-y-3">
+                  {/* Gender Toggle */}
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
+                      <span>Gender</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setModelGender("male")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                          modelGender === "male"
+                            ? "bg-rose-400 text-white"
+                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        M
+                      </button>
+                      <button
+                        onClick={() => setModelGender("female")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                          modelGender === "female"
+                            ? "bg-rose-400 text-white"
+                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        F
+                      </button>
+                    </div>
+                  </div>
                   {/* Height Slider */}
                   <div>
                     <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-1">
