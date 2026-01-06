@@ -4,8 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useSearchParams, useRouter } from "next/navigation";
-import { SignOutButton, useUser } from "@clerk/nextjs";
-import { useTheme } from "next-themes";
+import { useUser } from "@clerk/nextjs";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 
@@ -18,8 +17,6 @@ export function Header() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [showNotifications, setShowNotifications] = useState(false);
-  const [showUserMenu, setShowUserMenu] = useState(false);
-  const { theme, setTheme, resolvedTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   const { user: clerkUser } = useUser();
@@ -279,10 +276,7 @@ export function Header() {
           {/* Notifications */}
           <div className="relative ml-2">
             <button
-              onClick={() => {
-                setShowNotifications(!showNotifications);
-                setShowUserMenu(false);
-              }}
+              onClick={() => setShowNotifications(!showNotifications)}
               className="relative rounded-lg p-2 text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
             >
               <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -378,88 +372,25 @@ export function Header() {
             )}
           </div>
 
-          {/* User Menu */}
-          <div className="relative">
-            <button
-              onClick={() => {
-                setShowUserMenu(!showUserMenu);
-                setShowNotifications(false);
-              }}
-              className="ml-1 flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
-            >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-zinc-200 dark:bg-zinc-700">
-                <svg className="h-4 w-4 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                </svg>
-              </div>
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-              </svg>
-            </button>
-
-            {/* User Dropdown */}
-            {showUserMenu && (
-              <div className="absolute right-0 top-full z-50 mt-2 w-48 overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900">
-                <Link
-                  href="/profile"
-                  className="flex items-center gap-2 px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  onClick={() => setShowUserMenu(false)}
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Profile & Settings
-                </Link>
-                {/* Dark Mode Toggle */}
-                {mounted && (
-                  <button
-                    onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
-                    className="flex w-full items-center justify-between px-4 py-3 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                  >
-                    <div className="flex items-center gap-2">
-                      {resolvedTheme === "dark" ? (
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
-                        </svg>
-                      ) : (
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
-                        </svg>
-                      )}
-                      Dark Mode
-                    </div>
-                    <div className={`h-5 w-9 rounded-full transition-colors ${resolvedTheme === "dark" ? "bg-zinc-600" : "bg-zinc-300"} relative`}>
-                      <div className={`absolute top-0.5 h-4 w-4 rounded-full bg-white transition-transform ${resolvedTheme === "dark" ? "translate-x-4" : "translate-x-0.5"}`} />
-                    </div>
-                  </button>
-                )}
-                <div className="border-t border-zinc-200 dark:border-zinc-700">
-                  <SignOutButton redirectUrl="/">
-                    <button
-                      className="flex w-full items-center gap-2 px-4 py-3 text-sm text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
-                      onClick={() => setShowUserMenu(false)}
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      Sign out
-                    </button>
-                  </SignOutButton>
-                </div>
-              </div>
-            )}
-          </div>
+          {/* My Profile Link */}
+          <Link
+            href="/profile"
+            className={`rounded-lg px-3 py-2 text-sm transition-colors ${
+              pathname === "/profile"
+                ? "bg-zinc-200 font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-white"
+                : "font-medium text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+            }`}
+          >
+            My Profile
+          </Link>
         </nav>
       </div>
 
-      {/* Click outside to close dropdowns */}
-      {(showNotifications || showUserMenu) && (
+      {/* Click outside to close notifications */}
+      {showNotifications && (
         <div
           className="fixed inset-0 z-40"
-          onClick={() => {
-            setShowNotifications(false);
-            setShowUserMenu(false);
-          }}
+          onClick={() => setShowNotifications(false)}
         />
       )}
 
