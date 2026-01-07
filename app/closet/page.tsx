@@ -535,7 +535,7 @@ function CategorySection({
         {category} ({items.length})
       </h3>
       {items.length > 0 ? (
-        <SortableContext items={items.filter(i => i.isOwned).map(i => i.productId)} strategy={rectSortingStrategy}>
+        <SortableContext items={items.map(i => i.productId)} strategy={rectSortingStrategy}>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1.5 px-1.5 sm:-mx-2 sm:px-2 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
             {items.map((item) => (
               <div key={item.productId} className="flex-shrink-0 w-36 sm:w-44">
@@ -588,7 +588,7 @@ function ListCategorySection({
       <h3 className="mb-1.5 text-sm sm:text-lg font-semibold capitalize text-zinc-900 dark:text-white">
         {category} ({items.length})
       </h3>
-      <SortableContext items={items.filter(i => i.isOwned).map(i => i.productId)} strategy={rectSortingStrategy}>
+      <SortableContext items={items.map(i => i.productId)} strategy={rectSortingStrategy}>
         <div className="space-y-1.5">
           {items.map((item) => (
             <SortableListItem
@@ -747,6 +747,7 @@ export default function ClosetPage() {
   const updateFavoriteOptions = useMutation(api.favorites.updateFavoriteOptions);
   const updateClosetItemCategory = useMutation(api.closet.updateClosetItemCategory);
   const updateClosetItemsOrder = useMutation(api.closet.updateClosetItemsOrder);
+  const updateFavoritesOrder = useMutation(api.favorites.updateFavoritesOrder);
 
   // Combine closet items and favorites into a unified list
   const combinedItems = useMemo((): CombinedItem[] => {
@@ -826,11 +827,14 @@ export default function ClosetPage() {
           existing.customCategory = (fav as any).customCategory;
         }
       } else {
+        // Wishlist-only item (not in closet)
+        const typedFav = fav as any;
         itemMap.set(fav.product._id, {
           productId: fav.product._id,
           product: fav.product as CombinedItem["product"],
           selectedOptions: fav.selectedOptions,
-          customCategory: (fav as any).customCategory,
+          customCategory: typedFav.customCategory,
+          sortOrder: typedFav.sortOrder, // Include sortOrder from favorites
           isOwned: false,
           isWishlist: true,
           addedAt: fav.createdAt,
@@ -1110,7 +1114,7 @@ export default function ClosetPage() {
     if (!over || !user?.id) return;
 
     const activeItem = combinedItems.find(i => i.productId === active.id);
-    if (!activeItem || !activeItem.isOwned) return; // Only owned items can be reordered
+    if (!activeItem) return;
 
     // Ignore drops on category headers - only allow reordering within same category
     if (typeof over.id === "string" && over.id.startsWith("category-")) {
@@ -1119,7 +1123,12 @@ export default function ClosetPage() {
 
     // Check if reordering within same category
     const overItem = combinedItems.find(i => i.productId === over.id);
-    if (!overItem || !overItem.isOwned) return; // Both items must be owned
+    if (!overItem) return;
+
+    // Items must be the same type (both owned OR both wishlist-only)
+    const activeIsOwned = activeItem.isOwned;
+    const overIsOwned = overItem.isOwned;
+    if (activeIsOwned !== overIsOwned) return; // Can't mix owned and wishlist-only items
 
     const activeCategoryRaw = activeItem.customCategory || activeItem.product?.category || "other";
     const overCategoryRaw = overItem.customCategory || overItem.product?.category || "other";
@@ -1128,8 +1137,8 @@ export default function ClosetPage() {
 
     // Only allow reordering within the same category
     if (activeCategoryNormalized === overCategoryNormalized) {
-      // Only include owned items in the reorder (wishlist-only items can't be reordered)
-      const categoryItems = (itemsByCategory[activeCategoryNormalized] || []).filter(i => i.isOwned);
+      // Filter items by ownership type (owned vs wishlist-only)
+      const categoryItems = (itemsByCategory[activeCategoryNormalized] || []).filter(i => i.isOwned === activeIsOwned);
       const oldIndex = categoryItems.findIndex(i => i.productId === active.id);
       const newIndex = categoryItems.findIndex(i => i.productId === over.id);
 
@@ -1139,11 +1148,17 @@ export default function ClosetPage() {
           productId: String(item.productId),
           sortOrder: index,
         }));
-        await updateClosetItemsOrder({ clerkId: user.id, items: updates });
+
+        // Use appropriate mutation based on item type
+        if (activeIsOwned) {
+          await updateClosetItemsOrder({ clerkId: user.id, items: updates });
+        } else {
+          await updateFavoritesOrder({ clerkId: user.id, items: updates });
+        }
       }
     }
     // Cross-category drops are ignored - items stay in their original category
-  }, [combinedItems, itemsByCategory, user?.id, updateClosetItemsOrder]);
+  }, [combinedItems, itemsByCategory, user?.id, updateClosetItemsOrder, updateFavoritesOrder]);
 
   const activeItem = activeId ? combinedItems.find(i => i.productId === activeId) : null;
 
@@ -1374,7 +1389,7 @@ export default function ClosetPage() {
             <div className="mt-2 space-y-1">
               {selectedCategory ? (
                 // Single category list
-                <SortableContext items={filteredItems.filter(i => i.isOwned).map(i => i.productId)} strategy={rectSortingStrategy}>
+                <SortableContext items={filteredItems.map(i => i.productId)} strategy={rectSortingStrategy}>
                   <div className="space-y-1">
                     {filteredItems.map((item) => (
                       <SortableListItem
@@ -1419,7 +1434,7 @@ export default function ClosetPage() {
             <div className="mt-2 space-y-1">
               {selectedCategory ? (
                 // Single category view
-                <SortableContext items={filteredItems.filter(i => i.isOwned).map(i => i.productId)} strategy={rectSortingStrategy}>
+                <SortableContext items={filteredItems.map(i => i.productId)} strategy={rectSortingStrategy}>
                   <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
                     {filteredItems.map((item) => (
                       <SortableItem

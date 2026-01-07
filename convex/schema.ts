@@ -63,6 +63,8 @@ export default defineSchema({
     selectedOptions: v.optional(v.record(v.string(), v.string())),
     // Custom category override (user can change from product's default category)
     customCategory: v.optional(v.string()),
+    // Sort order within category for drag-and-drop reordering
+    sortOrder: v.optional(v.number()),
   })
     .index("by_userId", ["userId"])
     .index("by_productId", ["productId"])

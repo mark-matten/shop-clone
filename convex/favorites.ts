@@ -318,3 +318,37 @@ export const toggleFavorite = mutation({
     }
   },
 });
+
+// Update sort order for multiple favorites (for drag-and-drop reordering)
+export const updateFavoritesOrder = mutation({
+  args: {
+    clerkId: v.string(),
+    items: v.array(v.object({
+      productId: v.string(),
+      sortOrder: v.number(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    for (const update of args.items) {
+      const favorite = await ctx.db
+        .query("favorites")
+        .withIndex("by_userId_productId", (q) =>
+          q.eq("userId", user._id).eq("productId", update.productId as any)
+        )
+        .first();
+
+      if (favorite) {
+        await ctx.db.patch(favorite._id, { sortOrder: update.sortOrder });
+      }
+    }
+  },
+});
