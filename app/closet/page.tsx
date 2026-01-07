@@ -535,7 +535,7 @@ function CategorySection({
         {category} ({items.length})
       </h3>
       {items.length > 0 ? (
-        <SortableContext items={items.map(i => i.productId)} strategy={rectSortingStrategy}>
+        <SortableContext items={items.filter(i => i.isOwned).map(i => i.productId)} strategy={rectSortingStrategy}>
           <div className="flex gap-3 overflow-x-auto pb-2 -mx-1.5 px-1.5 sm:-mx-2 sm:px-2 scrollbar-thin scrollbar-thumb-zinc-300 dark:scrollbar-thumb-zinc-700">
             {items.map((item) => (
               <div key={item.productId} className="flex-shrink-0 w-36 sm:w-44">
@@ -588,7 +588,7 @@ function ListCategorySection({
       <h3 className="mb-1.5 text-sm sm:text-lg font-semibold capitalize text-zinc-900 dark:text-white">
         {category} ({items.length})
       </h3>
-      <SortableContext items={items.map(i => i.productId)} strategy={rectSortingStrategy}>
+      <SortableContext items={items.filter(i => i.isOwned).map(i => i.productId)} strategy={rectSortingStrategy}>
         <div className="space-y-1.5">
           {items.map((item) => (
             <SortableListItem
@@ -1119,7 +1119,7 @@ export default function ClosetPage() {
 
     // Check if reordering within same category
     const overItem = combinedItems.find(i => i.productId === over.id);
-    if (!overItem) return;
+    if (!overItem || !overItem.isOwned) return; // Both items must be owned
 
     const activeCategoryRaw = activeItem.customCategory || activeItem.product?.category || "other";
     const overCategoryRaw = overItem.customCategory || overItem.product?.category || "other";
@@ -1128,14 +1128,15 @@ export default function ClosetPage() {
 
     // Only allow reordering within the same category
     if (activeCategoryNormalized === overCategoryNormalized) {
-      const categoryItems = itemsByCategory[activeCategoryNormalized] || [];
+      // Only include owned items in the reorder (wishlist-only items can't be reordered)
+      const categoryItems = (itemsByCategory[activeCategoryNormalized] || []).filter(i => i.isOwned);
       const oldIndex = categoryItems.findIndex(i => i.productId === active.id);
       const newIndex = categoryItems.findIndex(i => i.productId === over.id);
 
       if (oldIndex !== -1 && newIndex !== -1 && oldIndex !== newIndex) {
         const reordered = arrayMove(categoryItems, oldIndex, newIndex);
         const updates = reordered.map((item, index) => ({
-          productId: item.productId,
+          productId: String(item.productId),
           sortOrder: index,
         }));
         await updateClosetItemsOrder({ clerkId: user.id, items: updates });
@@ -1373,7 +1374,7 @@ export default function ClosetPage() {
             <div className="mt-2 space-y-1">
               {selectedCategory ? (
                 // Single category list
-                <SortableContext items={filteredItems.map(i => i.productId)} strategy={rectSortingStrategy}>
+                <SortableContext items={filteredItems.filter(i => i.isOwned).map(i => i.productId)} strategy={rectSortingStrategy}>
                   <div className="space-y-1">
                     {filteredItems.map((item) => (
                       <SortableListItem
@@ -1418,7 +1419,7 @@ export default function ClosetPage() {
             <div className="mt-2 space-y-1">
               {selectedCategory ? (
                 // Single category view
-                <SortableContext items={filteredItems.map(i => i.productId)} strategy={rectSortingStrategy}>
+                <SortableContext items={filteredItems.filter(i => i.isOwned).map(i => i.productId)} strategy={rectSortingStrategy}>
                   <div className="grid grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-4">
                     {filteredItems.map((item) => (
                       <SortableItem
