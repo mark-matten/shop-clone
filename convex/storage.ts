@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Id } from "./_generated/dataModel";
 
 // Generate an upload URL for user photos
 export const generateUploadUrl = mutation({
@@ -164,18 +165,22 @@ export const saveOutfitImage = mutation({
   args: {
     clerkId: v.string(),
     storageId: v.id("_storage"),
-    closetItemIds: v.array(v.id("closet_items")),
+    itemIds: v.array(v.string()),
     userPhotoId: v.optional(v.id("user_photos")),
     prompt: v.string(),
+    name: v.optional(v.string()),
+    collectionId: v.optional(v.id("collections")),
   },
   handler: async (ctx, args) => {
     return await ctx.db.insert("outfit_images", {
       clerkId: args.clerkId,
       storageId: args.storageId,
-      closetItemIds: args.closetItemIds,
+      itemIds: args.itemIds,
       userPhotoId: args.userPhotoId,
       generatedAt: Date.now(),
       prompt: args.prompt,
+      name: args.name,
+      collectionId: args.collectionId,
     });
   },
 });
@@ -200,9 +205,74 @@ export const getOutfitHistory = query({
       outfits.map(async (outfit) => {
         const url = await ctx.storage.getUrl(outfit.storageId);
 
-        // Get closet item details
+        // Get item details - support both new itemIds and legacy closetItemIds
+        // New itemIds are strings (can be closet_items or favorites IDs)
+        // Legacy closetItemIds are typed closet_items IDs
+        const itemIdsToLookup: string[] = outfit.itemIds ||
+          (outfit.closetItemIds ? outfit.closetItemIds.map(id => id.toString()) : []);
         const items = await Promise.all(
-          outfit.closetItemIds.map((id) => ctx.db.get(id))
+          itemIdsToLookup.map(async (id) => {
+            // Try closet_items table first
+            const closetItemDoc = await ctx.db
+              .query("closet_items")
+              .filter((q) => q.eq(q.field("_id"), id as any))
+              .first();
+
+            if (closetItemDoc) {
+              // For product-linked closet items
+              if (closetItemDoc.productId) {
+                const product = await ctx.db.get(closetItemDoc.productId);
+                return {
+                  _id: closetItemDoc._id,
+                  name: product?.name || closetItemDoc.name || "Unknown",
+                  brand: product?.brand || closetItemDoc.brand || "",
+                  imageUrl: product?.imageUrl || closetItemDoc.imageUrl,
+                  category: closetItemDoc.customCategory || product?.category || closetItemDoc.category || "other",
+                  colorName: closetItemDoc.colorName || closetItemDoc.selectedOptions?.["Color"] || product?.colorName,
+                  size: closetItemDoc.selectedSize || closetItemDoc.selectedOptions?.["Size"] || closetItemDoc.size,
+                };
+              }
+
+              // For user-added items (URL-sourced or generated)
+              let imageUrl = closetItemDoc.imageUrl;
+              if (closetItemDoc.generatedImageStorageId) {
+                imageUrl = await ctx.storage.getUrl(closetItemDoc.generatedImageStorageId) || undefined;
+              }
+
+              return {
+                _id: closetItemDoc._id,
+                name: closetItemDoc.name || "Unknown",
+                brand: closetItemDoc.brand || "",
+                imageUrl,
+                category: closetItemDoc.customCategory || closetItemDoc.category || "other",
+                colorName: closetItemDoc.color,
+                size: closetItemDoc.size,
+              };
+            }
+
+            // Try favorites table (for wishlist items)
+            const favorite = await ctx.db
+              .query("favorites")
+              .filter((q) => q.eq(q.field("_id"), id as any))
+              .first();
+
+            if (favorite && favorite.productId) {
+              const product = await ctx.db.get(favorite.productId);
+              if (product) {
+                return {
+                  _id: favorite._id,
+                  name: product.name || "Unknown",
+                  brand: product.brand || "",
+                  imageUrl: product.imageUrl,
+                  category: product.category || "other",
+                  colorName: favorite.selectedOptions?.["Color"] || product.colorName,
+                  size: favorite.selectedOptions?.["Size"],
+                };
+              }
+            }
+
+            return null;
+          })
         );
 
         // Get user photo if used
@@ -225,6 +295,29 @@ export const getOutfitHistory = query({
         };
       })
     );
+  },
+});
+
+// Update an outfit image (name, collection)
+export const updateOutfitImage = mutation({
+  args: {
+    clerkId: v.string(),
+    outfitId: v.id("outfit_images"),
+    name: v.optional(v.string()),
+    collectionId: v.optional(v.id("collections")),
+  },
+  handler: async (ctx, args) => {
+    const outfit = await ctx.db.get(args.outfitId);
+    if (!outfit || outfit.clerkId !== args.clerkId) {
+      throw new Error("Outfit not found or access denied");
+    }
+
+    const updates: { name?: string; collectionId?: Id<"collections"> } = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.collectionId !== undefined) updates.collectionId = args.collectionId;
+
+    await ctx.db.patch(args.outfitId, updates);
+    return { success: true };
   },
 });
 

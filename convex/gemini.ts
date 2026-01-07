@@ -504,7 +504,7 @@ export const generateTryOnImage = action({
     const outfitId: Id<"outfit_images"> = await ctx.runMutation(internal.gemini.saveOutfitRecord, {
       clerkId: args.clerkId,
       storageId,
-      closetItemIds: [], // No longer tracking closet item IDs since we use productIds now
+      itemIds: [], // No longer tracking item IDs since we use productIds now
       userPhotoId,
       prompt: textPrompt,
     });
@@ -606,7 +606,7 @@ export const saveOutfitRecord = internalMutation({
   args: {
     clerkId: v.string(),
     storageId: v.id("_storage"),
-    closetItemIds: v.array(v.id("closet_items")),
+    itemIds: v.array(v.string()),
     userPhotoId: v.optional(v.id("user_photos")),
     prompt: v.string(),
   },
@@ -614,7 +614,7 @@ export const saveOutfitRecord = internalMutation({
     return await ctx.db.insert("outfit_images", {
       clerkId: args.clerkId,
       storageId: args.storageId,
-      closetItemIds: args.closetItemIds,
+      itemIds: args.itemIds,
       userPhotoId: args.userPhotoId,
       generatedAt: Date.now(),
       prompt: args.prompt,

@@ -31,6 +31,57 @@ export const getCollections = query({
   },
 });
 
+// Get all collections for a user by clerkId
+export const getCollectionsByClerkId = query({
+  args: {
+    clerkId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) return [];
+
+    const collections = await ctx.db
+      .query("collections")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .order("desc")
+      .collect();
+
+    return collections;
+  },
+});
+
+// Create a new collection by clerkId
+export const createCollectionByClerkId = mutation({
+  args: {
+    clerkId: v.string(),
+    name: v.string(),
+    description: v.optional(v.string()),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    const now = Date.now();
+    return await ctx.db.insert("collections", {
+      userId: user._id,
+      name: args.name,
+      description: args.description,
+      color: args.color || "#6366f1",
+      createdAt: now,
+      updatedAt: now,
+    });
+  },
+});
+
 // Get a single collection with its items
 export const getCollection = query({
   args: {

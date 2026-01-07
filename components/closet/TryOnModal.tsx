@@ -20,6 +20,12 @@ interface ClosetItem {
 interface OutfitHistoryItem {
   _id: Id<"outfit_images">;
   url: string | null;
+  name?: string;
+  items?: Array<{
+    _id: string;
+    name?: string;
+    category?: string;
+  }>;
 }
 
 interface TryOnModalProps {
@@ -125,6 +131,11 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [savedOutfitId, setSavedOutfitId] = useState<Id<"outfit_images"> | null>(null);
   const [showOutfitHistory, setShowOutfitHistory] = useState(false);
+  const [showSaveModal, setShowSaveModal] = useState(false);
+  const [outfitName, setOutfitName] = useState("");
+  const [selectedCollectionId, setSelectedCollectionId] = useState<Id<"collections"> | null>(null);
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState("");
 
   // New state for search and filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -140,11 +151,13 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const closetItems = useQuery(api.closet.getAllClosetItems, { clerkId });
   const outfitHistory = useQuery(api.storage.getOutfitHistory, { clerkId, limit: 10 });
   const user = useQuery(api.users.getUserByClerkId, { clerkId });
+  const collections = useQuery(api.collections.getCollectionsByClerkId, { clerkId });
   const generateTryOn = useAction(api.gemini.generateTryOnImage);
   const updateModelPrefs = useMutation(api.users.updateModelPreferences);
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const saveOutfitImage = useMutation(api.storage.saveOutfitImage);
   const deleteOutfitImage = useMutation(api.storage.deleteOutfitImage);
+  const createCollection = useMutation(api.collections.createCollectionByClerkId);
 
   // Load saved model preferences
   const savedModelHeight = user?.preferences?.modelHeight;
@@ -310,6 +323,11 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     setOtherDetails("");
     setSavedOutfitId(null);
     setShowOutfitHistory(false);
+    setShowSaveModal(false);
+    setOutfitName("");
+    setSelectedCollectionId(null);
+    setIsCreatingCollection(false);
+    setNewCollectionName("");
     onClose();
   };
 
@@ -319,12 +337,31 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     return await response.blob();
   };
 
-  // Save outfit to storage
-  const handleSaveOutfit = async () => {
+  // Show save modal
+  const handleSaveOutfit = () => {
+    if (!generatedOutfit) return;
+    setOutfitName("");
+    setSelectedCollectionId(null);
+    setIsCreatingCollection(false);
+    setNewCollectionName("");
+    setShowSaveModal(true);
+  };
+
+  // Actually save the outfit with name
+  const handleConfirmSave = async () => {
     if (!generatedOutfit || isSaving) return;
 
     setIsSaving(true);
     try {
+      // Create new collection if requested
+      let collectionId = selectedCollectionId;
+      if (isCreatingCollection && newCollectionName.trim()) {
+        collectionId = await createCollection({
+          clerkId,
+          name: newCollectionName.trim(),
+        });
+      }
+
       // Convert base64 to blob
       const blob = await dataUrlToBlob(generatedOutfit);
 
@@ -344,21 +381,22 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
       const { storageId } = await uploadResult.json();
 
-      // Get closet item IDs (not product IDs)
-      const closetItemIds = Array.from(selectedByCategory.values())
-        .map((itemId) => itemId as Id<"closet_items">);
+      // Get item IDs (can be closet_items or favorites IDs)
+      const itemIds = Array.from(selectedByCategory.values());
 
-      // Save outfit metadata
+      // Save outfit metadata with name and collection
       const outfitId = await saveOutfitImage({
         clerkId,
         storageId,
-        closetItemIds,
+        itemIds,
         userPhotoId: modelMode === "user" ? selectedPhotoId ?? undefined : undefined,
         prompt: `Virtual try-on: ${selectedItems.map(i => i.displayName).join(", ")}`,
+        name: outfitName.trim() || undefined,
+        collectionId: collectionId ?? undefined,
       });
 
       setSavedOutfitId(outfitId);
-      alert("Outfit saved!");
+      setShowSaveModal(false);
     } catch (error) {
       console.error("Save error:", error);
       alert("Failed to save outfit. Please try again.");
@@ -963,43 +1001,6 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 </div>
               )}
 
-              {/* Saved Outfits History */}
-              {outfitHistory && outfitHistory.length > 0 && (
-                <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-700">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      Saved Outfits ({outfitHistory.length})
-                    </h3>
-                  </div>
-                  <div className="grid grid-cols-4 gap-2">
-                    {outfitHistory.slice(0, 8).map((outfit) => (
-                      <button
-                        key={outfit._id}
-                        onClick={() => handleLoadOutfit(outfit)}
-                        className="group relative aspect-[3/4] overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:ring-2 hover:ring-rose-400 transition-all"
-                      >
-                        {outfit.url ? (
-                          <img src={outfit.url} alt="Saved outfit" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center">
-                            <svg className="h-6 w-6 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                        )}
-                        <button
-                          onClick={(e) => { e.stopPropagation(); handleDeleteOutfit(outfit._id); }}
-                          className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
-                        >
-                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                          </svg>
-                        </button>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
 
             {/* Model Selection */}
@@ -1293,32 +1294,63 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           {selectedByCategory.size > 0 && (
             <div className="flex-shrink-0 border-t border-zinc-200 px-6 py-3 dark:border-zinc-800">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-zinc-600 dark:text-zinc-400">{selectedByCategory.size} categor{selectedByCategory.size !== 1 ? "ies" : "y"} selected</span>
+                <span className="text-sm text-zinc-600 dark:text-zinc-400">{selectedByCategory.size} item{selectedByCategory.size !== 1 ? "s" : ""} selected</span>
                 <button onClick={() => setSelectedByCategory(new Map())} className="text-sm text-red-500 hover:underline">Clear all</button>
               </div>
             </div>
           )}
           {outfitHistory && outfitHistory.length > 0 && (
-            <div className="flex-shrink-0 border-t border-zinc-200 px-6 py-4 dark:border-zinc-800">
-              <h3 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">Recent Outfits</h3>
-              <div className="flex gap-3 overflow-x-auto py-1">
-                {(outfitHistory as OutfitHistoryItem[]).map((outfit) => {
-                  const isSelected = selectedOutfitId === outfit._id;
-                  return (
-                    <button key={outfit._id} onClick={() => { if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } }} className="flex-shrink-0">
-                      {outfit.url ? (
-                        <img src={outfit.url} alt="Previous outfit" className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-rose-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-rose-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
-                      ) : (
-                        <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                          <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
+            <div className="flex-shrink-0 border-t border-zinc-200 px-6 py-3 dark:border-zinc-800">
+              <button
+                onClick={() => setShowOutfitHistory(!showOutfitHistory)}
+                className="flex w-full items-center justify-between text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
+              >
+                <span>Recent Outfits ({outfitHistory.length})</span>
+                <svg
+                  className={`h-4 w-4 transition-transform ${showOutfitHistory ? "rotate-180" : ""}`}
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {showOutfitHistory && (
+                <div className="flex gap-3 overflow-x-auto py-2 mt-2">
+                  {(outfitHistory as OutfitHistoryItem[]).map((outfit) => {
+                    const isSelected = selectedOutfitId === outfit._id;
+                    return (
+                      <div
+                        key={outfit._id}
+                        onClick={() => { if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } }}
+                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } } }}
+                        role="button"
+                        tabIndex={0}
+                        className="flex-shrink-0 cursor-pointer"
+                      >
+                        {outfit.url ? (
+                          <div className="relative">
+                            <img src={outfit.url} alt={outfit.name || "Saved outfit"} className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-rose-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-rose-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
+                            {outfit.name && (
+                              <div className="absolute -bottom-1 left-0 right-0 text-center">
+                                <span className="inline-block max-w-[56px] truncate rounded bg-black/60 px-1 text-[8px] text-white">
+                                  {outfit.name}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                            <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </div>
@@ -1328,10 +1360,10 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       {showLightbox && generatedOutfit && (
         <div
           className="fixed inset-0 z-[60] flex items-center justify-center bg-black/90 p-4"
-          onClick={() => setShowLightbox(false)}
+          onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
         >
           <button
-            onClick={() => setShowLightbox(false)}
+            onClick={(e) => { e.stopPropagation(); setShowLightbox(false); }}
             className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 transition-colors"
           >
             <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1344,6 +1376,111 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
             className="max-h-[90vh] max-w-[90vw] rounded-xl object-contain"
             onClick={(e) => e.stopPropagation()}
           />
+        </div>
+      )}
+
+      {/* Save Outfit Modal */}
+      {showSaveModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowSaveModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+              Save Outfit
+            </h3>
+            <div className="mb-4">
+              <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1">
+                Outfit Name (optional)
+              </label>
+              <input
+                type="text"
+                value={outfitName}
+                onChange={(e) => setOutfitName(e.target.value)}
+                placeholder="e.g., Date night look"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                autoFocus
+              />
+            </div>
+
+            {/* Collection Selection */}
+            <div className="mb-4">
+              <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1">
+                Add to Collection (optional)
+              </label>
+              <div className="relative">
+                <input
+                  type="text"
+                  value={newCollectionName}
+                  onChange={(e) => {
+                    setNewCollectionName(e.target.value);
+                    // If typing, clear selected collection and mark as creating new
+                    if (e.target.value.trim()) {
+                      setSelectedCollectionId(null);
+                      setIsCreatingCollection(true);
+                    } else {
+                      setIsCreatingCollection(false);
+                    }
+                  }}
+                  placeholder="Type to create new or select below"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                />
+                {newCollectionName.trim() && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-rose-500">
+                    + New
+                  </span>
+                )}
+              </div>
+              {collections && collections.length > 0 && !newCollectionName.trim() && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {collections.map((collection) => (
+                    <button
+                      key={collection._id}
+                      type="button"
+                      onClick={() => {
+                        if (selectedCollectionId === collection._id) {
+                          setSelectedCollectionId(null);
+                        } else {
+                          setSelectedCollectionId(collection._id);
+                          setIsCreatingCollection(false);
+                        }
+                      }}
+                      className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                        selectedCollectionId === collection._id
+                          ? "bg-rose-400 text-white"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                      }`}
+                    >
+                      {collection.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+              <span className="font-medium">Items:</span>{" "}
+              {selectedItems.map(i => i.displayName).join(", ")}
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setShowSaveModal(false)}
+                className="flex-1 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmSave}
+                disabled={isSaving}
+                className="flex-1 rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+              >
+                {isSaving ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

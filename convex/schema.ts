@@ -216,13 +216,21 @@ export default defineSchema({
   outfit_images: defineTable({
     clerkId: v.string(),
     storageId: v.id("_storage"),
-    closetItemIds: v.array(v.id("closet_items")),
+    // Item IDs can be from closet_items OR favorites tables (for wishlist items)
+    itemIds: v.optional(v.array(v.string())),
+    // Legacy field - kept for backwards compatibility
+    closetItemIds: v.optional(v.array(v.id("closet_items"))),
     userPhotoId: v.optional(v.id("user_photos")), // null = faceless model
     generatedAt: v.number(),
     prompt: v.string(),
+    // User-provided name for the outfit
+    name: v.optional(v.string()),
+    // Collection the outfit belongs to
+    collectionId: v.optional(v.id("collections")),
   })
     .index("by_clerkId", ["clerkId"])
-    .index("by_clerkId_generatedAt", ["clerkId", "generatedAt"]),
+    .index("by_clerkId_generatedAt", ["clerkId", "generatedAt"])
+    .index("by_collectionId", ["collectionId"]),
 
   price_history: defineTable({
     productId: v.id("products"),
