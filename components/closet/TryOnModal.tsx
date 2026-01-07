@@ -122,6 +122,9 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [selectedOutfitId, setSelectedOutfitId] = useState<Id<"outfit_images"> | null>(null);
   const [showPhotoManager, setShowPhotoManager] = useState(false);
   const [showLightbox, setShowLightbox] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [savedOutfitId, setSavedOutfitId] = useState<Id<"outfit_images"> | null>(null);
+  const [showOutfitHistory, setShowOutfitHistory] = useState(false);
 
   // New state for search and filters
   const [searchQuery, setSearchQuery] = useState("");
@@ -135,10 +138,13 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [otherDetails, setOtherDetails] = useState("");
 
   const closetItems = useQuery(api.closet.getAllClosetItems, { clerkId });
-  const outfitHistory = useQuery(api.storage.getOutfitHistory, { clerkId, limit: 6 });
+  const outfitHistory = useQuery(api.storage.getOutfitHistory, { clerkId, limit: 10 });
   const user = useQuery(api.users.getUserByClerkId, { clerkId });
   const generateTryOn = useAction(api.gemini.generateTryOnImage);
   const updateModelPrefs = useMutation(api.users.updateModelPreferences);
+  const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
+  const saveOutfitImage = useMutation(api.storage.saveOutfitImage);
+  const deleteOutfitImage = useMutation(api.storage.deleteOutfitImage);
 
   // Load saved model preferences
   const savedModelHeight = user?.preferences?.modelHeight;
@@ -302,7 +308,124 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     setSearchQuery("");
     setOwnershipFilter("all");
     setOtherDetails("");
+    setSavedOutfitId(null);
+    setShowOutfitHistory(false);
     onClose();
+  };
+
+  // Convert base64 data URL to blob
+  const dataUrlToBlob = async (dataUrl: string): Promise<Blob> => {
+    const response = await fetch(dataUrl);
+    return await response.blob();
+  };
+
+  // Save outfit to storage
+  const handleSaveOutfit = async () => {
+    if (!generatedOutfit || isSaving) return;
+
+    setIsSaving(true);
+    try {
+      // Convert base64 to blob
+      const blob = await dataUrlToBlob(generatedOutfit);
+
+      // Get upload URL from Convex
+      const uploadUrl = await generateUploadUrl();
+
+      // Upload the blob
+      const uploadResult = await fetch(uploadUrl, {
+        method: "POST",
+        headers: { "Content-Type": blob.type },
+        body: blob,
+      });
+
+      if (!uploadResult.ok) {
+        throw new Error("Failed to upload image");
+      }
+
+      const { storageId } = await uploadResult.json();
+
+      // Get closet item IDs (not product IDs)
+      const closetItemIds = Array.from(selectedByCategory.values())
+        .map((itemId) => itemId as Id<"closet_items">);
+
+      // Save outfit metadata
+      const outfitId = await saveOutfitImage({
+        clerkId,
+        storageId,
+        closetItemIds,
+        userPhotoId: modelMode === "user" ? selectedPhotoId ?? undefined : undefined,
+        prompt: `Virtual try-on: ${selectedItems.map(i => i.displayName).join(", ")}`,
+      });
+
+      setSavedOutfitId(outfitId);
+      alert("Outfit saved!");
+    } catch (error) {
+      console.error("Save error:", error);
+      alert("Failed to save outfit. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Download outfit image
+  const handleDownloadOutfit = () => {
+    if (!generatedOutfit) return;
+
+    const link = document.createElement("a");
+    link.href = generatedOutfit;
+    link.download = `outfit-${Date.now()}.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Share outfit using native share API
+  const handleShareOutfit = async () => {
+    if (!generatedOutfit) return;
+
+    try {
+      // Convert to blob for sharing
+      const blob = await dataUrlToBlob(generatedOutfit);
+      const file = new File([blob], "outfit.png", { type: "image/png" });
+
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: "Check out my outfit!",
+          text: "Created with armoi virtual try-on",
+          files: [file],
+        });
+      } else {
+        // Fallback: copy image or download
+        handleDownloadOutfit();
+      }
+    } catch (error) {
+      if ((error as Error).name !== "AbortError") {
+        console.error("Share error:", error);
+        // Fallback to download
+        handleDownloadOutfit();
+      }
+    }
+  };
+
+  // Delete saved outfit
+  const handleDeleteOutfit = async (outfitId: Id<"outfit_images">) => {
+    if (!confirm("Delete this saved outfit?")) return;
+
+    try {
+      await deleteOutfitImage({ clerkId, outfitId });
+    } catch (error) {
+      console.error("Delete error:", error);
+      alert("Failed to delete outfit.");
+    }
+  };
+
+  // Load a saved outfit from history
+  const handleLoadOutfit = (outfit: OutfitHistoryItem) => {
+    if (outfit.url) {
+      setGeneratedOutfit(outfit.url);
+      setSavedOutfitId(outfit._id);
+      setShowOutfitHistory(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -490,21 +613,71 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   <span className="text-sm text-zinc-500">Generating...</span>
                 </div>
               ) : generatedOutfit ? (
-                <div className="relative flex justify-center">
-                  <img
-                    src={generatedOutfit}
-                    alt="Generated outfit"
-                    className="h-40 rounded-xl object-contain shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => setShowLightbox(true)}
-                  />
-                  <button
-                    onClick={() => setGeneratedOutfit(null)}
-                    className="absolute -right-1 -top-1 rounded-full bg-zinc-900 p-1.5 text-white shadow"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                <div className="flex flex-col items-center gap-3">
+                  <div className="relative">
+                    <img
+                      src={generatedOutfit}
+                      alt="Generated outfit"
+                      className="h-40 rounded-xl object-contain shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setShowLightbox(true)}
+                    />
+                    <button
+                      onClick={() => { setGeneratedOutfit(null); setSavedOutfitId(null); }}
+                      className="absolute -right-1 -top-1 rounded-full bg-zinc-900 p-1.5 text-white shadow"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  {/* Save/Share/Download buttons */}
+                  <div className="flex gap-2">
+                    {!savedOutfitId && (
+                      <button
+                        onClick={handleSaveOutfit}
+                        disabled={isSaving}
+                        className="flex items-center gap-1.5 rounded-lg bg-rose-400 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+                      >
+                        {isSaving ? (
+                          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          </svg>
+                        )}
+                        Save
+                      </button>
+                    )}
+                    {savedOutfitId && (
+                      <span className="flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Saved
+                      </span>
+                    )}
+                    <button
+                      onClick={handleShareOutfit}
+                      className="flex items-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      Share
+                    </button>
+                    <button
+                      onClick={handleDownloadOutfit}
+                      className="flex items-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download
+                    </button>
+                  </div>
                 </div>
               ) : selectedItems.length > 0 ? (
                 <div className="flex gap-3 overflow-x-auto pt-3 pb-1 px-1">
@@ -675,21 +848,71 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   <p className="text-sm text-zinc-500 dark:text-zinc-400">Generating your outfit...</p>
                 </div>
               ) : generatedOutfit ? (
-                <div className="relative flex justify-center">
-                  <img
-                    src={generatedOutfit}
-                    alt="Generated outfit"
-                    className="max-h-[50vh] rounded-xl object-contain shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
-                    onClick={() => setShowLightbox(true)}
-                  />
-                  <button
-                    onClick={() => setGeneratedOutfit(null)}
-                    className="absolute -right-2 -top-2 rounded-full bg-zinc-900 p-1.5 text-white shadow-lg hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
+                <div className="flex flex-col items-center gap-4">
+                  <div className="relative">
+                    <img
+                      src={generatedOutfit}
+                      alt="Generated outfit"
+                      className="max-h-[45vh] rounded-xl object-contain shadow-lg cursor-pointer hover:opacity-90 transition-opacity"
+                      onClick={() => setShowLightbox(true)}
+                    />
+                    <button
+                      onClick={() => { setGeneratedOutfit(null); setSavedOutfitId(null); }}
+                      className="absolute -right-2 -top-2 rounded-full bg-zinc-900 p-1.5 text-white shadow-lg hover:bg-zinc-800 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  {/* Save/Share/Download buttons */}
+                  <div className="flex gap-3">
+                    {!savedOutfitId && (
+                      <button
+                        onClick={handleSaveOutfit}
+                        disabled={isSaving}
+                        className="flex items-center gap-2 rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50 transition-colors"
+                      >
+                        {isSaving ? (
+                          <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                          </svg>
+                        ) : (
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                          </svg>
+                        )}
+                        Save Outfit
+                      </button>
+                    )}
+                    {savedOutfitId && (
+                      <span className="flex items-center gap-2 rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                        </svg>
+                        Saved
+                      </span>
+                    )}
+                    <button
+                      onClick={handleShareOutfit}
+                      className="flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 transition-colors dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+                      </svg>
+                      Share
+                    </button>
+                    <button
+                      onClick={handleDownloadOutfit}
+                      className="flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 transition-colors dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                      </svg>
+                      Download
+                    </button>
+                  </div>
                 </div>
               ) : selectedItems.length > 0 ? (
                 <div>
@@ -736,6 +959,44 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                   <div>
                     <p className="font-medium text-zinc-900 dark:text-white">Select items to try on</p>
                     <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Choose one item per category from your closet</p>
+                  </div>
+                </div>
+              )}
+
+              {/* Saved Outfits History */}
+              {outfitHistory && outfitHistory.length > 0 && (
+                <div className="mt-6 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+                      Saved Outfits ({outfitHistory.length})
+                    </h3>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2">
+                    {outfitHistory.slice(0, 8).map((outfit) => (
+                      <button
+                        key={outfit._id}
+                        onClick={() => handleLoadOutfit(outfit)}
+                        className="group relative aspect-[3/4] overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800 hover:ring-2 hover:ring-rose-400 transition-all"
+                      >
+                        {outfit.url ? (
+                          <img src={outfit.url} alt="Saved outfit" className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <svg className="h-6 w-6 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDeleteOutfit(outfit._id); }}
+                          className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
+                        >
+                          <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </button>
+                    ))}
                   </div>
                 </div>
               )}
