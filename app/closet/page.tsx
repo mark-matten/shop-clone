@@ -911,7 +911,7 @@ export default function ClosetPage() {
     return items;
   }, [combinedItems, typeFilter, searchQuery]);
 
-  // Group items by normalized category key and sort by sortOrder within each category
+  // Group items by normalized category key and sort: owned first, then wishlist-only, each sorted by sortOrder
   const itemsByCategory = useMemo(() => {
     const groups: Record<string, CombinedItem[]> = {};
     for (const item of filteredByType) {
@@ -920,9 +920,14 @@ export default function ClosetPage() {
       if (!groups[normalizedCat]) groups[normalizedCat] = [];
       groups[normalizedCat].push(item);
     }
-    // Sort items within each category by sortOrder
+    // Sort items within each category: owned first, then wishlist-only, each group sorted by sortOrder
     for (const cat of Object.keys(groups)) {
       groups[cat].sort((a, b) => {
+        // First sort by ownership: owned items before wishlist-only items
+        if (a.isOwned !== b.isOwned) {
+          return a.isOwned ? -1 : 1;
+        }
+        // Within same ownership group, sort by sortOrder
         if (a.sortOrder !== undefined && b.sortOrder !== undefined) {
           return a.sortOrder - b.sortOrder;
         }

@@ -18,7 +18,8 @@ const sizeOptions = {
   men: {
     shoe: ["7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12", "12.5", "13", "14"],
     top: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
-    bottom: ["28", "29", "30", "31", "32", "33", "34", "36", "38", "40", "42"],
+    bottomWaist: ["28", "29", "30", "31", "32", "33", "34", "36", "38", "40", "42"],
+    bottomLength: ["28", "29", "30", "31", "32", "33", "34", "36"],
   },
 };
 
@@ -39,8 +40,10 @@ interface Preferences {
   menShoeSizeMax: string;
   menTopSizeMin: string;
   menTopSizeMax: string;
-  menBottomSizeMin: string;
-  menBottomSizeMax: string;
+  menBottomWaistMin: string;
+  menBottomWaistMax: string;
+  menBottomLengthMin: string;
+  menBottomLengthMax: string;
 }
 
 // Format phone number as (XXX) XXX-XXXX
@@ -74,8 +77,10 @@ const defaultPreferences: Preferences = {
   menShoeSizeMax: "",
   menTopSizeMin: "",
   menTopSizeMax: "",
-  menBottomSizeMin: "",
-  menBottomSizeMax: "",
+  menBottomWaistMin: "",
+  menBottomWaistMax: "",
+  menBottomLengthMin: "",
+  menBottomLengthMax: "",
 };
 
 interface SizeRangeSelectProps {
@@ -147,7 +152,8 @@ export default function ProfilePage() {
   const [saveMessage, setSaveMessage] = useState<string | null>(null);
   const [validationError, setValidationError] = useState<string | null>(null);
 
-  // Email notification settings
+  // Notification settings
+  const [smsNotifications, setSmsNotifications] = useState(true);
   const [email, setEmail] = useState("");
   const [emailNotifications, setEmailNotifications] = useState(false);
   const [emailPriceDrops, setEmailPriceDrops] = useState(true);
@@ -175,10 +181,13 @@ export default function ProfilePage() {
         menShoeSizeMax: prefs.menShoeSizeMax ?? "",
         menTopSizeMin: prefs.menTopSizeMin ?? "",
         menTopSizeMax: prefs.menTopSizeMax ?? "",
-        menBottomSizeMin: prefs.menBottomSizeMin ?? "",
-        menBottomSizeMax: prefs.menBottomSizeMax ?? "",
+        menBottomWaistMin: prefs.menBottomWaistMin ?? prefs.menBottomSizeMin ?? "",
+        menBottomWaistMax: prefs.menBottomWaistMax ?? prefs.menBottomSizeMax ?? "",
+        menBottomLengthMin: prefs.menBottomLengthMin ?? "",
+        menBottomLengthMax: prefs.menBottomLengthMax ?? "",
       });
-      // Load email notification settings
+      // Load notification settings
+      setSmsNotifications(prefs.smsNotifications ?? true);
       setEmailNotifications(prefs.emailNotifications ?? false);
       setEmailPriceDrops(prefs.emailPriceDrops ?? true);
       setEmailTargetReached(prefs.emailTargetReached ?? true);
@@ -236,11 +245,12 @@ export default function ProfilePage() {
         emailPriceDrops,
         emailTargetReached,
         emailWeeklyDigest,
+        smsNotifications,
       });
-      setEmailSaveMessage("Email settings saved!");
+      setEmailSaveMessage("Notification settings saved!");
       setTimeout(() => setEmailSaveMessage(null), 3000);
     } catch (error) {
-      console.error("Failed to save email settings:", error);
+      console.error("Failed to save notification settings:", error);
       setEmailSaveMessage("Failed to save");
     } finally {
       setIsEmailSaving(false);
@@ -341,7 +351,7 @@ export default function ProfilePage() {
               </h3>
               <div className="grid gap-6 sm:grid-cols-2">
                 <SizeRangeSelect
-                  label="Shoe Size"
+                  label="Shoe Size (US)"
                   options={sizeOptions.women.shoe}
                   minValue={preferences.womenShoeSizeMin}
                   maxValue={preferences.womenShoeSizeMax}
@@ -382,9 +392,9 @@ export default function ProfilePage() {
               <h3 className="font-medium text-zinc-900 dark:text-white mb-4">
                 Men&apos;s Size Ranges
               </h3>
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
                 <SizeRangeSelect
-                  label="Shoe Size"
+                  label="Shoe Size (US)"
                   options={sizeOptions.men.shoe}
                   minValue={preferences.menShoeSizeMin}
                   maxValue={preferences.menShoeSizeMax}
@@ -400,12 +410,20 @@ export default function ProfilePage() {
                   onMaxChange={(v) => updatePreference("menTopSizeMax", v)}
                 />
                 <SizeRangeSelect
-                  label="Bottom/Waist Size"
-                  options={sizeOptions.men.bottom}
-                  minValue={preferences.menBottomSizeMin}
-                  maxValue={preferences.menBottomSizeMax}
-                  onMinChange={(v) => updatePreference("menBottomSizeMin", v)}
-                  onMaxChange={(v) => updatePreference("menBottomSizeMax", v)}
+                  label="Bottom Waist"
+                  options={sizeOptions.men.bottomWaist}
+                  minValue={preferences.menBottomWaistMin}
+                  maxValue={preferences.menBottomWaistMax}
+                  onMinChange={(v) => updatePreference("menBottomWaistMin", v)}
+                  onMaxChange={(v) => updatePreference("menBottomWaistMax", v)}
+                />
+                <SizeRangeSelect
+                  label="Bottom Length"
+                  options={sizeOptions.men.bottomLength}
+                  minValue={preferences.menBottomLengthMin}
+                  maxValue={preferences.menBottomLengthMax}
+                  onMinChange={(v) => updatePreference("menBottomLengthMin", v)}
+                  onMaxChange={(v) => updatePreference("menBottomLengthMax", v)}
                 />
               </div>
             </div>
@@ -447,20 +465,33 @@ export default function ProfilePage() {
 
           {/* SMS Alerts */}
           <div className="mt-4 rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
-            <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                <svg className="h-5 w-5 text-green-600 dark:text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                </svg>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${smsNotifications ? 'bg-green-100 dark:bg-green-900/30' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                  <svg className={`h-5 w-5 ${smsNotifications ? 'text-green-600 dark:text-green-400' : 'text-zinc-400'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium text-zinc-900 dark:text-white">
+                    SMS Alerts
+                  </p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                    {smsNotifications
+                      ? "You'll receive a text when tracked items hit your target price"
+                      : "SMS notifications are disabled"}
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="font-medium text-zinc-900 dark:text-white">
-                  SMS Alerts Enabled
-                </p>
-                <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                  You&apos;ll receive a text when tracked items hit your target price
-                </p>
-              </div>
+              <label className="relative inline-flex cursor-pointer items-center">
+                <input
+                  type="checkbox"
+                  checked={smsNotifications}
+                  onChange={(e) => setSmsNotifications(e.target.checked)}
+                  className="peer sr-only"
+                />
+                <div className="h-6 w-11 rounded-full bg-zinc-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-zinc-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-zinc-900 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-zinc-500 dark:bg-zinc-700 dark:peer-checked:bg-white"></div>
+              </label>
             </div>
           </div>
 
@@ -560,6 +591,24 @@ export default function ProfilePage() {
               </div>
             )}
           </div>
+
+          {/* Save Notification Settings Button - visible when email is disabled */}
+          {!emailNotifications && (
+            <div className="mt-4 flex items-center gap-4">
+              <button
+                onClick={handleEmailSettingsSave}
+                disabled={isEmailSaving}
+                className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-zinc-700 disabled:opacity-50 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                {isEmailSaving ? "Saving..." : "Save Notification Settings"}
+              </button>
+              {emailSaveMessage && (
+                <span className={`text-sm ${emailSaveMessage.includes("Failed") ? "text-red-600 dark:text-red-400" : "text-green-600 dark:text-green-400"}`}>
+                  {emailSaveMessage}
+                </span>
+              )}
+            </div>
+          )}
         </section>
 
         {/* Settings Section */}

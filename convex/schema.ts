@@ -26,6 +26,10 @@ export default defineSchema({
       menTopSizeMax: v.optional(v.string()),
       menBottomSizeMin: v.optional(v.string()),
       menBottomSizeMax: v.optional(v.string()),
+      menBottomWaistMin: v.optional(v.string()),
+      menBottomWaistMax: v.optional(v.string()),
+      menBottomLengthMin: v.optional(v.string()),
+      menBottomLengthMax: v.optional(v.string()),
       // Legacy fields (for backwards compatibility)
       womenShoeSize: v.optional(v.string()),
       womenTopSize: v.optional(v.string()),
@@ -39,6 +43,7 @@ export default defineSchema({
       bottomSize: v.optional(v.string()),
       dressSize: v.optional(v.string()),
       // Notification preferences
+      smsNotifications: v.optional(v.boolean()),
       emailNotifications: v.optional(v.boolean()),
       emailPriceDrops: v.optional(v.boolean()),
       emailTargetReached: v.optional(v.boolean()),

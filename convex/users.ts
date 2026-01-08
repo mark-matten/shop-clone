@@ -55,8 +55,10 @@ export const updateUserPreferences = mutation({
       menShoeSizeMax: v.optional(v.string()),
       menTopSizeMin: v.optional(v.string()),
       menTopSizeMax: v.optional(v.string()),
-      menBottomSizeMin: v.optional(v.string()),
-      menBottomSizeMax: v.optional(v.string()),
+      menBottomWaistMin: v.optional(v.string()),
+      menBottomWaistMax: v.optional(v.string()),
+      menBottomLengthMin: v.optional(v.string()),
+      menBottomLengthMax: v.optional(v.string()),
     }),
   },
   handler: async (ctx, args) => {
@@ -89,6 +91,7 @@ export const updateEmailSettings = mutation({
     emailPriceDrops: v.optional(v.boolean()),
     emailTargetReached: v.optional(v.boolean()),
     emailWeeklyDigest: v.optional(v.boolean()),
+    smsNotifications: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -108,6 +111,7 @@ export const updateEmailSettings = mutation({
         emailPriceDrops: args.emailPriceDrops ?? user.preferences.emailPriceDrops,
         emailTargetReached: args.emailTargetReached ?? user.preferences.emailTargetReached,
         emailWeeklyDigest: args.emailWeeklyDigest ?? user.preferences.emailWeeklyDigest,
+        smsNotifications: args.smsNotifications ?? user.preferences.smsNotifications,
       },
     };
 
