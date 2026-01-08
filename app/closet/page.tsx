@@ -165,6 +165,8 @@ interface CombinedItem {
     colorName?: string;
     colorGroupId?: string;
     options?: { name: string; values: string[] }[];
+    gender?: "men" | "women" | "unisex"; // For user-added items
+    material?: string; // For user-added items
   };
   selectedOptions?: Record<string, string>;
   customCategory?: string;
@@ -187,6 +189,7 @@ interface EditingItem {
   currentSize?: string;
   currentGender?: "men" | "women" | "unisex";
   currentMaterial?: string;
+  currentBrand?: string; // For user-added items
   isOwned: boolean;
   isWishlist: boolean;
   isUserAdded?: boolean; // true for URL-sourced or generated items
@@ -637,6 +640,9 @@ export default function ClosetPage() {
   const [editSize, setEditSize] = useState<string>("");
   const [editGender, setEditGender] = useState<"men" | "women" | "unisex" | null>(null);
   const [editMaterial, setEditMaterial] = useState<string>("");
+  const [editName, setEditName] = useState<string>("");
+  const [editBrand, setEditBrand] = useState<string>("");
+  const [editColor, setEditColor] = useState<string>("");
   const [editIsOwned, setEditIsOwned] = useState<boolean>(false);
   const [editIsWishlist, setEditIsWishlist] = useState<boolean>(false);
   const [activeId, setActiveId] = useState<string | null>(null);
@@ -644,12 +650,14 @@ export default function ClosetPage() {
   const [showAddClothesModal, setShowAddClothesModal] = useState(false);
   const [showTryOnModal, setShowTryOnModal] = useState(false);
   const [showSavedOutfitsModal, setShowSavedOutfitsModal] = useState(false);
+  const [outfitCollectionFilter, setOutfitCollectionFilter] = useState<string | null>(null);
   const [selectedOutfit, setSelectedOutfit] = useState<typeof savedOutfits extends (infer T)[] | undefined ? T | null : never>(null);
   const [isEditingOutfit, setIsEditingOutfit] = useState(false);
   const [editOutfitName, setEditOutfitName] = useState("");
   const [editOutfitCollectionId, setEditOutfitCollectionId] = useState<Id<"collections"> | null>(null);
   const [newCollectionName, setNewCollectionName] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
+  const [closetShareCopied, setClosetShareCopied] = useState(false);
   const pendingScrollPosition = useRef<number | null>(null);
   const hasRestoredScroll = useRef(false);
 
@@ -746,7 +754,7 @@ export default function ClosetPage() {
   );
 
   const savedOutfits = useQuery(
-    api.storage.getOutfitHistory,
+    api.storage.getSavedOutfits,
     user?.id ? { clerkId: user.id, limit: 20 } : "skip"
   );
   const deleteOutfitImage = useMutation(api.storage.deleteOutfitImage);
@@ -822,6 +830,8 @@ export default function ClosetPage() {
             imageUrl: imageUrl,
             category: typedItem.customCategory || typedItem.category || "other",
             colorName: typedItem.color,
+            gender: typedItem.gender, // Include gender for user-added items
+            material: typedItem.material, // Include material for user-added items
           },
           selectedOptions: typedItem.size ? { Size: typedItem.size } : undefined,
           customCategory: typedItem.customCategory || typedItem.category,
@@ -975,8 +985,9 @@ export default function ClosetPage() {
     // Get size from selectedOptions or from product options
     const currentSize = item.selectedOptions?.["Size"] || "";
     // Get gender and material from product (for user-added items they're stored directly)
-    const currentGender = (item.product as any).gender as "men" | "women" | "unisex" | undefined;
-    const currentMaterial = (item.product as any).material as string | undefined;
+    const currentGender = item.product.gender;
+    const currentMaterial = item.product.material;
+    const currentBrand = item.product.brand;
     // Check if this is a user-added item (URL-sourced or generated)
     const isUserAdded = typeof item.productId === "string" &&
       (item.productId.toString().startsWith("url-") || item.productId.toString().startsWith("gen-") ||
@@ -993,6 +1004,7 @@ export default function ClosetPage() {
       currentSize,
       currentGender,
       currentMaterial,
+      currentBrand,
       isOwned: item.isOwned,
       isWishlist: item.isWishlist,
       isUserAdded,
@@ -1006,6 +1018,9 @@ export default function ClosetPage() {
     setEditSize(currentSize);
     setEditGender(currentGender || null);
     setEditMaterial(currentMaterial || "");
+    setEditName(item.product.name);
+    setEditBrand(currentBrand || "");
+    setEditColor(currentColor || "");
     setEditIsOwned(item.isOwned);
     setEditIsWishlist(item.isWishlist);
   };
@@ -1017,6 +1032,9 @@ export default function ClosetPage() {
     setEditSize("");
     setEditGender(null);
     setEditMaterial("");
+    setEditName("");
+    setEditBrand("");
+    setEditColor("");
     setEditIsOwned(false);
     setEditIsWishlist(false);
   };
@@ -1049,6 +1067,9 @@ export default function ClosetPage() {
     const sizeChanged = editSize !== (editingItem.currentSize || "");
     const genderChanged = editGender !== editingItem.currentGender;
     const materialChanged = editMaterial !== (editingItem.currentMaterial || "");
+    const nameChanged = editName !== editingItem.productName;
+    const brandChanged = editBrand !== (editingItem.currentBrand || "");
+    const colorChanged = editColor !== (editingItem.currentColor || "");
     const ownershipChanged = editIsOwned !== editingItem.isOwned || editIsWishlist !== editingItem.isWishlist;
 
     // Include size in options
@@ -1094,14 +1115,18 @@ export default function ClosetPage() {
         customCategory: categoryChanged ? editCategory : undefined,
       });
 
-      // For user-added items, also update size, gender, and material directly
-      if (editingItem.isUserAdded && editingItem.closetItemId && (sizeChanged || genderChanged || materialChanged)) {
+      // For user-added items, also update size, gender, material, name, brand, and color directly
+      if (editingItem.isUserAdded && editingItem.closetItemId &&
+          (sizeChanged || genderChanged || materialChanged || nameChanged || brandChanged || colorChanged)) {
         await updateClosetItem({
           clerkId: user.id,
           itemId: editingItem.closetItemId as any,
           size: sizeChanged ? editSize : undefined,
           gender: genderChanged && editGender ? editGender : undefined,
           material: materialChanged ? editMaterial : undefined,
+          name: nameChanged ? editName : undefined,
+          brand: brandChanged ? editBrand : undefined,
+          color: colorChanged ? editColor : undefined,
         });
       }
     } else if (editIsWishlist) {
@@ -1111,6 +1136,22 @@ export default function ClosetPage() {
         selectedOptions: updatedOptions,
         customCategory: categoryChanged ? editCategory : undefined,
       });
+
+      // For user-added wishlist items, also update directly in closet_items
+      if (editingItem.isUserAdded && editingItem.closetItemId &&
+          (sizeChanged || genderChanged || materialChanged || nameChanged || brandChanged || colorChanged || categoryChanged)) {
+        await updateClosetItem({
+          clerkId: user.id,
+          itemId: editingItem.closetItemId as any,
+          size: sizeChanged ? editSize : undefined,
+          gender: genderChanged && editGender ? editGender : undefined,
+          material: materialChanged ? editMaterial : undefined,
+          name: nameChanged ? editName : undefined,
+          brand: brandChanged ? editBrand : undefined,
+          color: colorChanged ? editColor : undefined,
+          category: categoryChanged ? editCategory : undefined,
+        });
+      }
     }
 
     closeEditModal();
@@ -1275,6 +1316,38 @@ export default function ClosetPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
               Outfits
+            </button>
+            <button
+              onClick={async () => {
+                const closetUrl = `${window.location.origin}/closet/${user?.id}`;
+                try {
+                  if (navigator.share) {
+                    await navigator.share({
+                      title: "My armoi Closet",
+                      text: "Check out my virtual closet!",
+                      url: closetUrl,
+                    });
+                  } else {
+                    await navigator.clipboard.writeText(closetUrl);
+                    setClosetShareCopied(true);
+                    setTimeout(() => setClosetShareCopied(false), 2000);
+                  }
+                } catch (err) {
+                  try {
+                    await navigator.clipboard.writeText(closetUrl);
+                    setClosetShareCopied(true);
+                    setTimeout(() => setClosetShareCopied(false), 2000);
+                  } catch {
+                    // Ignore
+                  }
+                }
+              }}
+              className="flex items-center gap-1 sm:gap-1.5 rounded-lg border border-zinc-300 px-2 py-1.5 sm:px-3 sm:py-2 text-xs sm:text-sm font-medium text-zinc-600 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800"
+            >
+              <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
+              </svg>
+              {closetShareCopied ? "Copied!" : "Share"}
             </button>
           </div>
         </div>
@@ -1516,11 +1589,45 @@ export default function ClosetPage() {
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
               Edit Item
             </h3>
-            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2">
-              {editingItem.productName}
-            </p>
+            {!editingItem.isUserAdded && (
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 line-clamp-2">
+                {editingItem.productName}
+              </p>
+            )}
 
             <div className="mt-2 space-y-2">
+              {/* Name Input (for user-added items only) */}
+              {editingItem.isUserAdded && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="e.g., Black cashmere sweater"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  />
+                </div>
+              )}
+
+              {/* Brand Input (for user-added items only) */}
+              {editingItem.isUserAdded && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Brand
+                  </label>
+                  <input
+                    type="text"
+                    value={editBrand}
+                    onChange={(e) => setEditBrand(e.target.value)}
+                    placeholder="e.g., J.Crew"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  />
+                </div>
+              )}
+
               {/* Status Selection - Owned or Wishlist (mutually exclusive) */}
               <div>
                 <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -1700,8 +1807,24 @@ export default function ClosetPage() {
                 </div>
               )}
 
-              {/* Show current color if no variants available */}
-              {(!colorVariants || colorVariants.length <= 1) && editingItem.currentColor && (
+              {/* Color Input (for user-added items, show editable input) */}
+              {editingItem.isUserAdded && (!colorVariants || colorVariants.length <= 1) && (
+                <div>
+                  <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                    Color
+                  </label>
+                  <input
+                    type="text"
+                    value={editColor}
+                    onChange={(e) => setEditColor(e.target.value)}
+                    placeholder="e.g., Navy, Black, White"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  />
+                </div>
+              )}
+
+              {/* Show current color if no variants available (for non-user-added items) */}
+              {!editingItem.isUserAdded && (!colorVariants || colorVariants.length <= 1) && editingItem.currentColor && (
                 <div>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     Color
@@ -1717,8 +1840,20 @@ export default function ClosetPage() {
                 </div>
               )}
 
-              {/* Other options (excluding Size which is handled above) */}
-              {editingItem.options.filter(o => o.name !== "Size").map((option) => (
+              {/* Other options (excluding Size and size-related options which are handled above) */}
+              {editingItem.options.filter(o => {
+                const name = o.name.toLowerCase();
+                // Exclude size-related options
+                return name !== "size" &&
+                       name !== "waist" &&
+                       name !== "length" &&
+                       name !== "inseam" &&
+                       name !== "waist size" &&
+                       name !== "pant size" &&
+                       name !== "short length" &&
+                       name !== "regular length" &&
+                       name !== "long length";
+              }).map((option) => (
                 <div key={option.name}>
                   <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
                     {option.name}
@@ -1814,8 +1949,21 @@ export default function ClosetPage() {
                   Saved Outfits
                 </h3>
               )}
+              {/* Outfit name and collection in header */}
+              {selectedOutfit && !isEditingOutfit && (
+                <div className="flex-1 text-center px-4">
+                  <h4 className="text-base font-semibold text-zinc-900 dark:text-white truncate">
+                    {(selectedOutfit as any).name || "Untitled Outfit"}
+                  </h4>
+                  {(selectedOutfit as any).collectionId && collections && (
+                    <p className="text-xs text-rose-500 truncate">
+                      {collections.find((c) => c._id === (selectedOutfit as any).collectionId)?.name || ""}
+                    </p>
+                  )}
+                </div>
+              )}
               <button
-                onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); }}
+                onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); setOutfitCollectionFilter(null); }}
                 className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1924,11 +2072,7 @@ export default function ClosetPage() {
                         </button>
                       </div>
                     </div>
-                  ) : (
-                    <h4 className="text-center text-lg font-medium text-zinc-900 dark:text-white">
-                      {(selectedOutfit as any).name || "Untitled Outfit"}
-                    </h4>
-                  )}
+                  ) : null}
 
                   {/* Outfit image */}
                   {!isEditingOutfit && (
@@ -1966,28 +2110,29 @@ export default function ClosetPage() {
                         </svg>
                         Edit
                       </button>
-                      {/* Share button */}
+                      {/* Share button - shares link to outfit page */}
                       {selectedOutfit.url && (
                         <button
                           onClick={async () => {
+                            const outfitUrl = `${window.location.origin}/outfit/${selectedOutfit._id}`;
                             try {
                               // Try native share first (mobile)
                               if (navigator.share) {
                                 await navigator.share({
                                   title: (selectedOutfit as any).name || "My Outfit",
                                   text: "Check out this outfit I created!",
-                                  url: selectedOutfit.url!,
+                                  url: outfitUrl,
                                 });
                               } else {
                                 // Fall back to clipboard
-                                await navigator.clipboard.writeText(selectedOutfit.url!);
+                                await navigator.clipboard.writeText(outfitUrl);
                                 setShareCopied(true);
                                 setTimeout(() => setShareCopied(false), 2000);
                               }
                             } catch (err) {
                               // User cancelled or error, try clipboard
                               try {
-                                await navigator.clipboard.writeText(selectedOutfit.url!);
+                                await navigator.clipboard.writeText(outfitUrl);
                                 setShareCopied(true);
                                 setTimeout(() => setShareCopied(false), 2000);
                               } catch {
@@ -2108,37 +2253,76 @@ export default function ClosetPage() {
                   </button>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {savedOutfits.map((outfit) => (
-                    <div
-                      key={outfit._id}
-                      onClick={() => setSelectedOutfit(outfit)}
-                      className="group relative aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800 cursor-pointer hover:ring-2 hover:ring-rose-400 transition-all"
-                    >
-                      {outfit.url ? (
-                        <img
-                          src={outfit.url}
-                          alt={(outfit as any).name || "Saved outfit"}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        </div>
-                      )}
-                      {/* Name and item count overlay */}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                        <p className="truncate text-xs font-medium text-white">
-                          {(outfit as any).name || "Untitled"}
-                        </p>
-                        <p className="text-[10px] text-white/70">
-                          {outfit.items?.length || 0} items
-                        </p>
-                      </div>
+                <div className="space-y-4">
+                  {/* Collection filter tabs */}
+                  {collections && collections.length > 0 && (
+                    <div className="flex flex-wrap gap-2">
+                      <button
+                        onClick={() => setOutfitCollectionFilter(null)}
+                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          outfitCollectionFilter === null
+                            ? "bg-rose-400 text-white"
+                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        All
+                      </button>
+                      {collections.map((col) => (
+                        <button
+                          key={col._id}
+                          onClick={() => setOutfitCollectionFilter(col._id)}
+                          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                            outfitCollectionFilter === col._id
+                              ? "bg-rose-400 text-white"
+                              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                          }`}
+                        >
+                          {col.name}
+                        </button>
+                      ))}
                     </div>
-                  ))}
+                  )}
+
+                  {/* Outfits grid */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {savedOutfits
+                      .filter((outfit) => outfitCollectionFilter === null || (outfit as any).collectionId === outfitCollectionFilter)
+                      .map((outfit) => (
+                      <div
+                        key={outfit._id}
+                        onClick={() => setSelectedOutfit(outfit)}
+                        className="group relative aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800 cursor-pointer hover:ring-2 hover:ring-rose-400 transition-all"
+                      >
+                        {outfit.url ? (
+                          <img
+                            src={outfit.url}
+                            alt={(outfit as any).name || "Saved outfit"}
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center">
+                            <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                        {/* Name, collection, and item count overlay */}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2">
+                          <p className="truncate text-xs font-medium text-white">
+                            {(outfit as any).name || "Untitled"}
+                          </p>
+                          {(outfit as any).collectionId && collections && (
+                            <p className="truncate text-[10px] text-rose-300">
+                              {collections.find((c) => c._id === (outfit as any).collectionId)?.name || ""}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-white/70">
+                            {outfit.items?.length || 0} items
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

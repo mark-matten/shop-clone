@@ -6,6 +6,9 @@ export default defineSchema({
     clerkId: v.string(),
     phoneNumber: v.string(),
     email: v.optional(v.string()),
+    firstName: v.optional(v.string()),
+    lastName: v.optional(v.string()),
+    isPublicCloset: v.optional(v.boolean()), // Whether closet and outfits are publicly viewable
     preferences: v.object({
       // Gender preferences (at least one required)
       shopsMen: v.optional(v.boolean()),
@@ -232,6 +235,8 @@ export default defineSchema({
     name: v.optional(v.string()),
     // Collection the outfit belongs to
     collectionId: v.optional(v.id("collections")),
+    // Hidden from Recent Outfits view (but not deleted)
+    hiddenFromRecent: v.optional(v.boolean()),
   })
     .index("by_clerkId", ["clerkId"])
     .index("by_clerkId_generatedAt", ["clerkId", "generatedAt"])

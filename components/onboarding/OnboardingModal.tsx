@@ -14,20 +14,78 @@ const sizeOptions = {
   men: {
     shoe: ["7", "7.5", "8", "8.5", "9", "9.5", "10", "10.5", "11", "11.5", "12", "12.5", "13", "14"],
     top: ["XS", "S", "M", "L", "XL", "XXL", "XXXL"],
-    bottom: ["28", "29", "30", "31", "32", "33", "34", "36", "38", "40", "42"],
+    bottomWaist: ["28", "29", "30", "31", "32", "33", "34", "36", "38", "40", "42"],
+    bottomLength: ["28", "29", "30", "31", "32", "33", "34", "36"],
   },
 };
 
+interface SizeRange {
+  min: string;
+  max: string;
+}
+
 interface OnboardingModalProps {
   onComplete: () => void;
+}
+
+function SizeRangeSelect({
+  label,
+  options,
+  value,
+  onChange,
+}: {
+  label: string;
+  options: string[];
+  value: SizeRange;
+  onChange: (value: SizeRange) => void;
+}) {
+  return (
+    <div>
+      <label className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
+        {label}
+      </label>
+      <div className="flex items-center gap-2">
+        <select
+          value={value.min}
+          onChange={(e) => onChange({ ...value, min: e.target.value })}
+          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+        >
+          <option value="">Min</option>
+          {options.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <span className="text-zinc-400">to</span>
+        <select
+          value={value.max}
+          onChange={(e) => onChange({ ...value, max: e.target.value })}
+          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+        >
+          <option value="">Max</option>
+          {options.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+      </div>
+    </div>
+  );
 }
 
 export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const [step, setStep] = useState(0);
   const [shopsWomen, setShopsWomen] = useState(false);
   const [shopsMen, setShopsMen] = useState(false);
-  const [womenSizes, setWomenSizes] = useState({ shoe: "", top: "", bottom: "" });
-  const [menSizes, setMenSizes] = useState({ shoe: "", top: "", bottom: "" });
+  const [womenSizes, setWomenSizes] = useState({
+    shoe: { min: "", max: "" },
+    top: { min: "", max: "" },
+    bottom: { min: "", max: "" },
+  });
+  const [menSizes, setMenSizes] = useState({
+    shoe: { min: "", max: "" },
+    top: { min: "", max: "" },
+    waist: { min: "", max: "" },
+    length: { min: "", max: "" },
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   const { user: clerkUser } = useUser();
@@ -36,7 +94,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
   const steps = [
     { title: "Welcome!", subtitle: "Let's personalize your experience" },
     { title: "What do you shop for?", subtitle: "Select all that apply" },
-    { title: "Your sizes", subtitle: "We'll filter results to match your size" },
+    { title: "Your sizes", subtitle: "We'll filter results to match your size range" },
   ];
 
   const handleNext = () => {
@@ -61,20 +119,22 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
         preferences: {
           shopsWomen,
           shopsMen,
-          womenShoeSizeMin: womenSizes.shoe,
-          womenShoeSizeMax: womenSizes.shoe,
-          womenTopSizeMin: womenSizes.top,
-          womenTopSizeMax: womenSizes.top,
-          womenBottomSizeMin: womenSizes.bottom,
-          womenBottomSizeMax: womenSizes.bottom,
-          womenDressSizeMin: womenSizes.bottom,
-          womenDressSizeMax: womenSizes.bottom,
-          menShoeSizeMin: menSizes.shoe,
-          menShoeSizeMax: menSizes.shoe,
-          menTopSizeMin: menSizes.top,
-          menTopSizeMax: menSizes.top,
-          menBottomSizeMin: menSizes.bottom,
-          menBottomSizeMax: menSizes.bottom,
+          womenShoeSizeMin: womenSizes.shoe.min,
+          womenShoeSizeMax: womenSizes.shoe.max,
+          womenTopSizeMin: womenSizes.top.min,
+          womenTopSizeMax: womenSizes.top.max,
+          womenBottomSizeMin: womenSizes.bottom.min,
+          womenBottomSizeMax: womenSizes.bottom.max,
+          womenDressSizeMin: womenSizes.bottom.min,
+          womenDressSizeMax: womenSizes.bottom.max,
+          menShoeSizeMin: menSizes.shoe.min,
+          menShoeSizeMax: menSizes.shoe.max,
+          menTopSizeMin: menSizes.top.min,
+          menTopSizeMax: menSizes.top.max,
+          menBottomWaistMin: menSizes.waist.min,
+          menBottomWaistMax: menSizes.waist.max,
+          menBottomLengthMin: menSizes.length.min,
+          menBottomLengthMax: menSizes.length.max,
         },
       });
       onComplete();
@@ -228,58 +288,31 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                 {steps[step].subtitle}
               </p>
 
-              <div className="mt-6 max-h-[400px] space-y-6 overflow-y-auto">
+              <div className="mt-6 max-h-[400px] space-y-6 overflow-y-auto pr-2">
                 {shopsWomen && (
                   <div>
                     <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">
                       Women's Sizes
                     </h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
-                          Shoe Size
-                        </label>
-                        <select
-                          value={womenSizes.shoe}
-                          onChange={(e) => setWomenSizes({ ...womenSizes, shoe: e.target.value })}
-                          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        >
-                          <option value="">Select size</option>
-                          {sizeOptions.women.shoe.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
-                          Top Size
-                        </label>
-                        <select
-                          value={womenSizes.top}
-                          onChange={(e) => setWomenSizes({ ...womenSizes, top: e.target.value })}
-                          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        >
-                          <option value="">Select size</option>
-                          {sizeOptions.women.top.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
-                          Bottom/Dress Size
-                        </label>
-                        <select
-                          value={womenSizes.bottom}
-                          onChange={(e) => setWomenSizes({ ...womenSizes, bottom: e.target.value })}
-                          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        >
-                          <option value="">Select size</option>
-                          {sizeOptions.women.bottom.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="space-y-4">
+                      <SizeRangeSelect
+                        label="Shoe Size (US)"
+                        options={sizeOptions.women.shoe}
+                        value={womenSizes.shoe}
+                        onChange={(v) => setWomenSizes({ ...womenSizes, shoe: v })}
+                      />
+                      <SizeRangeSelect
+                        label="Top Size"
+                        options={sizeOptions.women.top}
+                        value={womenSizes.top}
+                        onChange={(v) => setWomenSizes({ ...womenSizes, top: v })}
+                      />
+                      <SizeRangeSelect
+                        label="Bottom/Dress Size"
+                        options={sizeOptions.women.bottom}
+                        value={womenSizes.bottom}
+                        onChange={(v) => setWomenSizes({ ...womenSizes, bottom: v })}
+                      />
                     </div>
                   </div>
                 )}
@@ -289,52 +322,31 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">
                       Men's Sizes
                     </h3>
-                    <div className="space-y-3">
-                      <div>
-                        <label className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
-                          Shoe Size
-                        </label>
-                        <select
-                          value={menSizes.shoe}
-                          onChange={(e) => setMenSizes({ ...menSizes, shoe: e.target.value })}
-                          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        >
-                          <option value="">Select size</option>
-                          {sizeOptions.men.shoe.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
-                          Top Size
-                        </label>
-                        <select
-                          value={menSizes.top}
-                          onChange={(e) => setMenSizes({ ...menSizes, top: e.target.value })}
-                          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        >
-                          <option value="">Select size</option>
-                          {sizeOptions.men.top.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div>
-                        <label className="mb-1 block text-sm text-zinc-600 dark:text-zinc-400">
-                          Waist/Bottom Size
-                        </label>
-                        <select
-                          value={menSizes.bottom}
-                          onChange={(e) => setMenSizes({ ...menSizes, bottom: e.target.value })}
-                          className="block w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-emerald-500 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-                        >
-                          <option value="">Select size</option>
-                          {sizeOptions.men.bottom.map((s) => (
-                            <option key={s} value={s}>{s}</option>
-                          ))}
-                        </select>
-                      </div>
+                    <div className="space-y-4">
+                      <SizeRangeSelect
+                        label="Shoe Size (US)"
+                        options={sizeOptions.men.shoe}
+                        value={menSizes.shoe}
+                        onChange={(v) => setMenSizes({ ...menSizes, shoe: v })}
+                      />
+                      <SizeRangeSelect
+                        label="Top Size"
+                        options={sizeOptions.men.top}
+                        value={menSizes.top}
+                        onChange={(v) => setMenSizes({ ...menSizes, top: v })}
+                      />
+                      <SizeRangeSelect
+                        label="Bottom Waist"
+                        options={sizeOptions.men.bottomWaist}
+                        value={menSizes.waist}
+                        onChange={(v) => setMenSizes({ ...menSizes, waist: v })}
+                      />
+                      <SizeRangeSelect
+                        label="Bottom Length"
+                        options={sizeOptions.men.bottomLength}
+                        value={menSizes.length}
+                        onChange={(v) => setMenSizes({ ...menSizes, length: v })}
+                      />
                     </div>
                   </div>
                 )}

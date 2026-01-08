@@ -393,65 +393,94 @@ export function ProductSearch() {
       });
     }
 
-    // Apply "My sizes only" filter (includes gender filtering)
+    // Apply "My sizes only" filter - checks if product has ANY size that matches user's size range
     if (showMySizesOnly && convexUser?.preferences && products.length > 0) {
       const prefs = convexUser.preferences;
       filtered = filtered.filter((product) => {
+        // Get all available sizes for this product
+        const allSizes: string[] = [];
+
+        // Check legacy size field
+        if (product.size) allSizes.push(product.size);
+
+        // Check sizes array
+        if (product.sizes) allSizes.push(...product.sizes);
+
+        // Check variants for available sizes
+        if (product.variants) {
+          for (const variant of product.variants) {
+            if (variant.available) {
+              // Try option1, option2, option3 for size info
+              if (variant.option1) allSizes.push(variant.option1);
+              if (variant.option2) allSizes.push(variant.option2);
+            }
+          }
+        }
+
+        // If no size info at all, include the product
+        if (allSizes.length === 0) return true;
+
+        const category = product.category.toLowerCase();
         const gender = product.gender;
 
-        // Filter by gender based on user's shopping preferences
+        // Helper function to check if ANY size matches
+        const anySizeMatches = (minSize: string | undefined, maxSize: string | undefined, sizeScale: string[]): boolean => {
+          // If no min/max preference set, all sizes match
+          if (!minSize && !maxSize) return true;
+          return allSizes.some(size => isSizeInRange(size, minSize, maxSize, sizeScale));
+        };
+
+        // Determine which size preferences to use based on product gender/category
         const shopsWomen = prefs.shopsWomen ?? false;
         const shopsMen = prefs.shopsMen ?? false;
 
-        // If user has gender preferences set, filter accordingly
-        if (shopsWomen || shopsMen) {
-          // Unisex products are always included if user shops either gender
-          if (gender === "unisex") {
-            // Include unisex
-          } else if (gender === "women" && !shopsWomen) {
-            return false; // User doesn't shop women's
-          } else if (gender === "men" && !shopsMen) {
-            return false; // User doesn't shop men's
-          }
-        }
-
-        if (!product.size) return true; // No size info, include it
-
-        const category = product.category.toLowerCase();
-        const size = product.size;
-
-        // Determine which size preferences to use based on product gender/category
-        if (gender === "women" || (!gender && prefs.shopsWomen)) {
-          if (category.includes("shoe") || category.includes("boot") || category.includes("sneaker") || category.includes("sandal") || category.includes("heel") || category.includes("loafer")) {
-            return isSizeInRange(size, prefs.womenShoeSizeMin, prefs.womenShoeSizeMax, SHOE_SIZES);
+        // Check women's sizes if product is women's or unisex/unknown and user shops women's
+        if ((gender === "women" || gender === "unisex" || !gender) && shopsWomen) {
+          if (category.includes("shoe") || category.includes("boot") || category.includes("sneaker") || category.includes("sandal") || category.includes("heel") || category.includes("loafer") || category.includes("flat") || category.includes("mule")) {
+            if (anySizeMatches(prefs.womenShoeSizeMin, prefs.womenShoeSizeMax, SHOE_SIZES)) return true;
           }
           if (category.includes("dress")) {
-            return isSizeInRange(size, prefs.womenDressSizeMin, prefs.womenDressSizeMax, NUMERIC_SIZES) ||
-                   isSizeInRange(size, prefs.womenDressSizeMin, prefs.womenDressSizeMax, CLOTHING_SIZES);
+            if (anySizeMatches(prefs.womenDressSizeMin, prefs.womenDressSizeMax, NUMERIC_SIZES) ||
+                anySizeMatches(prefs.womenDressSizeMin, prefs.womenDressSizeMax, CLOTHING_SIZES)) return true;
           }
-          if (category.includes("top") || category.includes("shirt") || category.includes("blouse") || category.includes("sweater")) {
-            return isSizeInRange(size, prefs.womenTopSizeMin, prefs.womenTopSizeMax, CLOTHING_SIZES);
+          if (category.includes("top") || category.includes("shirt") || category.includes("blouse") || category.includes("sweater") || category.includes("cardigan") || category.includes("tee")) {
+            if (anySizeMatches(prefs.womenTopSizeMin, prefs.womenTopSizeMax, CLOTHING_SIZES)) return true;
           }
-          if (category.includes("pant") || category.includes("jean") || category.includes("short") || category.includes("skirt")) {
-            return isSizeInRange(size, prefs.womenBottomSizeMin, prefs.womenBottomSizeMax, NUMERIC_SIZES) ||
-                   isSizeInRange(size, prefs.womenBottomSizeMin, prefs.womenBottomSizeMax, CLOTHING_SIZES);
-          }
-        }
-
-        if (gender === "men" || (!gender && prefs.shopsMen)) {
-          if (category.includes("shoe") || category.includes("boot") || category.includes("sneaker")) {
-            return isSizeInRange(size, prefs.menShoeSizeMin, prefs.menShoeSizeMax, SHOE_SIZES);
-          }
-          if (category.includes("top") || category.includes("shirt") || category.includes("sweater")) {
-            return isSizeInRange(size, prefs.menTopSizeMin, prefs.menTopSizeMax, CLOTHING_SIZES);
-          }
-          if (category.includes("pant") || category.includes("jean") || category.includes("short")) {
-            return isSizeInRange(size, prefs.menBottomSizeMin, prefs.menBottomSizeMax, NUMERIC_SIZES) ||
-                   isSizeInRange(size, prefs.menBottomSizeMin, prefs.menBottomSizeMax, CLOTHING_SIZES);
+          if (category.includes("pant") || category.includes("jean") || category.includes("short") || category.includes("skirt") || category.includes("legging")) {
+            if (anySizeMatches(prefs.womenBottomSizeMin, prefs.womenBottomSizeMax, NUMERIC_SIZES) ||
+                anySizeMatches(prefs.womenBottomSizeMin, prefs.womenBottomSizeMax, CLOTHING_SIZES)) return true;
           }
         }
 
-        return true; // No matching category, include it
+        // Check men's sizes if product is men's or unisex/unknown and user shops men's
+        if ((gender === "men" || gender === "unisex" || !gender) && shopsMen) {
+          if (category.includes("shoe") || category.includes("boot") || category.includes("sneaker") || category.includes("loafer")) {
+            if (anySizeMatches(prefs.menShoeSizeMin, prefs.menShoeSizeMax, SHOE_SIZES)) return true;
+          }
+          if (category.includes("top") || category.includes("shirt") || category.includes("sweater") || category.includes("cardigan") || category.includes("tee") || category.includes("hoodie")) {
+            if (anySizeMatches(prefs.menTopSizeMin, prefs.menTopSizeMax, CLOTHING_SIZES)) return true;
+          }
+          if (category.includes("pant") || category.includes("jean") || category.includes("short") || category.includes("chino")) {
+            // Check waist size
+            const waistMatches = anySizeMatches(
+              prefs.menBottomWaistMin || prefs.menBottomSizeMin,
+              prefs.menBottomWaistMax || prefs.menBottomSizeMax,
+              NUMERIC_SIZES
+            );
+            if (waistMatches) return true;
+          }
+        }
+
+        // For products that don't match any known category, include them
+        // (to avoid filtering out accessories, bags, etc.)
+        const knownCategories = ["shoe", "boot", "sneaker", "sandal", "heel", "loafer", "flat", "mule",
+                                  "dress", "top", "shirt", "blouse", "sweater", "cardigan", "tee", "hoodie",
+                                  "pant", "jean", "short", "skirt", "legging", "chino"];
+        if (!knownCategories.some(cat => category.includes(cat))) {
+          return true;
+        }
+
+        return false; // No matching size found
       });
     }
 

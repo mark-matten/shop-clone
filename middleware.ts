@@ -8,6 +8,8 @@ const isPublicRoute = createRouteMatcher([
   "/compare",
   "/favorites",
   "/api/webhooks(.*)",
+  "/outfit/(.*)",      // Public outfit sharing pages
+  "/closet/(.*)",      // Public closet sharing pages (with userId)
 ]);
 
 export default clerkMiddleware(async (auth, req) => {

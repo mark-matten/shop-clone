@@ -1,6 +1,77 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+// Category normalization and ordering (matches frontend closet categories)
+const CATEGORY_ORDER = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories", "activewear", "other"];
+
+const CATEGORY_LABELS: Record<string, string> = {
+  tops: "Tops",
+  bottoms: "Bottoms",
+  dresses: "Dresses",
+  outerwear: "Outerwear",
+  shoes: "Shoes",
+  bags: "Bags",
+  accessories: "Accessories",
+  activewear: "Activewear",
+  other: "Other",
+};
+
+function getCategoryKey(category: string): string {
+  const lower = category.toLowerCase();
+
+  if (lower.includes("top") || lower.includes("shirt") || lower.includes("blouse") ||
+      lower.includes("sweater") || lower.includes("tee") || lower.includes("polo") ||
+      lower.includes("bodysuit") || lower.includes("tank") || lower.includes("cami") ||
+      lower.includes("henley") || lower.includes("cardigan") || lower.includes("pullover")) {
+    return "tops";
+  }
+
+  if (lower.includes("bottom") || lower.includes("pant") || lower.includes("jean") ||
+      lower.includes("skirt") || lower.includes("short") || lower.includes("chino") ||
+      lower.includes("trouser") || lower.includes("legging") || lower.includes("jogger")) {
+    return "bottoms";
+  }
+
+  if (lower.includes("dress") || lower.includes("jumpsuit") || lower.includes("romper")) {
+    return "dresses";
+  }
+
+  if (lower.includes("jacket") || lower.includes("coat") || lower.includes("outerwear") ||
+      lower.includes("blazer") || lower.includes("vest") || lower.includes("hoodie") ||
+      lower.includes("parka") || lower.includes("windbreaker")) {
+    return "outerwear";
+  }
+
+  if (lower.includes("shoe") || lower.includes("boot") || lower.includes("sneaker") ||
+      lower.includes("heel") || lower.includes("sandal") || lower.includes("loafer") ||
+      lower.includes("flat") || lower.includes("mule") || lower.includes("slipper") ||
+      lower.includes("oxford") || lower.includes("pump") || lower.includes("wedge") ||
+      lower.includes("footwear") || lower.includes("trainer") || lower.includes("kicks")) {
+    return "shoes";
+  }
+
+  if (lower.includes("bag") || lower.includes("tote") || lower.includes("purse") ||
+      lower.includes("backpack") || lower.includes("clutch") || lower.includes("satchel") ||
+      lower.includes("crossbody") || lower.includes("wallet") || lower.includes("pouch")) {
+    return "bags";
+  }
+
+  if (lower.includes("accessor") || lower.includes("jewelry") || lower.includes("hat") ||
+      lower.includes("scarf") || lower.includes("belt") || lower.includes("watch") ||
+      lower.includes("sock") || lower.includes("glove") || lower.includes("sunglasse") ||
+      lower.includes("tie") || lower.includes("beanie") || lower.includes("cap")) {
+    return "accessories";
+  }
+
+  if (lower.includes("active") || lower.includes("sport") || lower.includes("athletic") ||
+      lower.includes("workout") || lower.includes("yoga") || lower.includes("gym") ||
+      lower.includes("running") || lower.includes("training")) {
+    return "activewear";
+  }
+
+  return "other";
+}
+
 // Add a product to closet (I own this)
 export const addToCloset = mutation({
   args: {
@@ -273,7 +344,7 @@ export const markAsWorn = mutation({
 export const updateClosetItemOptions = mutation({
   args: {
     clerkId: v.string(),
-    productId: v.id("products"),
+    productId: v.union(v.id("products"), v.string()), // Accept both product IDs and closet_items IDs
     selectedOptions: v.record(v.string(), v.string()),
     customCategory: v.optional(v.string()),
   },
@@ -287,12 +358,27 @@ export const updateClosetItemOptions = mutation({
       throw new Error("User not found");
     }
 
-    const item = await ctx.db
-      .query("closet_items")
-      .withIndex("by_userId_productId", (q) =>
-        q.eq("userId", user._id).eq("productId", args.productId)
-      )
-      .first();
+    let item = null;
+
+    // First, try to get the item directly by ID (for user-added items)
+    try {
+      const directItem = await ctx.db.get(args.productId as any);
+      if (directItem && (directItem as any).userId === user._id) {
+        item = directItem;
+      }
+    } catch {
+      // Not a valid closet_items ID, try as product ID
+    }
+
+    // If not found directly, try to find by productId (for product-linked items)
+    if (!item) {
+      item = await ctx.db
+        .query("closet_items")
+        .withIndex("by_userId_productId", (q) =>
+          q.eq("userId", user._id).eq("productId", args.productId as any)
+        )
+        .first();
+    }
 
     if (item) {
       const updates: { selectedOptions: Record<string, string>; customCategory?: string } = {
@@ -864,5 +950,108 @@ export const getClosetItemsByCategory = query({
     return matchingItems
       .filter((item) => item !== null)
       .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+  },
+});
+
+// Get public closet data (for sharing)
+export const getPublicCloset = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    // Get the user to check if closet is public
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) return null;
+
+    if (!user.isPublicCloset) {
+      return { isPrivate: true };
+    }
+
+    // Get all closet items (owned items only, not wishlist)
+    const closetItems = await ctx.db
+      .query("closet_items")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+
+    // Filter to owned items only (not wishlist)
+    const ownedItems = closetItems.filter((item) => !item.isWishlist);
+
+    // Get item details with normalized categories
+    const itemsWithDetails = await Promise.all(
+      ownedItems.map(async (item) => {
+        let imageUrl = item.imageUrl;
+        let name = item.name;
+        let brand = item.brand;
+        let rawCategory = item.customCategory || item.category;
+
+        // For generated items, resolve storage URL
+        if (item.source === "generated" && item.generatedImageStorageId) {
+          imageUrl = await ctx.storage.getUrl(item.generatedImageStorageId) ?? undefined;
+        }
+
+        // For product-linked items, get product details
+        if (item.productId) {
+          const product = await ctx.db.get(item.productId);
+          if (product) {
+            name = name || product.name;
+            brand = brand || product.brand;
+            imageUrl = imageUrl || product.imageUrl;
+            rawCategory = rawCategory || product.category;
+          }
+        }
+
+        // Normalize category to standard closet categories
+        const normalizedCategory = getCategoryKey(rawCategory || "other");
+
+        return {
+          _id: item._id,
+          name: name || "Unknown Item",
+          brand: brand || "",
+          imageUrl,
+          category: normalizedCategory,
+          categoryLabel: CATEGORY_LABELS[normalizedCategory] || "Other",
+          colorName: item.color || item.colorName,
+          addedAt: item.addedAt,
+          sortOrder: item.sortOrder,
+        };
+      })
+    );
+
+    // Group by normalized category
+    const byCategory: Record<string, typeof itemsWithDetails> = {};
+    for (const item of itemsWithDetails) {
+      const cat = item.category;
+      if (!byCategory[cat]) byCategory[cat] = [];
+      byCategory[cat].push(item);
+    }
+
+    // Sort items within each category by sortOrder
+    for (const cat of Object.keys(byCategory)) {
+      byCategory[cat].sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
+    }
+
+    // Get categories in proper order (only those with items)
+    const orderedCategories = CATEGORY_ORDER
+      .filter((cat) => byCategory[cat] && byCategory[cat].length > 0)
+      .map((cat) => ({
+        id: cat,
+        label: CATEGORY_LABELS[cat],
+        count: byCategory[cat].length,
+      }));
+
+    return {
+      isPrivate: false,
+      user: {
+        _id: user._id,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      },
+      items: itemsWithDetails,
+      byCategory,
+      orderedCategories,
+      totalItems: itemsWithDetails.length,
+    };
   },
 });

@@ -160,7 +160,7 @@ export const getFileUrl = query({
   },
 });
 
-// Save generated outfit image
+// Save generated outfit image (creates new or updates existing)
 export const saveOutfitImage = mutation({
   args: {
     clerkId: v.string(),
@@ -170,8 +170,22 @@ export const saveOutfitImage = mutation({
     prompt: v.string(),
     name: v.optional(v.string()),
     collectionId: v.optional(v.id("collections")),
+    existingOutfitId: v.optional(v.id("outfit_images")), // If provided, update instead of insert
   },
   handler: async (ctx, args) => {
+    // If updating an existing outfit
+    if (args.existingOutfitId) {
+      const existing = await ctx.db.get(args.existingOutfitId);
+      if (existing && existing.clerkId === args.clerkId) {
+        await ctx.db.patch(args.existingOutfitId, {
+          name: args.name,
+          collectionId: args.collectionId,
+        });
+        return args.existingOutfitId;
+      }
+    }
+
+    // Create new outfit
     return await ctx.db.insert("outfit_images", {
       clerkId: args.clerkId,
       storageId: args.storageId,
@@ -185,6 +199,91 @@ export const saveOutfitImage = mutation({
   },
 });
 
+// Get only saved outfits (those with names or in collections)
+export const getSavedOutfits = query({
+  args: {
+    clerkId: v.string(),
+    limit: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const limit = args.limit ?? 20;
+
+    const allOutfits = await ctx.db
+      .query("outfit_images")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .order("desc")
+      .collect();
+
+    // Filter to only saved outfits (have name or collectionId)
+    const savedOutfits = allOutfits
+      .filter((outfit) => outfit.name || outfit.collectionId)
+      .slice(0, limit);
+
+    // Get URLs and related data for each outfit
+    return await Promise.all(
+      savedOutfits.map(async (outfit) => {
+        const url = await ctx.storage.getUrl(outfit.storageId);
+
+        // Get item details
+        const itemIdsToLookup: string[] = outfit.itemIds ||
+          (outfit.closetItemIds ? outfit.closetItemIds.map(id => id.toString()) : []);
+        const items = await Promise.all(
+          itemIdsToLookup.map(async (id) => {
+            // Try by _id first
+            let closetItemDoc = await ctx.db
+              .query("closet_items")
+              .filter((q) => q.eq(q.field("_id"), id as any))
+              .first();
+
+            // If not found, try by productId
+            if (!closetItemDoc) {
+              closetItemDoc = await ctx.db
+                .query("closet_items")
+                .filter((q) => q.eq(q.field("productId"), id as any))
+                .first();
+            }
+
+            if (closetItemDoc) {
+              let imageUrl = closetItemDoc.imageUrl;
+              if (closetItemDoc.source === "generated" && closetItemDoc.generatedImageStorageId) {
+                imageUrl = await ctx.storage.getUrl(closetItemDoc.generatedImageStorageId) ?? undefined;
+              }
+              // Get product info if linked
+              if (closetItemDoc.productId) {
+                const product = await ctx.db.get(closetItemDoc.productId);
+                return {
+                  _id: closetItemDoc._id,
+                  productId: closetItemDoc.productId,
+                  name: product?.name || closetItemDoc.name,
+                  imageUrl: product?.imageUrl || imageUrl,
+                  brand: product?.brand,
+                  price: product?.price,
+                };
+              }
+              return {
+                _id: closetItemDoc._id,
+                name: closetItemDoc.name,
+                imageUrl,
+              };
+            }
+            return null;
+          })
+        );
+
+        return {
+          _id: outfit._id,
+          url,
+          generatedAt: outfit.generatedAt,
+          prompt: outfit.prompt,
+          name: outfit.name,
+          collectionId: outfit.collectionId,
+          items: items.filter((i): i is NonNullable<typeof i> => i !== null),
+        };
+      })
+    );
+  },
+});
+
 // Get user's outfit history
 export const getOutfitHistory = query({
   args: {
@@ -194,11 +293,16 @@ export const getOutfitHistory = query({
   handler: async (ctx, args) => {
     const limit = args.limit ?? 20;
 
-    const outfits = await ctx.db
+    const allOutfits = await ctx.db
       .query("outfit_images")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .order("desc")
-      .take(limit);
+      .collect();
+
+    // Filter out hidden outfits and limit
+    const outfits = allOutfits
+      .filter((o) => !o.hiddenFromRecent)
+      .slice(0, limit);
 
     // Get URLs and related data for each outfit
     return await Promise.all(
@@ -212,11 +316,19 @@ export const getOutfitHistory = query({
           (outfit.closetItemIds ? outfit.closetItemIds.map(id => id.toString()) : []);
         const items = await Promise.all(
           itemIdsToLookup.map(async (id) => {
-            // Try closet_items table first
-            const closetItemDoc = await ctx.db
+            // Try closet_items table first - by _id
+            let closetItemDoc = await ctx.db
               .query("closet_items")
               .filter((q) => q.eq(q.field("_id"), id as any))
               .first();
+
+            // If not found by _id, try by productId (for items saved with product IDs)
+            if (!closetItemDoc) {
+              closetItemDoc = await ctx.db
+                .query("closet_items")
+                .filter((q) => q.eq(q.field("productId"), id as any))
+                .first();
+            }
 
             if (closetItemDoc) {
               // For product-linked closet items
@@ -338,5 +450,162 @@ export const deleteOutfitImage = mutation({
 
     // Delete metadata
     await ctx.db.delete(args.outfitId);
+  },
+});
+
+// Clear all recent outfits from the view
+// - Unsaved outfits (no name, no collection) are deleted
+// - Saved outfits are hidden from view but not deleted
+export const clearRecentOutfits = mutation({
+  args: {
+    clerkId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const outfits = await ctx.db
+      .query("outfit_images")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .collect();
+
+    // Filter to only visible outfits
+    const visibleOutfits = outfits.filter((o) => !o.hiddenFromRecent);
+
+    let deleted = 0;
+    let hidden = 0;
+
+    for (const outfit of visibleOutfits) {
+      const isSaved = outfit.name || outfit.collectionId;
+
+      if (isSaved) {
+        // Hide saved outfits from recent view (don't delete)
+        await ctx.db.patch(outfit._id, { hiddenFromRecent: true });
+        hidden++;
+      } else {
+        // Delete unsaved outfits completely
+        await ctx.storage.delete(outfit.storageId);
+        await ctx.db.delete(outfit._id);
+        deleted++;
+      }
+    }
+
+    return { deleted, hidden };
+  },
+});
+
+// Hide a single outfit from recent view (for saved outfits) or delete (for unsaved)
+export const hideOrDeleteOutfit = mutation({
+  args: {
+    clerkId: v.string(),
+    outfitId: v.id("outfit_images"),
+  },
+  handler: async (ctx, args) => {
+    const outfit = await ctx.db.get(args.outfitId);
+    if (!outfit || outfit.clerkId !== args.clerkId) {
+      throw new Error("Outfit not found or access denied");
+    }
+
+    const isSaved = outfit.name || outfit.collectionId;
+
+    if (isSaved) {
+      // Hide saved outfits from recent view (don't delete)
+      await ctx.db.patch(args.outfitId, { hiddenFromRecent: true });
+      return { action: "hidden" };
+    } else {
+      // Delete unsaved outfits completely
+      await ctx.storage.delete(outfit.storageId);
+      await ctx.db.delete(args.outfitId);
+      return { action: "deleted" };
+    }
+  },
+});
+
+// Get public outfit by ID (for sharing)
+export const getPublicOutfit = query({
+  args: { outfitId: v.id("outfit_images") },
+  handler: async (ctx, args) => {
+    const outfit = await ctx.db.get(args.outfitId);
+    if (!outfit) return null;
+
+    // Get the user to check if closet is public
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", outfit.clerkId))
+      .first();
+
+    if (!user || !user.isPublicCloset) {
+      return { isPrivate: true };
+    }
+
+    // Get the outfit image URL
+    const url = await ctx.storage.getUrl(outfit.storageId);
+
+    // Get item details
+    const itemIdsToLookup: string[] = outfit.itemIds ||
+      (outfit.closetItemIds ? outfit.closetItemIds.map(id => id.toString()) : []);
+
+    const items = await Promise.all(
+      itemIdsToLookup.map(async (id) => {
+        // Try by _id first
+        let closetItemDoc = await ctx.db
+          .query("closet_items")
+          .filter((q) => q.eq(q.field("_id"), id as any))
+          .first();
+
+        // If not found, try by productId
+        if (!closetItemDoc) {
+          closetItemDoc = await ctx.db
+            .query("closet_items")
+            .filter((q) => q.eq(q.field("productId"), id as any))
+            .first();
+        }
+
+        if (closetItemDoc) {
+          let imageUrl = closetItemDoc.imageUrl;
+          if (closetItemDoc.generatedImageStorageId) {
+            imageUrl = await ctx.storage.getUrl(closetItemDoc.generatedImageStorageId) || undefined;
+          }
+
+          // For product-linked items
+          if (closetItemDoc.productId) {
+            const product = await ctx.db.get(closetItemDoc.productId);
+            return {
+              _id: closetItemDoc._id,
+              productId: closetItemDoc.productId,
+              name: product?.name || closetItemDoc.name || "Unknown",
+              brand: product?.brand || closetItemDoc.brand || "",
+              imageUrl: product?.imageUrl || imageUrl,
+              category: closetItemDoc.customCategory || product?.category || closetItemDoc.category || "other",
+              colorName: closetItemDoc.colorName || product?.colorName,
+              price: product?.price,
+              originalUrl: product?.originalUrl,
+            };
+          }
+
+          return {
+            _id: closetItemDoc._id,
+            name: closetItemDoc.name || "Unknown",
+            brand: closetItemDoc.brand || "",
+            imageUrl,
+            category: closetItemDoc.customCategory || closetItemDoc.category || "other",
+            colorName: closetItemDoc.color || closetItemDoc.colorName,
+          };
+        }
+        return null;
+      })
+    );
+
+    return {
+      isPrivate: false,
+      outfit: {
+        _id: outfit._id,
+        url,
+        name: outfit.name,
+        generatedAt: outfit.generatedAt,
+        items: items.filter(Boolean),
+      },
+      user: {
+        _id: user._id,
+        clerkId: user.clerkId, // Needed for linking to closet
+      },
+    };
   },
 });

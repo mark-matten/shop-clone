@@ -46,7 +46,7 @@ Parse the user's natural language search into a structured JSON object.
 
 Extract ALL of these fields when present in the search:
 - query: the original search text (always required)
-- gender: "men" or "women" if the user says "men's", "women's", "mens", "womens", "for men", "for women"
+- gender: "men" or "women" ONLY if the search STARTS with "men's", "women's", "mens", "womens", "for men", "for women". Do NOT extract gender if these words appear in the middle of a product name like "Everlane Men's Chino" or "The Women's Classic Tee"
 - category: the product type like "boots", "jacket", "dress", "sneakers", "sandals", "bag", "sweater", "shoes", "shirt", "top", "pants", "coat"
 - brand: brand name if mentioned (e.g., "Nike", "Gucci", "Levi's", "Everlane")
 - material: material type like "leather", "cotton", "silk", "denim", "cashmere", "suede", "wool", "canvas"
@@ -59,6 +59,7 @@ Extract ALL of these fields when present in the search:
 IMPORTANT:
 - Extract color, material, and category if they appear ANYWHERE in the search
 - For "women's black leather boots": gender=women, color=black, material=leather, category=boots
+- For "Everlane Men's Performance Chino": gender=null (not at start), brand=Everlane, category=chino
 - Do NOT put color/material/category in the query field - extract them as separate fields
 
 Return ONLY valid JSON, no explanation or markdown.`;
@@ -126,9 +127,14 @@ function parseBasic(searchText: string): SearchFilter {
   const query = searchText.toLowerCase();
   const filter: SearchFilter = { query: searchText };
 
-  // Gender detection (including possessives like "men's" and "women's")
-  if (query.includes("women") || query.includes("woman")) filter.gender = "women";
-  else if (query.includes("men's") || query.includes("mens") || query.includes("men ") || query.includes("man")) filter.gender = "men";
+  // Gender detection - only trigger if gender word is at the START of the query
+  // This prevents product names like "Everlane Men's Chino" from triggering gender filtering
+  // Users should explicitly search "men's jeans" or "women's dress" to filter by gender
+  const startsWithWomen = query.startsWith("women") || query.startsWith("woman");
+  const startsWithMen = query.startsWith("men's") || query.startsWith("mens") || query.startsWith("men ") || query.startsWith("man ");
+
+  if (startsWithWomen) filter.gender = "women";
+  else if (startsWithMen) filter.gender = "men";
 
   // Price detection
   const underMatch = query.match(/under \$?(\d+)/);

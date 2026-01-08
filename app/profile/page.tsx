@@ -146,6 +146,8 @@ export default function ProfilePage() {
 
   const updatePreferences = useMutation(api.users.updateUserPreferences);
   const updateEmailSettings = useMutation(api.users.updateEmailSettings);
+  const updateClosetPrivacy = useMutation(api.users.updateClosetPrivacy);
+  const updateUserName = useMutation(api.users.updateUserName);
 
   const [preferences, setPreferences] = useState<Preferences>(defaultPreferences);
   const [isSaving, setIsSaving] = useState(false);
@@ -161,6 +163,16 @@ export default function ProfilePage() {
   const [emailWeeklyDigest, setEmailWeeklyDigest] = useState(false);
   const [isEmailSaving, setIsEmailSaving] = useState(false);
   const [emailSaveMessage, setEmailSaveMessage] = useState<string | null>(null);
+
+  // Privacy settings
+  const [isPublicCloset, setIsPublicCloset] = useState(true);
+  const [isPrivacySaving, setIsPrivacySaving] = useState(false);
+
+  // Name settings
+  const [firstName, setFirstName] = useState("");
+  const [lastName, setLastName] = useState("");
+  const [isNameSaving, setIsNameSaving] = useState(false);
+  const [nameSaveMessage, setNameSaveMessage] = useState<string | null>(null);
 
   // Update preferences when user data loads
   useEffect(() => {
@@ -196,6 +208,17 @@ export default function ProfilePage() {
     if (convexUser?.email) {
       setEmail(convexUser.email);
     }
+    // Load privacy settings - default to public
+    if (convexUser !== undefined) {
+      setIsPublicCloset(convexUser?.isPublicCloset ?? true);
+    }
+    // Load name settings
+    if (convexUser?.firstName !== undefined) {
+      setFirstName(convexUser.firstName || "");
+    }
+    if (convexUser?.lastName !== undefined) {
+      setLastName(convexUser.lastName || "");
+    }
   }, [convexUser]);
 
   const handleGenderToggle = (gender: "shopsMen" | "shopsWomen") => {
@@ -230,6 +253,49 @@ export default function ProfilePage() {
       setSaveMessage("Failed to save");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handlePrivacyToggle = async () => {
+    if (!clerkUser?.id) return;
+
+    const newValue = !isPublicCloset;
+    setIsPublicCloset(newValue);
+    setIsPrivacySaving(true);
+
+    try {
+      await updateClosetPrivacy({
+        clerkId: clerkUser.id,
+        isPublic: newValue,
+      });
+    } catch (error) {
+      console.error("Failed to update privacy setting:", error);
+      // Revert on error
+      setIsPublicCloset(!newValue);
+    } finally {
+      setIsPrivacySaving(false);
+    }
+  };
+
+  const handleNameSave = async () => {
+    if (!clerkUser?.id) return;
+
+    setIsNameSaving(true);
+    setNameSaveMessage(null);
+
+    try {
+      await updateUserName({
+        clerkId: clerkUser.id,
+        firstName: firstName.trim() || undefined,
+        lastName: lastName.trim() || undefined,
+      });
+      setNameSaveMessage("Name updated successfully!");
+      setTimeout(() => setNameSaveMessage(null), 3000);
+    } catch (error) {
+      console.error("Failed to update name:", error);
+      setNameSaveMessage("Failed to update name");
+    } finally {
+      setIsNameSaving(false);
     }
   };
 
@@ -656,6 +722,92 @@ export default function ProfilePage() {
                     <div className="h-6 w-11 rounded-full bg-zinc-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-zinc-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-zinc-900 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-zinc-500 dark:bg-zinc-700 dark:peer-checked:bg-white"></div>
                   </label>
                 )}
+              </div>
+            </div>
+
+            {/* Display Name */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-start gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
+                  <svg className="h-5 w-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-zinc-900 dark:text-white">
+                    Display Name
+                  </p>
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
+                    Shown when you share your closet or outfits
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder="First name"
+                      value={firstName}
+                      onChange={(e) => setFirstName(e.target.value)}
+                      className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    />
+                    <input
+                      type="text"
+                      placeholder="Last name"
+                      value={lastName}
+                      onChange={(e) => setLastName(e.target.value)}
+                      className="flex-1 rounded-lg border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    />
+                    <button
+                      onClick={handleNameSave}
+                      disabled={isNameSaving}
+                      className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50 transition-colors"
+                    >
+                      {isNameSaving ? "Saving..." : "Save"}
+                    </button>
+                  </div>
+                  {nameSaveMessage && (
+                    <p className={`mt-2 text-sm ${nameSaveMessage.includes("success") ? "text-green-600" : "text-red-500"}`}>
+                      {nameSaveMessage}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Public Closet Toggle */}
+            <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isPublicCloset ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                    {isPublicCloset ? (
+                      <svg className="h-5 w-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    ) : (
+                      <svg className="h-5 w-5 text-zinc-600 dark:text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                      </svg>
+                    )}
+                  </div>
+                  <div>
+                    <p className="font-medium text-zinc-900 dark:text-white">
+                      Public Closet
+                    </p>
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                      {isPublicCloset
+                        ? "Your closet and outfits can be viewed via shared links"
+                        : "Your closet is private - shared links won't work"}
+                    </p>
+                  </div>
+                </div>
+                <label className="relative inline-flex cursor-pointer items-center">
+                  <input
+                    type="checkbox"
+                    checked={isPublicCloset}
+                    onChange={handlePrivacyToggle}
+                    disabled={isPrivacySaving}
+                    className="peer sr-only"
+                  />
+                  <div className={`h-6 w-11 rounded-full bg-zinc-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-zinc-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-rose-400 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-zinc-500 dark:bg-zinc-700 dark:peer-checked:bg-rose-500 ${isPrivacySaving ? 'opacity-50' : ''}`}></div>
+                </label>
               </div>
             </div>
 

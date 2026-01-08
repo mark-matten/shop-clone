@@ -157,8 +157,8 @@ export function Header() {
   return (
     <header className="border-b border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" onClick={handleSearchClick} className="ml-2">
-          <span className="font-[family-name:var(--font-pacifico)] text-3xl">
+        <Link href="/" onClick={handleSearchClick} className="ml-2 -mt-1">
+          <span className="font-[family-name:var(--font-pacifico)] text-2xl">
             <span style={{ color: '#C2311D' }}>ar</span>
             <span style={{ color: '#942010' }}>moi</span>
           </span>

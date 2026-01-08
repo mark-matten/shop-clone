@@ -30,6 +30,8 @@ http.route({
       type: string;
       data: {
         id: string;
+        first_name?: string | null;
+        last_name?: string | null;
         phone_numbers?: Array<{ phone_number: string }>;
       };
     };
@@ -46,12 +48,14 @@ http.route({
     }
 
     if (evt.type === "user.created") {
-      const { id, phone_numbers } = evt.data;
+      const { id, first_name, last_name, phone_numbers } = evt.data;
       const phoneNumber = phone_numbers?.[0]?.phone_number || "";
 
       await ctx.runMutation(api.users.createUser, {
         clerkId: id,
         phoneNumber,
+        firstName: first_name || undefined,
+        lastName: last_name || undefined,
       });
     }
 

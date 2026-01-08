@@ -492,7 +492,7 @@ export const generateTryOnImage = action({
     });
     const storageId = await ctx.storage.store(blob);
 
-    // Save outfit image record
+    // Get user photo ID if using user's photo
     const userPhotoIdResult = args.userPhotoStorageId
       ? await ctx.runQuery(internal.gemini.getUserPhotoIdByStorageId, {
           clerkId: args.clerkId,
@@ -501,20 +501,17 @@ export const generateTryOnImage = action({
       : undefined;
     const userPhotoId: Id<"user_photos"> | undefined = userPhotoIdResult ?? undefined;
 
-    const outfitId: Id<"outfit_images"> = await ctx.runMutation(internal.gemini.saveOutfitRecord, {
-      clerkId: args.clerkId,
-      storageId,
-      itemIds: [], // No longer tracking item IDs since we use productIds now
-      userPhotoId,
-      prompt: textPrompt,
-    });
-
+    // Don't auto-save outfit record - user must click "Save" to persist
+    // Just return the image data for preview
     const imageUrl = await ctx.storage.getUrl(storageId);
 
     return {
-      outfitId,
+      // No outfitId - outfit not saved until user explicitly saves
       storageId,
       imageUrl,
+      itemIds: args.productIds, // Return item IDs so they can be saved later
+      userPhotoId, // Return user photo ID so it can be saved later
+      prompt: textPrompt, // Return prompt so it can be saved later
     };
   },
 });

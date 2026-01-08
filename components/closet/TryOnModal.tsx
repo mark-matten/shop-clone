@@ -130,7 +130,15 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const [showLightbox, setShowLightbox] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [savedOutfitId, setSavedOutfitId] = useState<Id<"outfit_images"> | null>(null);
+  // Track unsaved generated outfit data (for saving later)
+  const [pendingOutfitData, setPendingOutfitData] = useState<{
+    storageId: Id<"_storage">;
+    itemIds: string[];
+    userPhotoId?: Id<"user_photos">;
+    prompt: string;
+  } | null>(null);
   const [showOutfitHistory, setShowOutfitHistory] = useState(false);
+  const [isClearingRecent, setIsClearingRecent] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
   const [outfitName, setOutfitName] = useState("");
   const [selectedCollectionId, setSelectedCollectionId] = useState<Id<"collections"> | null>(null);
@@ -157,6 +165,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
   const saveOutfitImage = useMutation(api.storage.saveOutfitImage);
   const deleteOutfitImage = useMutation(api.storage.deleteOutfitImage);
+  const hideOrDeleteOutfit = useMutation(api.storage.hideOrDeleteOutfit);
+  const clearRecentOutfits = useMutation(api.storage.clearRecentOutfits);
   const createCollection = useMutation(api.collections.createCollectionByClerkId);
 
   // Load saved model preferences
@@ -304,6 +314,14 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
       if (result.imageUrl) {
         setGeneratedOutfit(result.imageUrl);
+        // Store the outfit data for saving later (outfit is NOT auto-saved)
+        setSavedOutfitId(null); // Clear any previous saved ID
+        setPendingOutfitData({
+          storageId: result.storageId,
+          itemIds: result.itemIds,
+          userPhotoId: result.userPhotoId,
+          prompt: result.prompt,
+        });
       }
     } catch (error) {
       console.error("Generation error:", error);
@@ -322,6 +340,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     setOwnershipFilter("all");
     setOtherDetails("");
     setSavedOutfitId(null);
+    setPendingOutfitData(null);
     setShowOutfitHistory(false);
     setShowSaveModal(false);
     setOutfitName("");
@@ -362,13 +381,44 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
         });
       }
 
-      // Convert base64 to blob
+      // If we have an existing outfit from history, update it
+      const existingId = selectedOutfitId || savedOutfitId;
+      if (existingId) {
+        const outfitId = await saveOutfitImage({
+          clerkId,
+          storageId: "" as any, // Not used when existingOutfitId is provided
+          itemIds: [],
+          prompt: "",
+          name: outfitName.trim() || undefined,
+          collectionId: collectionId ?? undefined,
+          existingOutfitId: existingId,
+        });
+        setSavedOutfitId(outfitId);
+        setPendingOutfitData(null);
+        setShowSaveModal(false);
+        return;
+      }
+
+      // For newly generated outfits, use the pending data (already uploaded)
+      if (pendingOutfitData) {
+        const outfitId = await saveOutfitImage({
+          clerkId,
+          storageId: pendingOutfitData.storageId,
+          itemIds: pendingOutfitData.itemIds,
+          userPhotoId: pendingOutfitData.userPhotoId,
+          prompt: pendingOutfitData.prompt,
+          name: outfitName.trim() || undefined,
+          collectionId: collectionId ?? undefined,
+        });
+        setSavedOutfitId(outfitId);
+        setPendingOutfitData(null);
+        setShowSaveModal(false);
+        return;
+      }
+
+      // Fallback: upload and save (for edge cases)
       const blob = await dataUrlToBlob(generatedOutfit);
-
-      // Get upload URL from Convex
       const uploadUrl = await generateUploadUrl();
-
-      // Upload the blob
       const uploadResult = await fetch(uploadUrl, {
         method: "POST",
         headers: { "Content-Type": blob.type },
@@ -380,11 +430,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       }
 
       const { storageId } = await uploadResult.json();
-
-      // Get item IDs (can be closet_items or favorites IDs)
       const itemIds = Array.from(selectedByCategory.values());
 
-      // Save outfit metadata with name and collection
       const outfitId = await saveOutfitImage({
         clerkId,
         storageId,
@@ -417,10 +464,46 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     document.body.removeChild(link);
   };
 
-  // Share outfit using native share API
+  // Share outfit using native share API or copy link
   const handleShareOutfit = async () => {
     if (!generatedOutfit) return;
 
+    // If outfit is saved, share the link to the outfit page
+    const outfitIdToShare = savedOutfitId || selectedOutfitId;
+    if (outfitIdToShare) {
+      const baseUrl = typeof window !== "undefined" ? window.location.origin : "https://armoi.app";
+      const outfitUrl = `${baseUrl}/outfit/${outfitIdToShare}`;
+
+      try {
+        if (navigator.share) {
+          await navigator.share({
+            title: "Check out my outfit!",
+            text: "Created with armoi virtual try-on",
+            url: outfitUrl,
+          });
+        } else {
+          // Copy URL to clipboard
+          await navigator.clipboard.writeText(outfitUrl);
+          alert("Outfit link copied to clipboard!");
+        }
+        return;
+      } catch (error) {
+        if ((error as Error).name !== "AbortError") {
+          console.error("Share error:", error);
+          // Try copy to clipboard as fallback
+          try {
+            await navigator.clipboard.writeText(outfitUrl);
+            alert("Outfit link copied to clipboard!");
+          } catch {
+            // Final fallback
+            prompt("Copy this link:", outfitUrl);
+          }
+        }
+      }
+      return;
+    }
+
+    // If not saved, share the image directly
     try {
       // Convert to blob for sharing
       const blob = await dataUrlToBlob(generatedOutfit);
@@ -433,7 +516,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           files: [file],
         });
       } else {
-        // Fallback: copy image or download
+        // Fallback: download
         handleDownloadOutfit();
       }
     } catch (error) {
@@ -463,6 +546,46 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       setGeneratedOutfit(outfit.url);
       setSavedOutfitId(outfit._id);
       setShowOutfitHistory(false);
+    }
+  };
+
+  // Clear all recent outfits from view
+  const handleClearRecentOutfits = async () => {
+    if (!confirm("Clear all recent outfits from view? Saved outfits will be hidden but can still be accessed from Saved Outfits.")) return;
+
+    setIsClearingRecent(true);
+    try {
+      await clearRecentOutfits({ clerkId });
+      // If current outfit was unsaved, clear it
+      if (savedOutfitId && outfitHistory) {
+        const currentOutfit = outfitHistory.find((o: any) => o._id === savedOutfitId);
+        if (currentOutfit && !currentOutfit.name && !currentOutfit.collectionId) {
+          setGeneratedOutfit(null);
+          setSavedOutfitId(null);
+          setSelectedOutfitId(null);
+        }
+      }
+    } catch (error) {
+      console.error("Clear recent error:", error);
+      alert("Failed to clear recent outfits.");
+    } finally {
+      setIsClearingRecent(false);
+    }
+  };
+
+  // Remove a single outfit from history (hide if saved, delete if unsaved)
+  const handleRemoveFromHistory = async (e: React.MouseEvent, outfitId: Id<"outfit_images">) => {
+    e.stopPropagation();
+    try {
+      await hideOrDeleteOutfit({ clerkId, outfitId });
+      // If removed outfit was currently displayed, clear it
+      if (savedOutfitId === outfitId || selectedOutfitId === outfitId) {
+        setGeneratedOutfit(null);
+        setSavedOutfitId(null);
+        setSelectedOutfitId(null);
+      }
+    } catch (error) {
+      console.error("Remove outfit error:", error);
     }
   };
 
@@ -1301,20 +1424,31 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
           )}
           {outfitHistory && outfitHistory.length > 0 && (
             <div className="flex-shrink-0 border-t border-zinc-200 px-6 py-3 dark:border-zinc-800">
-              <button
-                onClick={() => setShowOutfitHistory(!showOutfitHistory)}
-                className="flex w-full items-center justify-between text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
-              >
-                <span>Recent Outfits ({outfitHistory.length})</span>
-                <svg
-                  className={`h-4 w-4 transition-transform ${showOutfitHistory ? "rotate-180" : ""}`}
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
+              <div className="flex items-center justify-between">
+                <button
+                  onClick={() => setShowOutfitHistory(!showOutfitHistory)}
+                  className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
                 >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
+                  <span>Recent Outfits ({outfitHistory.length})</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform ${showOutfitHistory ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showOutfitHistory && (
+                  <button
+                    onClick={handleClearRecentOutfits}
+                    disabled={isClearingRecent}
+                    className="text-xs text-red-500 hover:text-red-600 disabled:opacity-50"
+                  >
+                    {isClearingRecent ? "Clearing..." : "Clear All"}
+                  </button>
+                )}
+              </div>
               {showOutfitHistory && (
                 <div className="flex gap-3 overflow-x-auto py-2 mt-2">
                   {(outfitHistory as OutfitHistoryItem[]).map((outfit) => {
@@ -1322,30 +1456,44 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                     return (
                       <div
                         key={outfit._id}
-                        onClick={() => { if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } }}
-                        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } } }}
-                        role="button"
-                        tabIndex={0}
-                        className="flex-shrink-0 cursor-pointer"
+                        className="relative flex-shrink-0 group"
                       >
-                        {outfit.url ? (
-                          <div className="relative">
-                            <img src={outfit.url} alt={outfit.name || "Saved outfit"} className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-rose-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-rose-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
-                            {outfit.name && (
-                              <div className="absolute -bottom-1 left-0 right-0 text-center">
-                                <span className="inline-block max-w-[56px] truncate rounded bg-black/60 px-1 text-[8px] text-white">
-                                  {outfit.name}
-                                </span>
-                              </div>
-                            )}
-                          </div>
-                        ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
-                            <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                        )}
+                        <div
+                          onClick={() => { if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } }}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } } }}
+                          role="button"
+                          tabIndex={0}
+                          className="cursor-pointer"
+                        >
+                          {outfit.url ? (
+                            <div className="relative">
+                              <img src={outfit.url} alt={outfit.name || "Saved outfit"} className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-rose-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-rose-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
+                              {outfit.name && (
+                                <div className="absolute -bottom-1 left-0 right-0 text-center">
+                                  <span className="inline-block max-w-[56px] truncate rounded bg-black/60 px-1 text-[8px] text-white">
+                                    {outfit.name}
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                              <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                          )}
+                        </div>
+                        {/* X button to remove individual outfit */}
+                        <button
+                          onClick={(e) => handleRemoveFromHistory(e, outfit._id)}
+                          className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-zinc-800 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-red-500"
+                          title="Remove"
+                        >
+                          <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
                       </div>
                     );
                   })}
