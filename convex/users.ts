@@ -241,3 +241,77 @@ export const getPublicUserByClerkId = query({
     };
   },
 });
+
+// Get try-on usage stats for rate limiting
+export const getTryOnUsage = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      return { isPaidUser: false, genericUsedToday: 0, customUsedThisWeek: 0 };
+    }
+
+    // Get today's date string
+    const today = new Date().toISOString().split("T")[0];
+
+    // Get today's usage record
+    const usage = await ctx.db
+      .query("try_on_usage")
+      .withIndex("by_clerkId_date", (q) => q.eq("clerkId", args.clerkId).eq("date", today))
+      .first();
+
+    // Calculate week's custom usage (last 7 days)
+    const weekAgo = new Date();
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().split("T")[0];
+
+    const weekUsage = await ctx.db
+      .query("try_on_usage")
+      .withIndex("by_clerkId_date", (q) => q.eq("clerkId", args.clerkId))
+      .filter((q) => q.gte(q.field("date"), weekAgoStr))
+      .collect();
+
+    const customUsedThisWeek = weekUsage.reduce((sum, u) => sum + u.customCount, 0);
+
+    return {
+      isPaidUser: user.isPaidUser ?? false,
+      genericUsedToday: usage?.genericCount ?? 0,
+      customUsedThisWeek,
+    };
+  },
+});
+
+// Increment try-on usage (called after successful generation)
+export const incrementTryOnUsage = mutation({
+  args: {
+    clerkId: v.string(),
+    isCustomModel: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const today = new Date().toISOString().split("T")[0];
+
+    // Get or create today's usage record
+    const existing = await ctx.db
+      .query("try_on_usage")
+      .withIndex("by_clerkId_date", (q) => q.eq("clerkId", args.clerkId).eq("date", today))
+      .first();
+
+    if (existing) {
+      await ctx.db.patch(existing._id, {
+        genericCount: existing.genericCount + (args.isCustomModel ? 0 : 1),
+        customCount: existing.customCount + (args.isCustomModel ? 1 : 0),
+      });
+    } else {
+      await ctx.db.insert("try_on_usage", {
+        clerkId: args.clerkId,
+        date: today,
+        genericCount: args.isCustomModel ? 0 : 1,
+        customCount: args.isCustomModel ? 1 : 0,
+      });
+    }
+  },
+});

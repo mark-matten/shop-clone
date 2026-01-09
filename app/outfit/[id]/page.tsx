@@ -348,17 +348,29 @@ export default function PublicOutfitPage() {
 
               {/* Product details link */}
               {detailsItem.source !== "generated" && detailsItem.linkedProductId && (
-                <a
-                  href={`/product/${detailsItem.linkedProductId}?from=outfit`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
-                >
-                  View Product Details
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                </a>
+                <div className="space-y-2">
+                  <a
+                    href={`/product/${detailsItem.linkedProductId}?from=outfit`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                  >
+                    View Product Details
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                  </a>
+                  {/* Add to Wishlist - redirects to sign in with product ID */}
+                  <Link
+                    href={`/sign-in?addToWishlist=${detailsItem.linkedProductId}`}
+                    className="flex items-center justify-center gap-2 w-full rounded-lg border border-rose-400 px-4 py-3 text-sm font-medium text-rose-400 hover:bg-rose-50 active:bg-rose-100 dark:hover:bg-rose-950/20 transition-colors"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                    </svg>
+                    Add to Wishlist
+                  </Link>
+                </div>
               )}
             </div>
           </div>

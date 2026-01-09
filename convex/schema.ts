@@ -9,6 +9,7 @@ export default defineSchema({
     firstName: v.optional(v.string()),
     lastName: v.optional(v.string()),
     isPublicCloset: v.optional(v.boolean()), // Whether closet and outfits are publicly viewable
+    isPaidUser: v.optional(v.boolean()), // Whether user has paid subscription (enables unlimited try-ons)
     preferences: v.object({
       // Gender preferences (at least one required)
       shopsMen: v.optional(v.boolean()),
@@ -389,4 +390,13 @@ export default defineSchema({
   })
     .index("by_userId", ["userId"])
     .index("by_userId_couponId", ["userId", "couponId"]),
+
+  // Virtual try-on usage tracking for rate limiting
+  try_on_usage: defineTable({
+    clerkId: v.string(),
+    date: v.string(), // "YYYY-MM-DD" for daily tracking
+    genericCount: v.number(), // Daily generic model uses (free: 10/day, paid: unlimited)
+    customCount: v.number(), // Weekly custom model uses (free: 0, paid: 50/week)
+  })
+    .index("by_clerkId_date", ["clerkId", "date"]),
 });

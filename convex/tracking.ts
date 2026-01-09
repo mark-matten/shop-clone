@@ -94,6 +94,68 @@ export const getTrackedItems = query({
   },
 });
 
+// Get tracked product IDs by clerkId (for quick lookup in UI)
+export const getTrackedItemIdsByClerkId = query({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      return [];
+    }
+
+    const trackedItems = await ctx.db
+      .query("tracked_items")
+      .withIndex("by_userId", (q) => q.eq("userId", user._id))
+      .collect();
+
+    return trackedItems.map((item) => item.productId);
+  },
+});
+
+// Track product by clerkId (convenience wrapper)
+export const trackProductByClerkId = mutation({
+  args: {
+    clerkId: v.string(),
+    productId: v.id("products"),
+    targetPrice: v.optional(v.number()),
+    selectedOptions: v.optional(v.record(v.string(), v.string())),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    // Check if already tracking
+    const existing = await ctx.db
+      .query("tracked_items")
+      .withIndex("by_userId_productId", (q) =>
+        q.eq("userId", user._id).eq("productId", args.productId)
+      )
+      .first();
+
+    if (existing) {
+      return existing._id;
+    }
+
+    return await ctx.db.insert("tracked_items", {
+      userId: user._id,
+      productId: args.productId,
+      targetPrice: args.targetPrice,
+      selectedOptions: args.selectedOptions,
+      createdAt: Date.now(),
+    });
+  },
+});
+
 // Get price history for a product
 export const getPriceHistory = query({
   args: { productId: v.id("products") },

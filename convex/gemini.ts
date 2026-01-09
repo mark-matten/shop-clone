@@ -238,6 +238,8 @@ export const generateTryOnImage = action({
     otherDetails: v.optional(v.string()), // e.g., "cuffed pants, shirt tucked in"
   },
   handler: async (ctx, args) => {
+    console.log("[TryOn] Starting with", args.productIds.length, "items, useGenericModel:", args.useGenericModel);
+
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;
     if (!apiKey) {
       throw new Error("GOOGLE_GEMINI_API_KEY environment variable not set");
@@ -281,6 +283,7 @@ export const generateTryOnImage = action({
     );
 
     const validItems = items.filter((item): item is NonNullable<typeof item> => item !== null);
+    console.log("[TryOn] Found", validItems.length, "valid items");
     if (validItems.length === 0) {
       throw new Error("No valid items provided");
     }
@@ -465,7 +468,7 @@ export const generateTryOnImage = action({
       },
     };
 
-    console.log("Nano Banana request - items:", validItems.length, "parts:", contentParts.length);
+    console.log("[TryOn] Calling Gemini API with", contentParts.length, "parts");
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${apiKey}`,
@@ -494,7 +497,7 @@ export const generateTryOnImage = action({
     }
 
     const result = await response.json();
-    console.log("Gemini response candidates:", result.candidates?.length);
+    console.log("[TryOn] Gemini response status:", response.status, "candidates:", result.candidates?.length);
 
     // Extract the image data from the response
     const imageData = result.candidates?.[0]?.content?.parts?.find(

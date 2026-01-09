@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useSearchParams, useRouter } from "next/navigation";
 import { useQuery, useMutation } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -155,6 +156,7 @@ function getColorBadgeTextColor(hex: string): string {
 
 interface CombinedItem {
   productId: Id<"products">;
+  closetItemId?: string; // The actual closet_item._id for linking to TryOnModal
   product: {
     _id: Id<"products">;
     name: string;
@@ -619,6 +621,9 @@ const CLOSET_STATE_KEY = "armoi_closet_state";
 
 export default function ClosetPage() {
   const { user, isLoaded } = useUser();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const [wishlistToast, setWishlistToast] = useState<string | null>(null);
   const [typeFilter, setTypeFilter] = useState<TypeFilter>("all");
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("grid");
@@ -638,6 +643,7 @@ export default function ClosetPage() {
   const [overCategory, setOverCategory] = useState<string | null>(null);
   const [showAddClothesModal, setShowAddClothesModal] = useState(false);
   const [showTryOnModal, setShowTryOnModal] = useState(false);
+  const [tryOnInitialItem, setTryOnInitialItem] = useState<{ id: string; category: string } | undefined>(undefined);
   const [showSavedOutfitsModal, setShowSavedOutfitsModal] = useState(false);
   const [outfitCollectionFilter, setOutfitCollectionFilter] = useState<string | null>(null);
   const [selectedOutfit, setSelectedOutfit] = useState<typeof savedOutfits extends (infer T)[] | undefined ? T | null : never>(null);
@@ -681,6 +687,32 @@ export default function ClosetPage() {
     }
     hasRestoredScroll.current = true;
   }, []);
+
+  // Handle addToWishlist URL parameter (from shared outfit page)
+  useEffect(() => {
+    const addToWishlistId = searchParams.get("addToWishlist");
+    if (addToWishlistId && user?.id) {
+      // Add the product to wishlist
+      addFavorite({
+        clerkId: user.id,
+        productId: addToWishlistId as Id<"products">,
+      })
+        .then(() => {
+          setWishlistToast("Item added to your wishlist!");
+          // Clear the URL parameter
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete("addToWishlist");
+          router.replace(newUrl.pathname + newUrl.search);
+          // Auto-hide toast after 3 seconds
+          setTimeout(() => setWishlistToast(null), 3000);
+        })
+        .catch((error) => {
+          console.error("Failed to add to wishlist:", error);
+          setWishlistToast("Failed to add item to wishlist");
+          setTimeout(() => setWishlistToast(null), 3000);
+        });
+    }
+  }, [searchParams, user?.id, addFavorite, router]);
 
   // Save scroll position on scroll (debounced)
   useEffect(() => {
@@ -755,6 +787,13 @@ export default function ClosetPage() {
     user?.id ? { clerkId: user.id } : "skip"
   );
 
+  // Price tracking
+  const trackedItemIds = useQuery(
+    api.tracking.getTrackedItemIdsByClerkId,
+    user?.id ? { clerkId: user.id } : "skip"
+  );
+  const trackProduct = useMutation(api.tracking.trackProductByClerkId);
+
   const removeFromCloset = useMutation(api.closet.removeFromCloset);
   const removeFavorite = useMutation(api.favorites.removeFavorite);
   const addToCloset = useMutation(api.closet.addToCloset);
@@ -791,6 +830,7 @@ export default function ClosetPage() {
 
         itemMap.set(item.product._id, {
           productId: item.product._id,
+          closetItemId: typedItem._id, // Store closet_item._id for TryOnModal
           product: item.product as CombinedItem["product"],
           selectedOptions: Object.keys(selectedOptions).length > 0 ? selectedOptions : undefined,
           customCategory: typedItem.customCategory,
@@ -812,6 +852,7 @@ export default function ClosetPage() {
         const isUrlSourced = typedItem.source === "url";
         itemMap.set(itemId, {
           productId: itemId as any, // Use item ID as pseudo-productId
+          closetItemId: itemId, // Store closet_item._id for TryOnModal
           product: {
             _id: itemId as any,
             name: typedItem.name || "Unknown Item",
@@ -850,6 +891,7 @@ export default function ClosetPage() {
         const typedFav = fav as any;
         itemMap.set(fav.product._id, {
           productId: fav.product._id,
+          closetItemId: typedFav._id, // Store favorites._id for TryOnModal
           product: fav.product as CombinedItem["product"],
           selectedOptions: fav.selectedOptions,
           customCategory: typedFav.customCategory,
@@ -1271,6 +1313,24 @@ export default function ClosetPage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       <Header />
+
+      {/* Toast notification for wishlist additions */}
+      {wishlistToast && (
+        <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-50 animate-in fade-in slide-in-from-top-2 duration-300">
+          <div className={`rounded-lg px-4 py-3 shadow-lg flex items-center gap-2 ${
+            wishlistToast.includes("Failed")
+              ? "bg-red-100 text-red-700 dark:bg-red-900/90 dark:text-red-200"
+              : "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/90 dark:text-emerald-200"
+          }`}>
+            {!wishlistToast.includes("Failed") && (
+              <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 20 20">
+                <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+              </svg>
+            )}
+            <span className="font-medium">{wishlistToast}</span>
+          </div>
+        </div>
+      )}
 
       <main id="main-content" className="mx-auto max-w-7xl px-4 py-2 sm:py-4 sm:px-6 lg:px-8">
         {/* Header with compact stats */}
@@ -1917,8 +1977,9 @@ export default function ClosetPage() {
       {/* Try On Modal */}
       <TryOnModal
         isOpen={showTryOnModal}
-        onClose={() => setShowTryOnModal(false)}
+        onClose={() => { setShowTryOnModal(false); setTryOnInitialItem(undefined); }}
         clerkId={user.id}
+        initialItem={tryOnInitialItem}
       />
 
       {/* Saved Outfits Modal */}
@@ -1928,7 +1989,7 @@ export default function ClosetPage() {
           onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); }}
         >
           <div
-            className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl bg-white p-3 sm:p-4 sm:p-6 dark:bg-zinc-900 max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col"
+            className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl bg-white p-3 sm:p-4 sm:p-6 dark:bg-zinc-900 max-h-[96vh] sm:max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
@@ -2463,13 +2524,65 @@ export default function ClosetPage() {
                 )}
               </div>
 
+              {/* Try This On button - opens TryOnModal with item pre-selected */}
+              {detailsItem.closetItemId && (
+                <button
+                  onClick={() => {
+                    const category = detailsItem.customCategory || detailsItem.product.category;
+                    setTryOnInitialItem({ id: detailsItem.closetItemId!, category });
+                    setDetailsItem(null);
+                    setShowTryOnModal(true);
+                  }}
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                  </svg>
+                  Try This On
+                </button>
+              )}
+
+              {/* Track Price button - for wishlist items that are not user-added */}
+              {detailsItem.isWishlist && !detailsItem.isUserAdded && detailsItem.product._id && (() => {
+                const isTracked = trackedItemIds?.includes(detailsItem.product._id);
+                return isTracked ? (
+                  <div className="flex items-center justify-center gap-2 w-full rounded-lg bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
+                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    Tracking Price
+                  </div>
+                ) : (
+                  <button
+                    onClick={async () => {
+                      if (!user?.id) return;
+                      try {
+                        await trackProduct({
+                          clerkId: user.id,
+                          productId: detailsItem.product._id,
+                          selectedOptions: detailsItem.selectedOptions,
+                        });
+                      } catch (error) {
+                        console.error("Failed to track product:", error);
+                      }
+                    }}
+                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-amber-100 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-200 active:bg-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition-colors"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                    </svg>
+                    Track Price
+                  </button>
+                );
+              })()}
+
               {/* Link to product page - only for non-user-added items with valid product ID */}
               {!detailsItem.isUserAdded && detailsItem.product._id && (
                 <a
                   href={`/product/${detailsItem.product._id}?from=closet-popup`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg border border-rose-400 px-4 py-3 text-sm font-medium text-rose-400 hover:bg-rose-50 active:bg-rose-100 dark:hover:bg-rose-400/10 transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
