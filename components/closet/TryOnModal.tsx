@@ -1786,11 +1786,11 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
             <div className="sm:hidden flex justify-center pb-3 -mt-1">
               <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             </div>
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 text-center">
               Save Outfit
             </h3>
             <div className="mb-4">
-              <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1">
+              <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1 text-center">
                 Outfit Name (optional)
               </label>
               <input
@@ -1805,7 +1805,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
 
             {/* Collection Selection */}
             <div className="mb-4">
-              <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1">
+              <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1 text-center">
                 Add to Collection (optional)
               </label>
               <div className="relative">
@@ -1858,7 +1858,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               )}
             </div>
 
-            <div className="mb-4 text-xs text-zinc-500 dark:text-zinc-400">
+            <div className="mb-4 text-xs text-zinc-500 dark:text-zinc-400 text-center">
               <span className="font-medium">Items:</span>{" "}
               {selectedItems.map(i => i.displayName).join(", ")}
             </div>
