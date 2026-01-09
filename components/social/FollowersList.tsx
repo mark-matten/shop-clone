@@ -96,21 +96,21 @@ export function FollowersList({ clerkId }: FollowersListProps) {
     <div className="space-y-4">
       {/* Pending Requests Section */}
       {hasPendingRequests && (
-        <div className="rounded-lg border border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-900/20">
+        <div className="rounded-lg border border-moi-200 bg-moi-50 dark:border-moi-800 dark:bg-moi-900/20">
           <button
             onClick={() => setShowPendingRequests(!showPendingRequests)}
             className="flex w-full items-center justify-between p-3"
           >
             <div className="flex items-center gap-2">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-yellow-500 text-xs font-bold text-white">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-moi-400 text-xs font-bold text-white">
                 {pendingRequests.length}
               </span>
-              <span className="font-medium text-yellow-800 dark:text-yellow-300">
+              <span className="font-medium text-moi-700 dark:text-moi-300">
                 Follow Requests
               </span>
             </div>
             <svg
-              className={`h-5 w-5 text-yellow-600 transition-transform dark:text-yellow-400 ${
+              className={`h-5 w-5 text-moi-600 transition-transform dark:text-moi-400 ${
                 showPendingRequests ? "rotate-180" : ""
               }`}
               fill="none"
@@ -122,7 +122,7 @@ export function FollowersList({ clerkId }: FollowersListProps) {
           </button>
 
           {showPendingRequests && (
-            <div className="border-t border-yellow-200 dark:border-yellow-800">
+            <div className="border-t border-moi-200 dark:border-moi-800">
               {pendingRequests.map((request) => {
                 const userName = request.user.firstName
                   ? `${request.user.firstName}${request.user.lastName ? ` ${request.user.lastName}` : ""}`
@@ -131,7 +131,7 @@ export function FollowersList({ clerkId }: FollowersListProps) {
                 return (
                   <div
                     key={request._id}
-                    className="flex items-center gap-3 border-b border-yellow-100 p-3 last:border-b-0 dark:border-yellow-800/50"
+                    className="flex items-center gap-3 border-b border-moi-100 p-3 last:border-b-0 dark:border-moi-800/50"
                   >
                     {/* Avatar */}
                     <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-400 text-sm font-semibold text-white">

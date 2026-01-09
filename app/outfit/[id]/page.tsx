@@ -54,7 +54,7 @@ export default function PublicOutfitPage() {
         </p>
         <Link
           href="/"
-          className="rounded-lg bg-rose-400 px-6 py-3 font-medium text-white hover:bg-rose-500 transition-colors"
+          className="rounded-lg bg-moi-400 px-6 py-3 font-medium text-white hover:bg-moi-500 transition-colors"
         >
           Go to armoi
         </Link>
@@ -74,7 +74,7 @@ export default function PublicOutfitPage() {
         </p>
         <Link
           href="/"
-          className="rounded-lg bg-rose-400 px-6 py-3 font-medium text-white hover:bg-rose-500 transition-colors"
+          className="rounded-lg bg-moi-400 px-6 py-3 font-medium text-white hover:bg-moi-500 transition-colors"
         >
           Create your own closet
         </Link>
@@ -97,7 +97,7 @@ export default function PublicOutfitPage() {
             </Link>
             <Link
               href="/sign-in"
-              className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+              className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500 transition-colors"
             >
               Sign Up Free
             </Link>
@@ -115,7 +115,7 @@ export default function PublicOutfitPage() {
             shared from{" "}
             <Link
               href={`/closet/${user.clerkId}?fromOutfit=${outfitId}&outfitName=${encodeURIComponent(outfit.name || "Outfit")}`}
-              className="text-rose-500 hover:underline"
+              className="text-moi-500 hover:underline"
             >
               {userName}&apos;s closet
             </Link>
@@ -171,7 +171,7 @@ export default function PublicOutfitPage() {
                         source: item.productId ? "product" : "generated",
                         linkedProductId: item.productId,
                       })}
-                      className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 sm:p-3 dark:border-zinc-700 dark:bg-zinc-800 cursor-pointer hover:border-rose-400 active:bg-zinc-100 dark:active:bg-zinc-700 transition-colors"
+                      className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 sm:p-3 dark:border-zinc-700 dark:bg-zinc-800 cursor-pointer hover:border-moi-400 active:bg-zinc-100 dark:active:bg-zinc-700 transition-colors"
                     >
                       <div className="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
                         {item.imageUrl ? (
@@ -194,7 +194,7 @@ export default function PublicOutfitPage() {
                           </p>
                         )}
                         {item.price && (
-                          <p className="text-xs sm:text-sm font-semibold text-rose-500 mt-0.5">
+                          <p className="text-xs sm:text-sm font-semibold text-moi-500 mt-0.5">
                             ${item.price.toFixed(2)}
                           </p>
                         )}
@@ -215,16 +215,16 @@ export default function PublicOutfitPage() {
         </div>
 
         {/* View Full Closet CTA */}
-        <div className="mt-4 sm:mt-6 bg-gradient-to-r from-rose-400 to-rose-500 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 text-center">
+        <div className="mt-4 sm:mt-6 bg-gradient-to-r from-moi-400 to-moi-500 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 text-center">
           <h2 className="text-lg sm:text-xl font-semibold text-white mb-1 sm:mb-2">
             Like this style?
           </h2>
-          <p className="text-rose-100 text-sm sm:text-base mb-3 sm:mb-4">
+          <p className="text-moi-100 text-sm sm:text-base mb-3 sm:mb-4">
             View more outfits and items from this closet
           </p>
           <Link
             href={`/closet/${user.clerkId}?fromOutfit=${outfitId}&outfitName=${encodeURIComponent(outfit.name || "Outfit")}`}
-            className="inline-block rounded-lg bg-white px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-rose-500 hover:bg-rose-50 active:bg-rose-100 transition-colors"
+            className="inline-block rounded-lg bg-white px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-moi-500 hover:bg-moi-50 active:bg-moi-100 transition-colors"
           >
             View {userName}&apos;s Full Closet
           </Link>
@@ -237,7 +237,7 @@ export default function PublicOutfitPage() {
           </p>
           <Link
             href="/sign-in"
-            className="inline-block rounded-lg border-2 border-rose-400 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-rose-500 hover:bg-rose-50 active:bg-rose-100 dark:hover:bg-rose-950/20 transition-colors"
+            className="inline-block rounded-lg border-2 border-moi-400 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-moi-500 hover:bg-moi-50 active:bg-moi-100 dark:hover:bg-rose-950/20 transition-colors"
           >
             Get Started Free
           </Link>
@@ -353,7 +353,7 @@ export default function PublicOutfitPage() {
                     href={`/product/${detailsItem.linkedProductId}?from=outfit`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-moi-400 px-4 py-3 text-sm font-medium text-white hover:bg-moi-500 active:bg-moi-600 transition-colors"
                   >
                     View Product Details
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -363,7 +363,7 @@ export default function PublicOutfitPage() {
                   {/* Add to Wishlist - redirects to sign in with product ID */}
                   <Link
                     href={`/sign-in?addToWishlist=${detailsItem.linkedProductId}`}
-                    className="flex items-center justify-center gap-2 w-full rounded-lg border border-rose-400 px-4 py-3 text-sm font-medium text-rose-400 hover:bg-rose-50 active:bg-rose-100 dark:hover:bg-rose-950/20 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full rounded-lg border border-moi-400 px-4 py-3 text-sm font-medium text-moi-400 hover:bg-moi-50 active:bg-moi-100 dark:hover:bg-rose-950/20 transition-colors"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />

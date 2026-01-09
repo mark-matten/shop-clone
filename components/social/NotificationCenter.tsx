@@ -86,7 +86,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
         );
       case "follow_request":
         return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-yellow-100 text-yellow-600 dark:bg-yellow-900/30 dark:text-yellow-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-moi-100 text-moi-600 dark:bg-moi-900/30 dark:text-moi-400">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
             </svg>

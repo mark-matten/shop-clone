@@ -968,7 +968,7 @@ export default function ProductDetailPage() {
             </p>
 
             {!clerkUser && (
-              <div className="mt-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+              <div className="mt-4 rounded-lg bg-moi-50 p-3 text-sm text-moi-700 dark:bg-moi-900/30 dark:text-moi-200">
                 Please sign in to track prices.
               </div>
             )}

@@ -57,7 +57,7 @@ const conditionLabels = {
 
 const conditionColors = {
   new: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-  used: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
+  used: "bg-moi-100 text-moi-700 dark:bg-moi-900 dark:text-moi-200",
   like_new: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
 };
 
@@ -429,7 +429,7 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
             </p>
 
             {!user && (
-              <div className="mt-4 rounded-lg bg-yellow-50 p-3 text-sm text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-200">
+              <div className="mt-4 rounded-lg bg-moi-50 p-3 text-sm text-moi-700 dark:bg-moi-900/30 dark:text-moi-200">
                 Please sign in to save favorites.
               </div>
             )}

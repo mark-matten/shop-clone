@@ -425,7 +425,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
             onClick={() => setActiveTab("describe")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === "describe"
-                ? "border-b-2 border-rose-400 text-rose-400"
+                ? "border-b-2 border-moi-400 text-moi-400"
                 : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
@@ -435,7 +435,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
             onClick={() => setActiveTab("url")}
             className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
               activeTab === "url"
-                ? "border-b-2 border-rose-400 text-rose-400"
+                ? "border-b-2 border-moi-400 text-moi-400"
                 : "text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
             }`}
           >
@@ -467,7 +467,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                   onBlur={handleDescriptionBlur}
                   placeholder="e.g., Black cashmere J.Crew crewneck sweater"
                   rows={2}
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                   disabled={isLoading}
                 />
                 <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
@@ -565,7 +565,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     value={genBrand}
                     onChange={(e) => setGenBrand(e.target.value)}
                     placeholder="e.g., J.Crew"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                     disabled={isLoading}
                   />
                 </div>
@@ -576,7 +576,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                   <select
                     value={genCategory}
                     onChange={(e) => setGenCategory(e.target.value)}
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                     disabled={isLoading}
                   >
                     <option value="">Select category</option>
@@ -600,7 +600,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     value={genColor}
                     onChange={(e) => setGenColor(e.target.value)}
                     placeholder="e.g., Navy"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                     disabled={isLoading}
                   />
                 </div>
@@ -613,7 +613,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     value={genMaterial}
                     onChange={(e) => setGenMaterial(e.target.value)}
                     placeholder="e.g., Cashmere"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                     disabled={isLoading}
                   />
                 </div>
@@ -629,7 +629,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                   value={genSize}
                   onChange={(e) => setGenSize(e.target.value)}
                   placeholder="e.g., M or 32x30"
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                   disabled={isLoading}
                 />
               </div>
@@ -689,7 +689,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     onClick={() => setDescGender("men")}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       descGender === "men"
-                        ? "border-rose-400 bg-rose-400 text-white"
+                        ? "border-moi-400 bg-moi-400 text-white"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                     }`}
                     disabled={isLoading}
@@ -701,7 +701,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     onClick={() => setDescGender("women")}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       descGender === "women"
-                        ? "border-rose-400 bg-rose-400 text-white"
+                        ? "border-moi-400 bg-moi-400 text-white"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                     }`}
                     disabled={isLoading}
@@ -713,7 +713,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     onClick={() => setDescGender("unisex")}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       descGender === "unisex"
-                        ? "border-rose-400 bg-rose-400 text-white"
+                        ? "border-moi-400 bg-moi-400 text-white"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                     }`}
                     disabled={isLoading}
@@ -750,13 +750,13 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     value={url}
                     onChange={(e) => setUrl(e.target.value)}
                     placeholder="Paste product URL (Everlane, J.Crew)"
-                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                     disabled={isLoading}
                   />
                   <button
                     onClick={handleFetchUrl}
                     disabled={!url.trim() || isLoading}
-                    className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-moi-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {isLoading ? "..." : "Fetch"}
                   </button>
@@ -793,7 +793,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                       <select
                         value={selectedSize}
                         onChange={(e) => setSelectedSize(e.target.value)}
-                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                       >
                         {scrapedProduct.sizes.map((size) => (
                           <option key={size} value={size}>{size}</option>
@@ -811,7 +811,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                       <select
                         value={selectedColor}
                         onChange={(e) => setSelectedColor(e.target.value)}
-                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                        className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                       >
                         {scrapedProduct.colors.map((color) => (
                           <option key={color} value={color}>{color}</option>
@@ -828,7 +828,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     <select
                       value={urlCategory}
                       onChange={(e) => setUrlCategory(e.target.value)}
-                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                     >
                       <option value="">Select category</option>
                       {CATEGORIES.map((cat) => (
@@ -889,7 +889,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                         onClick={() => setUrlGender("men")}
                         className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                           urlGender === "men"
-                            ? "border-rose-400 bg-rose-400 text-white"
+                            ? "border-moi-400 bg-moi-400 text-white"
                             : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                         }`}
                         disabled={isLoading}
@@ -901,7 +901,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                         onClick={() => setUrlGender("women")}
                         className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                           urlGender === "women"
-                            ? "border-rose-400 bg-rose-400 text-white"
+                            ? "border-moi-400 bg-moi-400 text-white"
                             : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                         }`}
                         disabled={isLoading}
@@ -913,7 +913,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                         onClick={() => setUrlGender("unisex")}
                         className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                           urlGender === "unisex"
-                            ? "border-rose-400 bg-rose-400 text-white"
+                            ? "border-moi-400 bg-moi-400 text-white"
                             : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                         }`}
                         disabled={isLoading}
@@ -941,7 +941,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
             <button
               onClick={handleGenerate}
               disabled={!description.trim() || !genCategory || !descOwnership || !descGender || isLoading}
-              className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-moi-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? "Adding..." : "Add to Closet"}
             </button>
@@ -949,7 +949,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
             <button
               onClick={handleAddFromUrl}
               disabled={!scrapedProduct || !selectedSize || !urlCategory || !urlOwnership || !urlGender || isLoading}
-              className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-moi-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isLoading ? "Adding..." : "Add to Closet"}
             </button>

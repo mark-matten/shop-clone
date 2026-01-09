@@ -235,7 +235,7 @@ export function CouponCard({ coupon, userId, isSaved, onSaveToggle }: CouponCard
             )}
           </div>
           {isExpiringSoon && (
-            <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+            <span className="rounded bg-moi-100 px-1.5 py-0.5 text-moi-700 dark:bg-moi-900/30 dark:text-moi-400">
               {expiryDisplay}
             </span>
           )}

@@ -54,7 +54,7 @@ export default function PublicClosetPage() {
         </p>
         <Link
           href="/"
-          className="rounded-lg bg-rose-400 px-6 py-3 font-medium text-white hover:bg-rose-500 transition-colors"
+          className="rounded-lg bg-moi-400 px-6 py-3 font-medium text-white hover:bg-moi-500 transition-colors"
         >
           Go to armoi
         </Link>
@@ -74,7 +74,7 @@ export default function PublicClosetPage() {
         </p>
         <Link
           href="/"
-          className="rounded-lg bg-rose-400 px-6 py-3 font-medium text-white hover:bg-rose-500 transition-colors"
+          className="rounded-lg bg-moi-400 px-6 py-3 font-medium text-white hover:bg-moi-500 transition-colors"
         >
           Create your own closet
         </Link>
@@ -107,7 +107,7 @@ export default function PublicClosetPage() {
             </Link>
             <Link
               href="/sign-in"
-              className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+              className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500 transition-colors"
             >
               Sign Up Free
             </Link>
@@ -146,7 +146,7 @@ export default function PublicClosetPage() {
               onClick={() => setSelectedCategory(null)}
               className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                 selectedCategory === null
-                  ? "bg-rose-400 text-white"
+                  ? "bg-moi-400 text-white"
                   : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
               }`}
             >
@@ -158,7 +158,7 @@ export default function PublicClosetPage() {
                 onClick={() => setSelectedCategory(cat.id)}
                 className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-colors ${
                   selectedCategory === cat.id
-                    ? "bg-rose-400 text-white"
+                    ? "bg-moi-400 text-white"
                     : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
                 }`}
               >
@@ -217,7 +217,7 @@ export default function PublicClosetPage() {
                       {item.brand}
                     </p>
                   )}
-                  <p className="text-[10px] sm:text-xs text-rose-400 mt-0.5 sm:mt-1">
+                  <p className="text-[10px] sm:text-xs text-moi-400 mt-0.5 sm:mt-1">
                     {item.categoryLabel}
                   </p>
                 </div>
@@ -227,16 +227,16 @@ export default function PublicClosetPage() {
         )}
 
         {/* Sign Up CTA */}
-        <div className="mt-8 sm:mt-16 bg-gradient-to-r from-rose-400 to-rose-500 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-8 text-center">
+        <div className="mt-8 sm:mt-16 bg-gradient-to-r from-moi-400 to-moi-500 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-8 text-center">
           <h2 className="text-lg sm:text-2xl font-semibold text-white mb-1 sm:mb-2">
             Create Your Own Closet
           </h2>
-          <p className="text-rose-100 text-sm sm:text-base mb-4 sm:mb-6 max-w-md mx-auto">
+          <p className="text-moi-100 text-sm sm:text-base mb-4 sm:mb-6 max-w-md mx-auto">
             Track your wardrobe, try on outfits virtually, and share your style with friends
           </p>
           <Link
             href="/sign-in"
-            className="inline-block rounded-lg bg-white px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-rose-500 hover:bg-rose-50 active:bg-rose-100 transition-colors"
+            className="inline-block rounded-lg bg-white px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-moi-500 hover:bg-moi-50 active:bg-moi-100 transition-colors"
           >
             Get Started Free
           </Link>
@@ -351,7 +351,7 @@ export default function PublicClosetPage() {
                   href={`/product/${detailsItem.productId}?from=closet-popup`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-moi-400 px-4 py-3 text-sm font-medium text-white hover:bg-moi-500 active:bg-moi-600 transition-colors"
                 >
                   View Product Details
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

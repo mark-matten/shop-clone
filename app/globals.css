@@ -17,6 +17,18 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+
+  /* Moi brand color - matches "moi" in logo (#C2311D) */
+  --color-moi-50: #fef2f2;
+  --color-moi-100: #fee2e2;
+  --color-moi-200: #fecaca;
+  --color-moi-300: #e07468;
+  --color-moi-400: #C2311D;
+  --color-moi-500: #a82919;
+  --color-moi-600: #8a1a0c;
+  --color-moi-700: #6f1509;
+  --color-moi-800: #5c1308;
+  --color-moi-900: #4a100a;
 }
 
 @media (prefers-color-scheme: dark) {

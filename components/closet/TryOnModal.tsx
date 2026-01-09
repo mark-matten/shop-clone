@@ -689,9 +689,9 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       onClick={() => setActiveCategory(cat.id)}
                       className={`flex-shrink-0 rounded-full px-2.5 py-1 text-xs font-medium transition-colors whitespace-nowrap ${
                         activeCategory === cat.id
-                          ? "bg-rose-400 text-white"
+                          ? "bg-moi-400 text-white"
                           : hasSelection
-                          ? "bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400"
+                          ? "bg-moi-100 text-moi-500 dark:bg-moi-900/30 dark:text-moi-400"
                           : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                       }`}
                     >
@@ -713,7 +713,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     onClick={() => setOwnershipFilter(filter)}
                     className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
                       ownershipFilter === filter
-                        ? "bg-rose-400 text-white"
+                        ? "bg-moi-400 text-white"
                         : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
                     }`}
                   >
@@ -730,7 +730,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search items..."
-                  className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  className="w-full rounded-lg border border-zinc-200 bg-white py-1.5 pl-9 pr-3 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 />
               </div>
             </div>
@@ -750,7 +750,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                         onClick={() => toggleItemSelection(item)}
                         className={`relative overflow-hidden rounded-xl border-2 transition-all ${
                           isSelected
-                            ? "border-rose-400 ring-2 ring-rose-400/30"
+                            ? "border-moi-400 ring-2 ring-moi-400/30"
                             : otherSelectedInCategory
                             ? "border-transparent opacity-40"
                             : "border-transparent"
@@ -784,14 +784,14 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
                           ) : item.isWishlist ? (
-                            <svg className="h-3 w-3 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="h-3 w-3 text-moi-500" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
                             </svg>
                           ) : null}
                         </div>
                         {/* Selection Indicator or Info Button */}
                         {isSelected ? (
-                          <div className="absolute right-1 top-1 rounded-full bg-rose-400 p-0.5">
+                          <div className="absolute right-1 top-1 rounded-full bg-moi-400 p-0.5">
                             <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
                               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                             </svg>
@@ -837,7 +837,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
             <div className="px-3 py-3">
               {isGenerating ? (
                 <div className="flex items-center justify-center py-6 gap-2">
-                  <svg className="h-8 w-8 animate-spin text-rose-400" fill="none" viewBox="0 0 24 24">
+                  <svg className="h-8 w-8 animate-spin text-moi-400" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
@@ -867,7 +867,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       <button
                         onClick={handleSaveOutfit}
                         disabled={isSaving}
-                        className="flex items-center gap-1.5 rounded-lg bg-rose-400 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+                        className="flex items-center gap-1.5 rounded-lg bg-moi-400 px-3 py-1.5 text-xs font-medium text-white hover:bg-moi-500 disabled:opacity-50"
                       >
                         {isSaving ? (
                           <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -907,7 +907,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     const categoryKey = getCategoryKey(item.displayCategory || "other");
                     return (
                       <div key={item._id} className="relative flex-shrink-0 w-20">
-                        <div className="h-20 w-20 rounded-xl overflow-hidden border-2 border-rose-400">
+                        <div className="h-20 w-20 rounded-xl overflow-hidden border-2 border-moi-400">
                           {item.displayImageUrl ? (
                             <img src={item.displayImageUrl} alt={item.displayName || ""} className="h-full w-full object-cover" />
                           ) : (
@@ -940,19 +940,19 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               <div className="flex gap-1">
                 <button
                   onClick={() => { setModelMode("generic"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
-                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "generic" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
                 >
                   Generic
                 </button>
                 <button
                   onClick={() => { setModelMode("custom"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
-                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "custom" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "custom" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
                 >
                   Custom
                 </button>
                 <button
                   onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
-                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "user" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
                 >
                   My Photo
                 </button>
@@ -974,13 +974,13 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     <div className="flex-1 flex gap-2">
                       <button
                         onClick={() => setModelGender("male")}
-                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "male" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "male" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
                       >
                         Male
                       </button>
                       <button
                         onClick={() => setModelGender("female")}
-                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "female" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "female" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
                       >
                         Female
                       </button>
@@ -998,13 +998,13 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     <div className="flex-1 flex gap-2">
                       <button
                         onClick={() => setModelGender("male")}
-                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "male" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "male" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
                       >
                         Male
                       </button>
                       <button
                         onClick={() => setModelGender("female")}
-                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "female" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "female" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
                       >
                         Female
                       </button>
@@ -1021,7 +1021,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       value={modelHeight}
                       onChange={(e) => setModelHeight(Number(e.target.value))}
                       onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                      className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                      className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-moi-400"
                     />
                   </div>
                   {/* Weight */}
@@ -1036,7 +1036,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       value={modelWeight}
                       onChange={(e) => setModelWeight(Number(e.target.value))}
                       onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                      className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                      className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-moi-400"
                     />
                   </div>
                   {/* Skin Tone */}
@@ -1050,7 +1050,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       value={modelSkinTone}
                       onChange={(e) => setModelSkinTone(Number(e.target.value))}
                       onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                      className="flex-1 h-2 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                      className="flex-1 h-2 rounded-lg appearance-none cursor-pointer accent-moi-400"
                       style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
                     />
                   </div>
@@ -1060,7 +1060,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     value={otherDetails}
                     onChange={(e) => setOtherDetails(e.target.value)}
                     placeholder="Other details (e.g., cuffed pants, tucked shirt)"
-                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                   />
                 </div>
               )}
@@ -1075,7 +1075,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     value={otherDetails}
                     onChange={(e) => setOtherDetails(e.target.value)}
                     placeholder="Other details (e.g., cuffed pants, tucked shirt)"
-                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                   />
                 </div>
               )}
@@ -1086,7 +1086,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               <button
                 onClick={handleGenerate}
                 disabled={selectedByCategory.size === 0 || isGenerating || ((modelMode === "custom" || modelMode === "user") && !isPaidUser)}
-                className="w-full rounded-xl bg-rose-400 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+                className="w-full rounded-xl bg-moi-400 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-moi-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {(modelMode === "custom" || modelMode === "user") && !isPaidUser ? "Upgrade to Pro" : isGenerating ? "Generating..." : selectedByCategory.size > 0 ? `Generate Outfit (${selectedByCategory.size})` : "Select items to try on"}
               </button>
@@ -1128,7 +1128,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                             <img
                               src={outfit.url}
                               alt={outfit.name || "Saved outfit"}
-                              className={`h-24 w-24 rounded-xl object-cover ${selectedOutfitId === outfit._id ? "ring-2 ring-rose-400" : ""}`}
+                              className={`h-24 w-24 rounded-xl object-cover ${selectedOutfitId === outfit._id ? "ring-2 ring-moi-400" : ""}`}
                             />
                             {outfit.name && (
                               <div className="absolute -bottom-1 left-0 right-0 text-center">
@@ -1167,7 +1167,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
             <div className="p-6">
               {isGenerating ? (
                 <div className="flex flex-col items-center justify-center py-12 gap-4">
-                  <svg className="h-16 w-16 animate-spin text-rose-400" fill="none" viewBox="0 0 24 24">
+                  <svg className="h-16 w-16 animate-spin text-moi-400" fill="none" viewBox="0 0 24 24">
                     <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                     <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                   </svg>
@@ -1197,7 +1197,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       <button
                         onClick={handleSaveOutfit}
                         disabled={isSaving}
-                        className="flex items-center gap-2 rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50 transition-colors"
+                        className="flex items-center gap-2 rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500 disabled:opacity-50 transition-colors"
                       >
                         {isSaving ? (
                           <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
@@ -1240,7 +1240,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     {selectedItems.map((item) => {
                       const categoryKey = getCategoryKey(item.displayCategory || "other");
                       return (
-                        <div key={item._id} className="group relative aspect-square overflow-hidden rounded-xl border-2 border-rose-400 bg-zinc-100 dark:bg-zinc-800">
+                        <div key={item._id} className="group relative aspect-square overflow-hidden rounded-xl border-2 border-moi-400 bg-zinc-100 dark:bg-zinc-800">
                           {item.displayImageUrl ? (
                             <img src={item.displayImageUrl} alt={item.displayName || "Selected item"} className="h-full w-full object-cover" />
                           ) : (
@@ -1287,19 +1287,19 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               <div className="flex gap-2">
                 <button
                   onClick={() => { setModelMode("generic"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "generic" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
                 >
                   Generic
                 </button>
                 <button
                   onClick={() => { setModelMode("custom"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "custom" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "custom" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
                 >
                   Custom
                 </button>
                 <button
                   onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
-                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "user" ? "bg-moi-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
                 >
                   My Photo
                 </button>
@@ -1325,7 +1325,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                         onClick={() => setModelGender("male")}
                         className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                           modelGender === "male"
-                            ? "bg-rose-400 text-white"
+                            ? "bg-moi-400 text-white"
                             : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                         }`}
                       >
@@ -1335,7 +1335,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                         onClick={() => setModelGender("female")}
                         className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                           modelGender === "female"
-                            ? "bg-rose-400 text-white"
+                            ? "bg-moi-400 text-white"
                             : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                         }`}
                       >
@@ -1359,7 +1359,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                         onClick={() => setModelGender("male")}
                         className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                           modelGender === "male"
-                            ? "bg-rose-400 text-white"
+                            ? "bg-moi-400 text-white"
                             : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                         }`}
                       >
@@ -1369,7 +1369,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                         onClick={() => setModelGender("female")}
                         className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
                           modelGender === "female"
-                            ? "bg-rose-400 text-white"
+                            ? "bg-moi-400 text-white"
                             : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                         }`}
                       >
@@ -1394,7 +1394,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       }}
                       onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
                       onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-moi-400"
                     />
                   </div>
                   {/* Weight Slider */}
@@ -1415,7 +1415,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       }}
                       onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
                       onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-moi-400"
                     />
                   </div>
                   {/* Skin Tone Slider */}
@@ -1435,7 +1435,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       }}
                       onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
                       onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                      className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-moi-400"
                       style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
                     />
                   </div>
@@ -1449,7 +1449,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       value={otherDetails}
                       onChange={(e) => setOtherDetails(e.target.value)}
                       placeholder="e.g., cuffed pants, shirt tucked in"
-                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                     />
                   </div>
                 </div>
@@ -1469,7 +1469,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       value={otherDetails}
                       onChange={(e) => setOtherDetails(e.target.value)}
                       placeholder="e.g., cuffed pants, shirt tucked in"
-                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                     />
                   </div>
                 </div>
@@ -1482,7 +1482,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
             <button
               onClick={handleGenerate}
               disabled={selectedByCategory.size === 0 || isGenerating || ((modelMode === "custom" || modelMode === "user") && !isPaidUser)}
-              className="w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
+              className="w-full rounded-lg bg-moi-400 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-moi-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {(modelMode === "custom" || modelMode === "user") && !isPaidUser ? "Upgrade to Pro" : isGenerating ? "Generating..." : `Generate Outfit (${selectedByCategory.size} item${selectedByCategory.size !== 1 ? "s" : ""})`}
             </button>
@@ -1512,8 +1512,8 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     key={cat.id}
                     onClick={() => setActiveCategory(cat.id)}
                     className={`flex-shrink-0 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors whitespace-nowrap ${
-                      activeCategory === cat.id ? "bg-rose-400 text-white"
-                        : hasSelection ? "bg-rose-100 text-rose-500 dark:bg-rose-900/30 dark:text-rose-400"
+                      activeCategory === cat.id ? "bg-moi-400 text-white"
+                        : hasSelection ? "bg-moi-100 text-moi-500 dark:bg-moi-900/30 dark:text-moi-400"
                         : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                     }`}
                   >
@@ -1533,7 +1533,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   onClick={() => setOwnershipFilter(filter)}
                   className={`flex-1 rounded-lg px-3 py-1 text-xs font-medium transition-colors ${
                     ownershipFilter === filter
-                      ? "bg-rose-400 text-white"
+                      ? "bg-moi-400 text-white"
                       : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                   }`}
                 >
@@ -1550,7 +1550,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search items..."
-                className="w-full rounded-lg border border-zinc-300 bg-white py-1.5 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                className="w-full rounded-lg border border-zinc-300 bg-white py-1.5 pl-10 pr-4 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
               />
               {searchQuery && (
                 <button
@@ -1579,7 +1579,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       key={item._id}
                       onClick={() => toggleItemSelection(item)}
                       className={`group relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
-                        isSelected ? "border-rose-400 ring-2 ring-rose-400/20"
+                        isSelected ? "border-moi-400 ring-2 ring-moi-400/20"
                           : otherSelectedInCategory ? "border-transparent opacity-50 hover:opacity-75"
                           : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600"
                       }`}
@@ -1606,7 +1606,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       </div>
                       {/* Selection Indicator or Info Button */}
                       {isSelected ? (
-                        <div className="absolute right-1 top-1 rounded-full bg-rose-400 p-1">
+                        <div className="absolute right-1 top-1 rounded-full bg-moi-400 p-1">
                           <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                           </svg>
@@ -1712,7 +1712,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                         >
                           {outfit.url ? (
                             <div className="relative">
-                              <img src={outfit.url} alt={outfit.name || "Saved outfit"} className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-rose-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-rose-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
+                              <img src={outfit.url} alt={outfit.name || "Saved outfit"} className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-moi-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-moi-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
                               {outfit.name && (
                                 <div className="absolute -bottom-1 left-0 right-0 text-center">
                                   <span className="inline-block max-w-[56px] truncate rounded bg-black/60 px-1 text-[8px] text-white">
@@ -1798,7 +1798,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                 value={outfitName}
                 onChange={(e) => setOutfitName(e.target.value)}
                 placeholder="e.g., Date night look"
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                 autoFocus
               />
             </div>
@@ -1823,10 +1823,10 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     }
                   }}
                   placeholder="Type to create new or select below"
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                 />
                 {newCollectionName.trim() && (
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-rose-500">
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-moi-500">
                     + New
                   </span>
                 )}
@@ -1847,7 +1847,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       }}
                       className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
                         selectedCollectionId === collection._id
-                          ? "bg-rose-400 text-white"
+                          ? "bg-moi-400 text-white"
                           : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                       }`}
                     >
@@ -1872,7 +1872,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               <button
                 onClick={handleConfirmSave}
                 disabled={isSaving}
-                className="flex-1 rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50"
+                className="flex-1 rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500 disabled:opacity-50"
               >
                 {isSaving ? "Saving..." : "Save"}
               </button>
@@ -1997,7 +1997,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   href={`/product/${detailsItem.linkedProductId}?from=closet-popup`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-moi-400 px-4 py-3 text-sm font-medium text-white hover:bg-moi-500 active:bg-moi-600 transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -2022,8 +2022,8 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
           >
             {/* Icon */}
             <div className="flex justify-center mb-4">
-              <div className="rounded-full bg-rose-100 p-4 dark:bg-rose-900/30">
-                <svg className="h-10 w-10 text-rose-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <div className="rounded-full bg-moi-100 p-4 dark:bg-moi-900/30">
+                <svg className="h-10 w-10 text-moi-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
                 </svg>
               </div>
@@ -2079,7 +2079,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               {!isPaidUser && (
                 <Link
                   href="/profile?tab=subscription"
-                  className="flex-1 rounded-lg bg-rose-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-500 text-center"
+                  className="flex-1 rounded-lg bg-moi-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-moi-500 text-center"
                   onClick={() => setShowUpgradeModal(false)}
                 >
                   Upgrade to Pro

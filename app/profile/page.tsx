@@ -729,8 +729,8 @@ export default function ProfilePage() {
             {/* Display Name */}
             <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-start gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/30">
-                  <svg className="h-5 w-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-moi-100 dark:bg-moi-900/30">
+                  <svg className="h-5 w-5 text-moi-600 dark:text-moi-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
                   </svg>
                 </div>
@@ -759,7 +759,7 @@ export default function ProfilePage() {
                     <button
                       onClick={handleNameSave}
                       disabled={isNameSaving}
-                      className="rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 disabled:opacity-50 transition-colors"
+                      className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500 disabled:opacity-50 transition-colors"
                     >
                       {isNameSaving ? "Saving..." : "Save"}
                     </button>
@@ -777,9 +777,9 @@ export default function ProfilePage() {
             <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isPublicCloset ? 'bg-rose-100 dark:bg-rose-900/30' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${isPublicCloset ? 'bg-moi-100 dark:bg-moi-900/30' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
                     {isPublicCloset ? (
-                      <svg className="h-5 w-5 text-rose-600 dark:text-rose-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-5 w-5 text-moi-600 dark:text-moi-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3.055 11H5a2 2 0 012 2v1a2 2 0 002 2 2 2 0 012 2v2.945M8 3.935V5.5A2.5 2.5 0 0010.5 8h.5a2 2 0 012 2 2 2 0 104 0 2 2 0 012-2h1.064M15 20.488V18a2 2 0 012-2h3.064M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                       </svg>
                     ) : (
@@ -807,7 +807,7 @@ export default function ProfilePage() {
                     disabled={isPrivacySaving}
                     className="peer sr-only"
                   />
-                  <div className={`h-6 w-11 rounded-full bg-zinc-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-zinc-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-rose-400 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-zinc-500 dark:bg-zinc-700 dark:peer-checked:bg-rose-500 ${isPrivacySaving ? 'opacity-50' : ''}`}></div>
+                  <div className={`h-6 w-11 rounded-full bg-zinc-200 after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:border after:border-zinc-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-moi-400 peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-zinc-500 dark:bg-zinc-700 dark:peer-checked:bg-moi-500 ${isPrivacySaving ? 'opacity-50' : ''}`}></div>
                 </label>
               </div>
             </div>

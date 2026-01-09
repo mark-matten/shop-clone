@@ -375,7 +375,7 @@ function SortableListItem({
       <div className="flex flex-shrink-0 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
         <button
           onClick={(e) => { e.preventDefault(); onEdit(item); }}
-          className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-rose-400 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-rose-400"
+          className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 hover:text-moi-400 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-moi-400"
           title="Edit"
         >
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -522,7 +522,7 @@ function SortableItem({
       <div className="absolute right-1 top-1 sm:right-2 sm:top-2 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
         <button
           onClick={(e) => { e.preventDefault(); onEdit(item); }}
-          className="rounded-full bg-white/90 p-1.5 sm:p-2 text-zinc-600 shadow-sm hover:bg-white hover:text-rose-400 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-rose-400"
+          className="rounded-full bg-white/90 p-1.5 sm:p-2 text-zinc-600 shadow-sm hover:bg-white hover:text-moi-400 dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-moi-400"
           title="Edit"
         >
           <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1421,7 +1421,7 @@ export default function ClosetPage() {
           <div className="flex items-center gap-2 sm:gap-3">
             <button
               onClick={() => setShowAddClothesModal(true)}
-              className="flex items-center gap-1 sm:gap-2 rounded-lg bg-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-rose-500"
+              className="flex items-center gap-1 sm:gap-2 rounded-lg bg-moi-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-white transition-colors hover:bg-moi-500"
             >
               <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -1430,7 +1430,7 @@ export default function ClosetPage() {
             </button>
             <button
               onClick={() => setShowTryOnModal(true)}
-              className="flex items-center gap-1 sm:gap-2 rounded-lg border border-rose-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-rose-400 transition-colors hover:bg-rose-400/10"
+              className="flex items-center gap-1 sm:gap-2 rounded-lg border border-moi-400 px-2 py-1.5 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium text-moi-400 transition-colors hover:bg-moi-400/10"
             >
               <svg className="h-3.5 w-3.5 sm:h-4 sm:w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -1489,7 +1489,7 @@ export default function ClosetPage() {
               placeholder="Search your closet..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 pl-9 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
+              className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 pl-9 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500"
             />
             <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
@@ -1562,7 +1562,7 @@ export default function ClosetPage() {
             onClick={() => setSelectedCategory(null)}
             className={`rounded-full px-2 py-0.5 sm:px-3 sm:py-1 text-xs sm:text-sm font-medium transition-colors ${
               selectedCategory === null
-                ? "bg-rose-400 text-white"
+                ? "bg-moi-400 text-white"
                 : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
             }`}
           >
@@ -1574,7 +1574,7 @@ export default function ClosetPage() {
               onClick={() => setSelectedCategory(cat.id)}
               className={`rounded-full px-2 py-0.5 sm:px-3 sm:py-1 text-xs sm:text-sm font-medium transition-colors ${
                 selectedCategory === cat.id
-                  ? "bg-rose-400 text-white"
+                  ? "bg-moi-400 text-white"
                   : categoryCounts[cat.id] > 0
                   ? "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                   : "bg-zinc-50 text-zinc-400 dark:bg-zinc-800/50 dark:text-zinc-600"
@@ -1764,7 +1764,7 @@ export default function ClosetPage() {
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="e.g., Black cashmere sweater"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                   />
                 </div>
               )}
@@ -1780,7 +1780,7 @@ export default function ClosetPage() {
                     value={editBrand}
                     onChange={(e) => setEditBrand(e.target.value)}
                     placeholder="e.g., J.Crew"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                   />
                 </div>
               )}
@@ -1828,7 +1828,7 @@ export default function ClosetPage() {
                 <select
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
                 >
                   {CLOSET_CATEGORIES.map((cat) => (
                     <option key={cat.id} value={cat.id}>
@@ -1854,7 +1854,7 @@ export default function ClosetPage() {
                           onClick={() => setEditOptions({ ...editOptions, Size: value })}
                           className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                             isSelected
-                              ? "border-rose-400 bg-rose-400 text-white"
+                              ? "border-moi-400 bg-moi-400 text-white"
                               : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:border-zinc-500"
                           }`}
                         >
@@ -1870,7 +1870,7 @@ export default function ClosetPage() {
                     value={editSize}
                     onChange={(e) => setEditSize(e.target.value)}
                     placeholder="e.g., M, L, 32x30"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                   />
                 )}
               </div>
@@ -1885,7 +1885,7 @@ export default function ClosetPage() {
                     onClick={() => setEditGender("men")}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       editGender === "men"
-                        ? "border-rose-400 bg-rose-400 text-white"
+                        ? "border-moi-400 bg-moi-400 text-white"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                     }`}
                   >
@@ -1895,7 +1895,7 @@ export default function ClosetPage() {
                     onClick={() => setEditGender("women")}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       editGender === "women"
-                        ? "border-rose-400 bg-rose-400 text-white"
+                        ? "border-moi-400 bg-moi-400 text-white"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                     }`}
                   >
@@ -1905,7 +1905,7 @@ export default function ClosetPage() {
                     onClick={() => setEditGender("unisex")}
                     className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       editGender === "unisex"
-                        ? "border-rose-400 bg-rose-400 text-white"
+                        ? "border-moi-400 bg-moi-400 text-white"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                     }`}
                   >
@@ -1924,7 +1924,7 @@ export default function ClosetPage() {
                   value={editMaterial}
                   onChange={(e) => setEditMaterial(e.target.value)}
                   placeholder="e.g., Cotton, Wool, Polyester"
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                 />
               </div>
 
@@ -1945,7 +1945,7 @@ export default function ClosetPage() {
                           onClick={() => setEditOptions({ ...editOptions, Color: variant.colorName! })}
                           className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                             isSelected
-                              ? "border-rose-400 ring-2 ring-rose-400"
+                              ? "border-moi-400 ring-2 ring-moi-400"
                               : "border-zinc-200 hover:border-zinc-400 dark:border-zinc-700 dark:hover:border-zinc-500"
                           }`}
                           title={variant.colorName}
@@ -1975,7 +1975,7 @@ export default function ClosetPage() {
                     value={editColor}
                     onChange={(e) => setEditColor(e.target.value)}
                     placeholder="e.g., Navy, Black, White"
-                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                   />
                 </div>
               )}
@@ -2024,7 +2024,7 @@ export default function ClosetPage() {
                           onClick={() => setEditOptions({ ...editOptions, [option.name]: value })}
                           className={`rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                             isSelected
-                              ? "border-rose-400 bg-rose-400 text-white"
+                              ? "border-moi-400 bg-moi-400 text-white"
                               : "border-zinc-200 bg-white text-zinc-900 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:hover:border-zinc-500"
                           }`}
                         >
@@ -2057,7 +2057,7 @@ export default function ClosetPage() {
               <button
                 onClick={handleSaveEdit}
                 disabled={!editIsOwned && !editIsWishlist}
-                className="flex-1 rounded-lg bg-rose-400 py-2 font-medium text-white transition-colors hover:bg-rose-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 rounded-lg bg-moi-400 py-2 font-medium text-white transition-colors hover:bg-moi-500 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Save
               </button>
@@ -2124,7 +2124,7 @@ export default function ClosetPage() {
                         setOutfitCollectionFilter((selectedOutfit as any).collectionId);
                         setSelectedOutfit(null);
                       }}
-                      className="text-xs text-rose-500 truncate hover:underline"
+                      className="text-xs text-moi-500 truncate hover:underline"
                     >
                       {collections.find((c) => c._id === (selectedOutfit as any).collectionId)?.name || ""}
                     </button>
@@ -2157,7 +2157,7 @@ export default function ClosetPage() {
                           value={editOutfitName}
                           onChange={(e) => setEditOutfitName(e.target.value)}
                           placeholder="Name your outfit..."
-                          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                          className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                         />
                       </div>
                       <div>
@@ -2169,7 +2169,7 @@ export default function ClosetPage() {
                             onClick={() => setEditOutfitCollectionId(null)}
                             className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                               editOutfitCollectionId === null
-                                ? "bg-rose-400 text-white"
+                                ? "bg-moi-400 text-white"
                                 : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                             }`}
                           >
@@ -2181,7 +2181,7 @@ export default function ClosetPage() {
                               onClick={() => setEditOutfitCollectionId(col._id)}
                               className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
                                 editOutfitCollectionId === col._id
-                                  ? "bg-rose-400 text-white"
+                                  ? "bg-moi-400 text-white"
                                   : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                               }`}
                             >
@@ -2195,7 +2195,7 @@ export default function ClosetPage() {
                             value={newCollectionName}
                             onChange={(e) => setNewCollectionName(e.target.value)}
                             placeholder="Create new collection..."
-                            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                            className="flex-1 rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-xs text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                           />
                           {newCollectionName.trim() && (
                             <button
@@ -2207,7 +2207,7 @@ export default function ClosetPage() {
                                 setEditOutfitCollectionId(newId);
                                 setNewCollectionName("");
                               }}
-                              className="rounded-lg bg-rose-400 px-3 py-1.5 text-xs font-medium text-white hover:bg-rose-500"
+                              className="rounded-lg bg-moi-400 px-3 py-1.5 text-xs font-medium text-white hover:bg-moi-500"
                             >
                               Add
                             </button>
@@ -2235,7 +2235,7 @@ export default function ClosetPage() {
                             setIsEditingOutfit(false);
                             setNewCollectionName("");
                           }}
-                          className="flex-1 rounded-lg bg-rose-400 px-3 py-2 text-sm font-medium text-white hover:bg-rose-500"
+                          className="flex-1 rounded-lg bg-moi-400 px-3 py-2 text-sm font-medium text-white hover:bg-moi-500"
                         >
                           Save
                         </button>
@@ -2291,7 +2291,7 @@ export default function ClosetPage() {
                               addedAt: Date.now(),
                               isUserAdded: !item.productId, // No productId means user-added item
                             })}
-                            className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-800/50 cursor-pointer hover:border-rose-400 transition-colors"
+                            className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-800/50 cursor-pointer hover:border-moi-400 transition-colors"
                           >
                             <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
                               {item.imageUrl ? (
@@ -2426,7 +2426,7 @@ export default function ClosetPage() {
                   </p>
                   <button
                     onClick={() => { setShowSavedOutfitsModal(false); setShowTryOnModal(true); }}
-                    className="mt-4 rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500"
+                    className="mt-4 rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500"
                   >
                     Try On Clothes
                   </button>
@@ -2440,7 +2440,7 @@ export default function ClosetPage() {
                         onClick={() => setOutfitCollectionFilter(null)}
                         className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                           outfitCollectionFilter === null
-                            ? "bg-rose-400 text-white"
+                            ? "bg-moi-400 text-white"
                             : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                         }`}
                       >
@@ -2452,7 +2452,7 @@ export default function ClosetPage() {
                           onClick={() => setOutfitCollectionFilter(col._id)}
                           className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                             outfitCollectionFilter === col._id
-                              ? "bg-rose-400 text-white"
+                              ? "bg-moi-400 text-white"
                               : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                           }`}
                         >
@@ -2477,7 +2477,7 @@ export default function ClosetPage() {
                       <div
                         key={outfit._id}
                         onClick={() => setSelectedOutfit(outfit)}
-                        className="group relative aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800 cursor-pointer hover:ring-2 hover:ring-rose-400 active:scale-[0.98] transition-all"
+                        className="group relative aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800 cursor-pointer hover:ring-2 hover:ring-moi-400 active:scale-[0.98] transition-all"
                       >
                         {outfit.url ? (
                           <img
@@ -2498,7 +2498,7 @@ export default function ClosetPage() {
                             {(outfit as any).name || "Untitled"}
                           </p>
                           {(outfit as any).collectionId && collections && (
-                            <p className="truncate text-[10px] text-rose-300">
+                            <p className="truncate text-[10px] text-moi-300">
                               {collections.find((c) => c._id === (outfit as any).collectionId)?.name || ""}
                             </p>
                           )}
@@ -2672,7 +2672,7 @@ export default function ClosetPage() {
                       }}
                       className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
                         detailsItem.isWishlist && !detailsItem.isOwned
-                          ? "bg-rose-500 text-white"
+                          ? "bg-moi-500 text-white"
                           : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                       }`}
                     >
@@ -2696,7 +2696,7 @@ export default function ClosetPage() {
                       setDetailsItem(null);
                       setShowTryOnModal(true);
                     }}
-                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-moi-400 px-4 py-3 text-sm font-medium text-white hover:bg-moi-500 active:bg-moi-600 transition-colors"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
@@ -2736,7 +2736,7 @@ export default function ClosetPage() {
                         setTargetPrice("");
                         setShowPriceTrackingModal(true);
                       }}
-                      className="flex items-center justify-center gap-2 w-full rounded-lg bg-amber-100 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-200 active:bg-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition-colors"
+                      className="flex items-center justify-center gap-2 w-full rounded-lg bg-moi-100 px-4 py-3 text-sm font-medium text-moi-700 hover:bg-moi-200 active:bg-moi-300 dark:bg-moi-900/30 dark:text-moi-400 dark:hover:bg-moi-900/50 transition-colors"
                     >
                       <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
@@ -2752,7 +2752,7 @@ export default function ClosetPage() {
                     href={detailsItem.sourceUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-amber-100 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-200 active:bg-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-moi-100 px-4 py-3 text-sm font-medium text-moi-700 hover:bg-moi-200 active:bg-moi-300 dark:bg-moi-900/30 dark:text-moi-400 dark:hover:bg-moi-900/50 transition-colors"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -2767,7 +2767,7 @@ export default function ClosetPage() {
                     href={`/product/${detailsItem.product._id}?from=closet-popup`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 w-full rounded-lg border border-rose-400 px-4 py-3 text-sm font-medium text-rose-400 hover:bg-rose-50 active:bg-rose-100 dark:hover:bg-rose-400/10 transition-colors"
+                    className="flex items-center justify-center gap-2 w-full rounded-lg border border-moi-400 px-4 py-3 text-sm font-medium text-moi-400 hover:bg-moi-50 active:bg-moi-100 dark:hover:bg-moi-400/10 transition-colors"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
@@ -2825,7 +2825,7 @@ export default function ClosetPage() {
                     value={targetPrice}
                     onChange={(e) => setTargetPrice(e.target.value)}
                     placeholder={`e.g., ${(priceTrackingCurrentPrice * 0.8).toFixed(2)}`}
-                    className="w-full rounded-lg border border-zinc-300 bg-white pl-7 pr-3 py-2.5 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    className="w-full rounded-lg border border-zinc-300 bg-white pl-7 pr-3 py-2.5 text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                   />
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
@@ -2857,7 +2857,7 @@ export default function ClosetPage() {
                     console.error("Failed to track product:", error);
                   }
                 }}
-                className="flex-1 rounded-lg bg-rose-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                className="flex-1 rounded-lg bg-moi-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-moi-500 active:bg-moi-600 transition-colors"
               >
                 Start Tracking
               </button>
