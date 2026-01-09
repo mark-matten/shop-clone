@@ -80,7 +80,7 @@ export function FollowingList({ clerkId, onFindFriends }: FollowingListProps) {
         </p>
         <button
           onClick={onFindFriends}
-          className="mt-4 rounded-lg bg-purple-600 px-4 py-2 text-sm font-medium text-white hover:bg-purple-700"
+          className="mt-4 rounded-lg bg-moi-600 px-4 py-2 text-sm font-medium text-white hover:bg-moi-700"
         >
           Find Friends
         </button>
@@ -105,7 +105,7 @@ export function FollowingList({ clerkId, onFindFriends }: FollowingListProps) {
             {/* Main row */}
             <div className="flex items-center gap-3 p-3">
               {/* Avatar */}
-              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-400 text-sm font-semibold text-white">
+              <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-moi-400 to-moi-300 text-sm font-semibold text-white">
                 {userName.charAt(0).toUpperCase()}
               </div>
 
@@ -174,7 +174,7 @@ export function FollowingList({ clerkId, onFindFriends }: FollowingListProps) {
                     }
                     className={`relative h-6 w-11 rounded-full transition-colors ${
                       follow.alertSettings.alertsEnabled
-                        ? "bg-purple-600"
+                        ? "bg-moi-600"
                         : "bg-zinc-300 dark:bg-zinc-600"
                     }`}
                   >
@@ -205,7 +205,7 @@ export function FollowingList({ clerkId, onFindFriends }: FollowingListProps) {
                         }
                         className={`relative h-5 w-9 rounded-full transition-colors ${
                           follow.alertSettings.notifyNewOwnedItems
-                            ? "bg-purple-500"
+                            ? "bg-moi-500"
                             : "bg-zinc-300 dark:bg-zinc-600"
                         }`}
                       >
@@ -233,7 +233,7 @@ export function FollowingList({ clerkId, onFindFriends }: FollowingListProps) {
                         }
                         className={`relative h-5 w-9 rounded-full transition-colors ${
                           follow.alertSettings.notifyNewWishlistItems
-                            ? "bg-purple-500"
+                            ? "bg-moi-500"
                             : "bg-zinc-300 dark:bg-zinc-600"
                         }`}
                       >
@@ -261,7 +261,7 @@ export function FollowingList({ clerkId, onFindFriends }: FollowingListProps) {
                         }
                         className={`relative h-5 w-9 rounded-full transition-colors ${
                           follow.alertSettings.notifyNewOutfits
-                            ? "bg-purple-500"
+                            ? "bg-moi-500"
                             : "bg-zinc-300 dark:bg-zinc-600"
                         }`}
                       >

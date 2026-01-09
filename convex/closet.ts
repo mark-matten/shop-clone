@@ -759,6 +759,10 @@ export const updateClosetItem = mutation({
     gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
     notes: v.optional(v.string()),
     isWishlist: v.optional(v.boolean()),
+    // Image update fields
+    imageUrl: v.optional(v.string()),
+    generatedImageStorageId: v.optional(v.id("_storage")),
+    clearImage: v.optional(v.boolean()), // Set to true to remove existing image
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -775,16 +779,40 @@ export const updateClosetItem = mutation({
       throw new Error("Item not found or access denied");
     }
 
-    const updates: Record<string, string | boolean | undefined> = {};
+    const updates: Record<string, any> = {};
     if (args.name !== undefined) updates.name = args.name;
     if (args.brand !== undefined) updates.brand = args.brand;
     if (args.size !== undefined) updates.size = args.size;
     if (args.color !== undefined) updates.color = args.color;
     if (args.material !== undefined) updates.material = args.material;
     if (args.category !== undefined) updates.category = args.category;
-    if (args.gender !== undefined) (updates as any).gender = args.gender;
+    if (args.gender !== undefined) updates.gender = args.gender;
     if (args.notes !== undefined) updates.notes = args.notes;
     if (args.isWishlist !== undefined) updates.isWishlist = args.isWishlist;
+
+    // Handle image updates
+    if (args.imageUrl !== undefined || args.generatedImageStorageId !== undefined || args.clearImage) {
+      // Delete old generated image from storage if it exists
+      if (item.generatedImageStorageId) {
+        await ctx.storage.delete(item.generatedImageStorageId);
+      }
+
+      if (args.clearImage) {
+        // Clear both image fields
+        updates.imageUrl = undefined;
+        updates.generatedImageStorageId = undefined;
+      } else if (args.imageUrl !== undefined) {
+        // Setting a URL-based image
+        updates.imageUrl = args.imageUrl;
+        updates.generatedImageStorageId = undefined;
+        updates.source = "url";
+      } else if (args.generatedImageStorageId !== undefined) {
+        // Setting an uploaded image (stored in Convex)
+        updates.generatedImageStorageId = args.generatedImageStorageId;
+        updates.imageUrl = undefined;
+        updates.source = "generated";
+      }
+    }
 
     await ctx.db.patch(args.itemId, updates);
   },

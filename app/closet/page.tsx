@@ -8,7 +8,7 @@ import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
-import { AddClothesModal, TryOnModal } from "@/components/closet";
+import { AddClothesModal, EditImageModal, TryOnModal } from "@/components/closet";
 import { FindFriendsModal } from "@/components/social/FindFriendsModal";
 import { FollowingList } from "@/components/social/FollowingList";
 import {
@@ -697,6 +697,7 @@ export default function ClosetPage() {
   const [shareCopied, setShareCopied] = useState(false);
   const [closetShareCopied, setClosetShareCopied] = useState(false);
   const [detailsItem, setDetailsItem] = useState<CombinedItem | null>(null);
+  const [editImageItem, setEditImageItem] = useState<{ itemId: string; imageUrl?: string } | null>(null);
   const [newlyAddedItemId, setNewlyAddedItemId] = useState<string | null>(null);
   const pendingScrollPosition = useRef<number | null>(null);
   const hasRestoredScroll = useRef(false);
@@ -2037,6 +2038,23 @@ export default function ClosetPage() {
               ))}
             </div>
 
+            {/* Edit Image Button (for user-added items only) */}
+            {editingItem.isUserAdded && editingItem.closetItemId && (
+              <button
+                onClick={() => setEditImageItem({
+                  itemId: editingItem.closetItemId!,
+                  imageUrl: undefined,
+                })}
+                className="mt-4 w-full flex items-center justify-center gap-2 rounded-lg border border-zinc-300 bg-white px-3 py-2.5 text-sm font-medium text-zinc-700 hover:border-moi-400 hover:bg-moi-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-moi-400 dark:hover:bg-moi-900/20 transition-colors"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                </svg>
+                Edit Image
+              </button>
+            )}
+
             {/* Action Buttons */}
             <div className="mt-6 flex gap-3">
               <button
@@ -2775,6 +2793,20 @@ export default function ClosetPage() {
                     View Product Details
                   </a>
                 )}
+
+                {/* Edit button - opens edit modal */}
+                <button
+                  onClick={() => {
+                    setDetailsItem(null);
+                    handleEdit(detailsItem);
+                  }}
+                  className="flex items-center justify-center gap-2 w-full rounded-lg border border-zinc-300 px-4 py-3 text-sm font-medium text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                  </svg>
+                  Edit Item
+                </button>
               </div>
             </div>
           </div>
@@ -2872,6 +2904,28 @@ export default function ClosetPage() {
           isOpen={showFindFriendsModal}
           onClose={() => setShowFindFriendsModal(false)}
           clerkId={user.id}
+        />
+      )}
+
+      {/* Edit Image Modal */}
+      {user?.id && editImageItem && (
+        <EditImageModal
+          isOpen={!!editImageItem}
+          onClose={() => setEditImageItem(null)}
+          clerkId={user.id}
+          itemId={editImageItem.itemId}
+          currentImageUrl={editImageItem.imageUrl}
+          onImageUpdated={() => {
+            setEditImageItem(null);
+            // Close the edit modal after image update
+            if (editingItem?.closetItemId === editImageItem.itemId) {
+              closeEditModal();
+            }
+            // Also close details item if it's still open
+            if (detailsItem?.closetItemId === editImageItem.itemId) {
+              setDetailsItem(null);
+            }
+          }}
         />
       )}
     </div>

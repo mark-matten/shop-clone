@@ -188,7 +188,7 @@ export function FindFriendsModal({ isOpen, onClose, clerkId }: FindFriendsModalP
               <div className="rounded-lg border border-zinc-200 p-4 dark:border-zinc-700">
                 <div className="flex items-center gap-4">
                   {/* Avatar placeholder */}
-                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-400 text-lg font-semibold text-white">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-moi-400 to-moi-300 text-lg font-semibold text-white">
                     {userName?.charAt(0).toUpperCase() || "?"}
                   </div>
                   <div className="flex-1">
@@ -223,7 +223,7 @@ export function FindFriendsModal({ isOpen, onClose, clerkId }: FindFriendsModalP
                     <button
                       onClick={handleFollow}
                       disabled={actionInProgress}
-                      className="w-full rounded-lg bg-purple-600 py-2 font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+                      className="w-full rounded-lg bg-moi-400 py-2 font-medium text-white transition-colors hover:bg-moi-500 disabled:opacity-50"
                     >
                       {actionInProgress
                         ? "..."

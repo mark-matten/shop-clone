@@ -134,7 +134,7 @@ export function FollowersList({ clerkId }: FollowersListProps) {
                     className="flex items-center gap-3 border-b border-moi-100 p-3 last:border-b-0 dark:border-moi-800/50"
                   >
                     {/* Avatar */}
-                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-400 text-sm font-semibold text-white">
+                    <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-moi-400 to-moi-300 text-sm font-semibold text-white">
                       {userName.charAt(0).toUpperCase()}
                     </div>
 
@@ -153,7 +153,7 @@ export function FollowersList({ clerkId }: FollowersListProps) {
                       <button
                         onClick={() => handleApproveRequest(request.requesterId as Id<"users">)}
                         disabled={actionInProgress === request.requesterId}
-                        className="rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                        className="rounded-lg bg-moi-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-moi-700 disabled:opacity-50"
                       >
                         {actionInProgress === request.requesterId ? "..." : "Accept"}
                       </button>
@@ -191,7 +191,7 @@ export function FollowersList({ clerkId }: FollowersListProps) {
                   className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-700 dark:bg-zinc-800"
                 >
                   {/* Avatar */}
-                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-purple-400 to-pink-400 text-sm font-semibold text-white">
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-moi-400 to-moi-300 text-sm font-semibold text-white">
                     {userName.charAt(0).toUpperCase()}
                   </div>
 

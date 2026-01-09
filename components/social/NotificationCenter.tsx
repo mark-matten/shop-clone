@@ -78,7 +78,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
     switch (type) {
       case "new_follower":
         return (
-          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400">
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-moi-100 text-moi-600 dark:bg-moi-900/30 dark:text-moi-400">
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
             </svg>
@@ -176,7 +176,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}
-                className="text-sm font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                className="text-sm font-medium text-moi-600 hover:text-moi-700 dark:text-moi-400"
               >
                 Mark all read
               </button>
@@ -226,7 +226,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
                   key={notification._id}
                   className={`relative p-4 ${
                     !notification.read
-                      ? "bg-purple-50/50 dark:bg-purple-900/10"
+                      ? "bg-moi-50/50 dark:bg-moi-900/10"
                       : ""
                   }`}
                   onClick={() => !notification.read && handleMarkAsRead(notification._id)}
@@ -256,7 +256,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
                               );
                             }}
                             disabled={actionInProgress === notification._id}
-                            className="rounded-lg bg-purple-600 px-3 py-1 text-xs font-medium text-white hover:bg-purple-700 disabled:opacity-50"
+                            className="rounded-lg bg-moi-600 px-3 py-1 text-xs font-medium text-white hover:bg-moi-700 disabled:opacity-50"
                           >
                             Accept
                           </button>
@@ -283,7 +283,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
                         notification.fromUserId && (
                           <Link
                             href={`/closet/${notification.fromUserId}`}
-                            className="mt-2 inline-block text-xs font-medium text-purple-600 hover:text-purple-700 dark:text-purple-400"
+                            className="mt-2 inline-block text-xs font-medium text-moi-600 hover:text-moi-700 dark:text-moi-400"
                             onClick={(e) => e.stopPropagation()}
                           >
                             View their closet
@@ -293,7 +293,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
 
                     {/* Unread indicator */}
                     {!notification.read && (
-                      <div className="h-2 w-2 flex-shrink-0 rounded-full bg-purple-600" />
+                      <div className="h-2 w-2 flex-shrink-0 rounded-full bg-moi-600" />
                     )}
 
                     {/* Delete button */}
