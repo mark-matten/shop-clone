@@ -723,6 +723,13 @@ export const getAllClosetItems = query({
       isWishlist: boolean;
       addedAt: number;
       sortOrder: number | undefined;
+      // Additional fields for item details popup
+      source: "product" | "url" | "generated" | "wishlist";
+      material: string | undefined;
+      size: string | undefined;
+      color: string | undefined;
+      gender: "men" | "women" | "unisex" | undefined;
+      linkedProductId: string | undefined; // For linking to /product/[id] page
     }>();
 
     // 1. Get all closet items (owned) - these take priority
@@ -737,6 +744,12 @@ export const getAllClosetItems = query({
       let displayCategory: string | undefined;
       let displayImageUrl: string | null | undefined;
       let productIdStr: string | undefined;
+      let source: "product" | "url" | "generated" = "product";
+      let material: string | undefined;
+      let size: string | undefined;
+      let color: string | undefined;
+      let gender: "men" | "women" | "unisex" | undefined;
+      let linkedProductId: string | undefined;
 
       if (item.productId) {
         const product = await ctx.db.get(item.productId);
@@ -747,18 +760,36 @@ export const getAllClosetItems = query({
         displayBrand = item.brand ?? product.brand;
         displayCategory = item.customCategory ?? item.category ?? product.category;
         displayImageUrl = item.imageUrl ?? product.imageUrl;
+        source = item.source ?? "product";
+        material = item.material ?? product.material;
+        size = item.selectedSize ?? item.size;
+        color = item.colorName ?? item.color;
+        gender = item.gender ?? product.gender;
+        linkedProductId = item.productId.toString(); // Can link to product page
       } else if (item.source === "url") {
         productIdStr = `url-${item._id}`;
         displayName = item.name;
         displayBrand = item.brand;
         displayCategory = item.customCategory ?? item.category;
         displayImageUrl = item.imageUrl;
+        source = "url";
+        material = item.material;
+        size = item.size;
+        color = item.color;
+        gender = item.gender;
+        linkedProductId = undefined; // URL items don't link to product pages
       } else if (item.source === "generated" && item.generatedImageStorageId) {
         productIdStr = `gen-${item._id}`;
         displayName = item.name;
         displayBrand = item.brand;
         displayCategory = item.customCategory ?? item.category;
         displayImageUrl = await ctx.storage.getUrl(item.generatedImageStorageId);
+        source = "generated";
+        material = item.material;
+        size = item.size;
+        color = item.color;
+        gender = item.gender;
+        linkedProductId = undefined; // Generated items don't link to product pages
       } else {
         // Skip items without valid source
         continue;
@@ -766,7 +797,7 @@ export const getAllClosetItems = query({
 
       if (productIdStr && displayName && displayCategory) {
         itemsByProductId.set(productIdStr, {
-          _id: item._id,
+          _id: item._id.toString(),
           productId: productIdStr,
           displayName,
           displayBrand,
@@ -776,6 +807,12 @@ export const getAllClosetItems = query({
           isWishlist: false,
           addedAt: item.addedAt,
           sortOrder: item.sortOrder,
+          source,
+          material,
+          size,
+          color,
+          gender,
+          linkedProductId,
         });
       }
     }
@@ -807,7 +844,7 @@ export const getAllClosetItems = query({
       console.log("[getAllClosetItems] Adding wishlist item:", product.name, "category:", product.category);
 
       itemsByProductId.set(productIdStr, {
-        _id: item._id,
+        _id: item._id.toString(),
         productId: productIdStr,
         displayName: product.name,
         displayBrand: product.brand,
@@ -817,6 +854,12 @@ export const getAllClosetItems = query({
         isWishlist: true,
         addedAt: item.createdAt,
         sortOrder: undefined,
+        source: "wishlist" as const,
+        material: product.material,
+        size: item.size, // Wishlist items may have size selected
+        color: item.colorName, // Wishlist items may have color selected
+        gender: product.gender,
+        linkedProductId: item.productId.toString(), // Can link to product page
       });
     }
 

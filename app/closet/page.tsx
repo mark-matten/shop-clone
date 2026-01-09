@@ -204,11 +204,13 @@ function SortableListItem({
   item,
   onEdit,
   onRemove,
+  onViewDetails,
   isDragging,
 }: {
   item: CombinedItem;
   onEdit: (item: CombinedItem) => void;
   onRemove: (item: CombinedItem) => void;
+  onViewDetails: (item: CombinedItem) => void;
   isDragging?: boolean;
 }) {
   const {
@@ -316,31 +318,15 @@ function SortableListItem({
         </svg>
       </div>
 
-      {/* Thumbnail - Link for product-linked and URL-sourced items */}
-      {item.isUserAdded ? (
-        <div className="flex-shrink-0">{thumbnailContent}</div>
-      ) : item.sourceUrl ? (
-        <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="flex-shrink-0">
-          {thumbnailContent}
-        </a>
-      ) : (
-        <Link href={`/product/${product._id}?from=closet`} className="flex-shrink-0">
-          {thumbnailContent}
-        </Link>
-      )}
+      {/* Thumbnail - Click to view details */}
+      <div className="flex-shrink-0 cursor-pointer" onClick={() => onViewDetails(item)}>
+        {thumbnailContent}
+      </div>
 
-      {/* Info - Link for product-linked and URL-sourced items */}
-      {item.isUserAdded ? (
-        <div className="min-w-0 flex-1">{infoContent}</div>
-      ) : item.sourceUrl ? (
-        <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer" className="min-w-0 flex-1">
-          {infoContent}
-        </a>
-      ) : (
-        <Link href={`/product/${product._id}?from=closet`} className="min-w-0 flex-1">
-          {infoContent}
-        </Link>
-      )}
+      {/* Info - Click to view details */}
+      <div className="min-w-0 flex-1 cursor-pointer" onClick={() => onViewDetails(item)}>
+        {infoContent}
+      </div>
 
       {/* Action Button - Edit only */}
       <div className="flex flex-shrink-0 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
@@ -363,11 +349,13 @@ function SortableItem({
   item,
   onEdit,
   onRemove,
+  onViewDetails,
   isDragging,
 }: {
   item: CombinedItem;
   onEdit: (item: CombinedItem) => void;
   onRemove: (item: CombinedItem) => void;
+  onViewDetails: (item: CombinedItem) => void;
   isDragging?: boolean;
 }) {
   const {
@@ -478,18 +466,13 @@ function SortableItem({
         </svg>
       </div>
 
-      {/* Card content - Link for product-linked and URL-sourced items */}
-      {item.isUserAdded ? (
-        <div>{cardContent}</div>
-      ) : item.sourceUrl ? (
-        <a href={item.sourceUrl} target="_blank" rel="noopener noreferrer">
-          {cardContent}
-        </a>
-      ) : (
-        <Link href={`/product/${product._id}?from=closet`}>
-          {cardContent}
-        </Link>
-      )}
+      {/* Card content - Click to view details */}
+      <div
+        className="cursor-pointer"
+        onClick={() => onViewDetails(item)}
+      >
+        {cardContent}
+      </div>
 
       {/* Action Button - Edit only, visible on mobile, hover on desktop */}
       <div className="absolute right-1 top-1 sm:right-2 sm:top-2 opacity-100 sm:opacity-0 transition-opacity sm:group-hover:opacity-100">
@@ -513,6 +496,7 @@ function CategorySection({
   items,
   onEdit,
   onRemove,
+  onViewDetails,
   activeId,
   isOver,
 }: {
@@ -520,6 +504,7 @@ function CategorySection({
   items: CombinedItem[];
   onEdit: (item: CombinedItem) => void;
   onRemove: (item: CombinedItem) => void;
+  onViewDetails: (item: CombinedItem) => void;
   activeId: string | null;
   isOver: boolean;
 }) {
@@ -546,6 +531,7 @@ function CategorySection({
                   item={item}
                   onEdit={onEdit}
                   onRemove={onRemove}
+                  onViewDetails={onViewDetails}
                   isDragging={activeId === item.productId}
                 />
               </div>
@@ -567,6 +553,7 @@ function ListCategorySection({
   items,
   onEdit,
   onRemove,
+  onViewDetails,
   activeId,
   isOver,
 }: {
@@ -574,6 +561,7 @@ function ListCategorySection({
   items: CombinedItem[];
   onEdit: (item: CombinedItem) => void;
   onRemove: (item: CombinedItem) => void;
+  onViewDetails: (item: CombinedItem) => void;
   activeId: string | null;
   isOver: boolean;
 }) {
@@ -599,6 +587,7 @@ function ListCategorySection({
               item={item}
               onEdit={onEdit}
               onRemove={onRemove}
+              onViewDetails={onViewDetails}
               isDragging={activeId === item.productId}
             />
           ))}
@@ -658,6 +647,7 @@ export default function ClosetPage() {
   const [newCollectionName, setNewCollectionName] = useState("");
   const [shareCopied, setShareCopied] = useState(false);
   const [closetShareCopied, setClosetShareCopied] = useState(false);
+  const [detailsItem, setDetailsItem] = useState<CombinedItem | null>(null);
   const pendingScrollPosition = useRef<number | null>(null);
   const hasRestoredScroll = useRef(false);
 
@@ -976,6 +966,10 @@ export default function ClosetPage() {
         await removeFavorite({ clerkId: user.id, productId: item.productId });
       }
     }
+  };
+
+  const handleViewDetails = (item: CombinedItem) => {
+    setDetailsItem(item);
   };
 
   const handleEdit = (item: CombinedItem) => {
@@ -1503,6 +1497,7 @@ export default function ClosetPage() {
                         item={item}
                         onEdit={handleEdit}
                         onRemove={handleRemove}
+                        onViewDetails={handleViewDetails}
                         isDragging={activeId === item.productId}
                       />
                     ))}
@@ -1517,6 +1512,7 @@ export default function ClosetPage() {
                     items={itemsByCategory[cat.id] || []}
                     onEdit={handleEdit}
                     onRemove={handleRemove}
+                    onViewDetails={handleViewDetails}
                     activeId={activeId}
                     isOver={overCategory === cat.id}
                   />
@@ -1548,6 +1544,7 @@ export default function ClosetPage() {
                         item={item}
                         onEdit={handleEdit}
                         onRemove={handleRemove}
+                        onViewDetails={handleViewDetails}
                         isDragging={activeId === item.productId}
                       />
                     ))}
@@ -1562,6 +1559,7 @@ export default function ClosetPage() {
                     items={itemsByCategory[cat.id] || []}
                     onEdit={handleEdit}
                     onRemove={handleRemove}
+                    onViewDetails={handleViewDetails}
                     activeId={activeId}
                     isOver={overCategory === cat.id}
                   />
@@ -2324,6 +2322,127 @@ export default function ClosetPage() {
                     ))}
                   </div>
                 </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Item Details Modal */}
+      {detailsItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setDetailsItem(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Image */}
+            <div className="relative aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
+              {detailsItem.product.imageUrl ? (
+                <img
+                  src={detailsItem.product.imageUrl}
+                  alt={detailsItem.product.name || "Item"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <svg className="h-16 w-16 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
+              {/* Close button */}
+              <button
+                onClick={() => setDetailsItem(null)}
+                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              {/* Owned/Wishlist badge */}
+              <div className="absolute left-3 top-3 rounded-full bg-white/90 dark:bg-zinc-900/90 px-2 py-1 flex items-center gap-1 shadow-sm">
+                {detailsItem.isOwned ? (
+                  <>
+                    <svg className="h-4 w-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Owned</span>
+                  </>
+                ) : detailsItem.isWishlist ? (
+                  <>
+                    <svg className="h-4 w-4 text-rose-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                    </svg>
+                    <span className="text-xs font-medium text-rose-600 dark:text-rose-400">Wishlist</span>
+                  </>
+                ) : null}
+              </div>
+            </div>
+
+            {/* Item Details */}
+            <div className="p-4">
+              {/* Name */}
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-1">
+                {detailsItem.product.name}
+              </h3>
+
+              {/* Brand */}
+              {detailsItem.product.brand && (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
+                  {detailsItem.product.brand}
+                </p>
+              )}
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {(detailsItem.customCategory || detailsItem.product.category) && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Category</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.customCategory || detailsItem.product.category}</p>
+                  </div>
+                )}
+                {detailsItem.product.material && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Material</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.product.material}</p>
+                  </div>
+                )}
+                {detailsItem.product.gender && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Gender</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.product.gender}</p>
+                  </div>
+                )}
+                {(detailsItem.selectedOptions?.["Size"]) && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Size</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300">{detailsItem.selectedOptions["Size"]}</p>
+                  </div>
+                )}
+                {(detailsItem.selectedOptions?.["Color"] || detailsItem.selectedOptions?.["Colour"] || detailsItem.product.colorName) && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Color</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.selectedOptions?.["Color"] || detailsItem.selectedOptions?.["Colour"] || detailsItem.product.colorName}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Link to product page - only for non-user-added items */}
+              {!detailsItem.isUserAdded && (
+                <a
+                  href={`/product/${detailsItem.product._id}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                  View Product Details
+                </a>
               )}
             </div>
           </div>
