@@ -28,8 +28,8 @@ function HomeContent() {
       {!hasSearchQuery && (
         <div className="mb-8 text-center animate-fade-in-down">
           <span className="font-[family-name:var(--font-pacifico)] text-6xl sm:text-7xl">
-            <span style={{ color: '#C2311D' }}>ar</span>
-            <span style={{ color: '#942010' }}>moi</span>
+            <span style={{ color: '#942010' }}>ar</span>
+            <span style={{ color: '#C2311D' }}>moi</span>
           </span>
           <p className="mt-4 mb-2 text-base text-zinc-600 dark:text-zinc-400">
             Find the best deals for new and used clothing across thousands of brands and marketplaces.

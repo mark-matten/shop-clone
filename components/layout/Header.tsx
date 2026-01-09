@@ -184,8 +184,8 @@ export function Header() {
           className="ml-2 -mt-1"
         >
           <span className="font-[family-name:var(--font-pacifico)] text-2xl">
-            <span style={{ color: '#C2311D' }}>ar</span>
-            <span style={{ color: '#942010' }}>moi</span>
+            <span style={{ color: '#942010' }}>ar</span>
+            <span style={{ color: '#C2311D' }}>moi</span>
           </span>
         </Link>
 

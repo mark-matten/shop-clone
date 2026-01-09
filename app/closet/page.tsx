@@ -688,32 +688,6 @@ export default function ClosetPage() {
     hasRestoredScroll.current = true;
   }, []);
 
-  // Handle addToWishlist URL parameter (from shared outfit page)
-  useEffect(() => {
-    const addToWishlistId = searchParams.get("addToWishlist");
-    if (addToWishlistId && user?.id) {
-      // Add the product to wishlist
-      addFavorite({
-        clerkId: user.id,
-        productId: addToWishlistId as Id<"products">,
-      })
-        .then(() => {
-          setWishlistToast("Item added to your wishlist!");
-          // Clear the URL parameter
-          const newUrl = new URL(window.location.href);
-          newUrl.searchParams.delete("addToWishlist");
-          router.replace(newUrl.pathname + newUrl.search);
-          // Auto-hide toast after 3 seconds
-          setTimeout(() => setWishlistToast(null), 3000);
-        })
-        .catch((error) => {
-          console.error("Failed to add to wishlist:", error);
-          setWishlistToast("Failed to add item to wishlist");
-          setTimeout(() => setWishlistToast(null), 3000);
-        });
-    }
-  }, [searchParams, user?.id, addFavorite, router]);
-
   // Save scroll position on scroll (debounced)
   useEffect(() => {
     let timeoutId: NodeJS.Timeout;
@@ -804,6 +778,32 @@ export default function ClosetPage() {
   const updateClosetItemCategory = useMutation(api.closet.updateClosetItemCategory);
   const updateClosetItemsOrder = useMutation(api.closet.updateClosetItemsOrder);
   const updateFavoritesOrder = useMutation(api.favorites.updateFavoritesOrder);
+
+  // Handle addToWishlist URL parameter (from shared outfit page)
+  useEffect(() => {
+    const addToWishlistId = searchParams.get("addToWishlist");
+    if (addToWishlistId && user?.id) {
+      // Add the product to wishlist
+      addFavorite({
+        clerkId: user.id,
+        productId: addToWishlistId as Id<"products">,
+      })
+        .then(() => {
+          setWishlistToast("Item added to your wishlist!");
+          // Clear the URL parameter
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete("addToWishlist");
+          router.replace(newUrl.pathname + newUrl.search);
+          // Auto-hide toast after 3 seconds
+          setTimeout(() => setWishlistToast(null), 3000);
+        })
+        .catch((error) => {
+          console.error("Failed to add to wishlist:", error);
+          setWishlistToast("Failed to add item to wishlist");
+          setTimeout(() => setWishlistToast(null), 3000);
+        });
+    }
+  }, [searchParams, user?.id, addFavorite, router]);
 
   // Combine closet items and favorites into a unified list
   const combinedItems = useMemo((): CombinedItem[] => {

@@ -102,8 +102,8 @@ export default function PublicClosetPage() {
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <Link href="/" className="font-[family-name:var(--font-pacifico)] text-2xl">
-              <span style={{ color: '#C2311D' }}>ar</span>
-              <span style={{ color: '#942010' }}>moi</span>
+              <span style={{ color: '#942010' }}>ar</span>
+              <span style={{ color: '#C2311D' }}>moi</span>
             </Link>
             <Link
               href="/sign-in"
@@ -247,8 +247,8 @@ export default function PublicClosetPage() {
       <footer className="border-t border-zinc-200 dark:border-zinc-800 mt-16 py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
           <Link href="/" className="font-[family-name:var(--font-pacifico)] text-xl">
-            <span style={{ color: '#C2311D' }}>ar</span>
-            <span style={{ color: '#942010' }}>moi</span>
+            <span style={{ color: '#942010' }}>ar</span>
+            <span style={{ color: '#C2311D' }}>moi</span>
           </Link>
           <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
             Your virtual closet for tracking and trying on clothes
