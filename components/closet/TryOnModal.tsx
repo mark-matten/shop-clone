@@ -675,8 +675,8 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
             </button>
           </div>
 
-          {/* Mobile Closet Section (Top) */}
-          <div className="flex-1 flex flex-col min-h-0 border-b border-zinc-200 dark:border-zinc-800">
+          {/* Mobile Closet Section (Top) - Limited height so Virtual Try-On is higher */}
+          <div className="flex flex-col min-h-0 max-h-[40vh] border-b border-zinc-200 dark:border-zinc-800">
             {/* Category Tabs */}
             <div className="flex-shrink-0 overflow-x-auto border-b border-zinc-100 dark:border-zinc-800">
               <div className="flex gap-1.5 px-3 py-2 min-w-max">
@@ -827,7 +827,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
           </div>
 
           {/* Mobile Preview Section (Bottom) - Virtual Try-On */}
-          <div className="flex-shrink-0 bg-zinc-50 dark:bg-zinc-800/50 max-h-[55vh] overflow-y-auto pb-safe">
+          <div className="flex-1 bg-zinc-50 dark:bg-zinc-800/50 overflow-y-auto pb-safe">
             {/* Virtual Try-On Header */}
             <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-700">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Virtual Try-On</h3>
@@ -1110,7 +1110,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   </svg>
                 </button>
                 {showOutfitHistory && (
-                  <div className="flex gap-2 overflow-x-auto py-2 mt-2">
+                  <div className="flex gap-3 overflow-x-auto py-3 mt-2">
                     {(outfitHistory as OutfitHistoryItem[]).map((outfit) => (
                       <div
                         key={outfit._id}
@@ -1128,19 +1128,19 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                             <img
                               src={outfit.url}
                               alt={outfit.name || "Saved outfit"}
-                              className={`h-14 w-14 rounded-lg object-cover ${selectedOutfitId === outfit._id ? "ring-2 ring-rose-400" : ""}`}
+                              className={`h-24 w-24 rounded-xl object-cover ${selectedOutfitId === outfit._id ? "ring-2 ring-rose-400" : ""}`}
                             />
                             {outfit.name && (
                               <div className="absolute -bottom-1 left-0 right-0 text-center">
-                                <span className="inline-block max-w-[56px] truncate rounded bg-black/60 px-1 text-[8px] text-white">
+                                <span className="inline-block max-w-[96px] truncate rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
                                   {outfit.name}
                                 </span>
                               </div>
                             )}
                           </div>
                         ) : (
-                          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-200 dark:bg-zinc-700">
-                            <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-zinc-200 dark:bg-zinc-700">
+                            <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
