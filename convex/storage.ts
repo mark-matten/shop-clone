@@ -164,10 +164,10 @@ export const getFileUrl = query({
 export const saveOutfitImage = mutation({
   args: {
     clerkId: v.string(),
-    storageId: v.id("_storage"),
-    itemIds: v.array(v.string()),
+    storageId: v.optional(v.id("_storage")), // Optional when updating existing outfit
+    itemIds: v.optional(v.array(v.string())), // Optional when updating existing outfit
     userPhotoId: v.optional(v.id("user_photos")),
-    prompt: v.string(),
+    prompt: v.optional(v.string()), // Optional when updating existing outfit
     name: v.optional(v.string()),
     collectionId: v.optional(v.id("collections")),
     existingOutfitId: v.optional(v.id("outfit_images")), // If provided, update instead of insert
@@ -185,7 +185,11 @@ export const saveOutfitImage = mutation({
       }
     }
 
-    // Create new outfit
+    // Create new outfit - storageId, itemIds, and prompt are required for new outfits
+    if (!args.storageId || !args.itemIds || !args.prompt) {
+      throw new Error("storageId, itemIds, and prompt are required for new outfits");
+    }
+
     return await ctx.db.insert("outfit_images", {
       clerkId: args.clerkId,
       storageId: args.storageId,
@@ -253,17 +257,28 @@ export const getSavedOutfits = query({
                 const product = await ctx.db.get(closetItemDoc.productId);
                 return {
                   _id: closetItemDoc._id,
-                  productId: closetItemDoc.productId,
+                  productId: closetItemDoc.productId.toString(), // String for linking
                   name: product?.name || closetItemDoc.name,
                   imageUrl: product?.imageUrl || imageUrl,
                   brand: product?.brand,
                   price: product?.price,
+                  category: closetItemDoc.customCategory || product?.category || closetItemDoc.category,
+                  material: closetItemDoc.material || product?.material,
+                  gender: closetItemDoc.gender || product?.gender,
+                  colorName: closetItemDoc.colorName || product?.colorName,
+                  size: closetItemDoc.selectedSize || closetItemDoc.size,
                 };
               }
               return {
                 _id: closetItemDoc._id,
+                productId: undefined, // No product link for user-added items
                 name: closetItemDoc.name,
                 imageUrl,
+                category: closetItemDoc.customCategory || closetItemDoc.category,
+                material: closetItemDoc.material,
+                gender: closetItemDoc.gender,
+                colorName: closetItemDoc.color || closetItemDoc.colorName,
+                size: closetItemDoc.size,
               };
             }
             return null;
@@ -342,6 +357,9 @@ export const getOutfitHistory = query({
                   category: closetItemDoc.customCategory || product?.category || closetItemDoc.category || "other",
                   colorName: closetItemDoc.colorName || closetItemDoc.selectedOptions?.["Color"] || product?.colorName,
                   size: closetItemDoc.selectedSize || closetItemDoc.selectedOptions?.["Size"] || closetItemDoc.size,
+                  material: closetItemDoc.material || product?.material,
+                  gender: closetItemDoc.gender || product?.gender,
+                  productId: closetItemDoc.productId.toString(), // For linking to product page
                 };
               }
 
@@ -359,6 +377,9 @@ export const getOutfitHistory = query({
                 category: closetItemDoc.customCategory || closetItemDoc.category || "other",
                 colorName: closetItemDoc.color,
                 size: closetItemDoc.size,
+                material: closetItemDoc.material,
+                gender: closetItemDoc.gender,
+                productId: undefined, // No product link for URL/generated items
               };
             }
 
@@ -379,6 +400,9 @@ export const getOutfitHistory = query({
                   category: product.category || "other",
                   colorName: favorite.selectedOptions?.["Color"] || product.colorName,
                   size: favorite.selectedOptions?.["Size"],
+                  material: product.material,
+                  gender: product.gender,
+                  productId: favorite.productId.toString(), // For linking to product page
                 };
               }
             }
@@ -569,12 +593,15 @@ export const getPublicOutfit = query({
             const product = await ctx.db.get(closetItemDoc.productId);
             return {
               _id: closetItemDoc._id,
-              productId: closetItemDoc.productId,
+              productId: closetItemDoc.productId.toString(), // String for linking to product page
               name: product?.name || closetItemDoc.name || "Unknown",
               brand: product?.brand || closetItemDoc.brand || "",
               imageUrl: product?.imageUrl || imageUrl,
               category: closetItemDoc.customCategory || product?.category || closetItemDoc.category || "other",
               colorName: closetItemDoc.colorName || product?.colorName,
+              material: closetItemDoc.material || product?.material,
+              gender: closetItemDoc.gender || product?.gender,
+              size: closetItemDoc.selectedSize || closetItemDoc.size,
               price: product?.price,
               originalUrl: product?.originalUrl,
             };
@@ -582,16 +609,26 @@ export const getPublicOutfit = query({
 
           return {
             _id: closetItemDoc._id,
+            productId: undefined, // No product link for URL/generated items
             name: closetItemDoc.name || "Unknown",
             brand: closetItemDoc.brand || "",
             imageUrl,
             category: closetItemDoc.customCategory || closetItemDoc.category || "other",
             colorName: closetItemDoc.color || closetItemDoc.colorName,
+            material: closetItemDoc.material,
+            gender: closetItemDoc.gender,
+            size: closetItemDoc.selectedSize || closetItemDoc.size,
           };
         }
         return null;
       })
     );
+
+    // Build user display name
+    const firstName = user.firstName || "";
+    const lastName = user.lastName || "";
+    const lastInitial = lastName ? `${lastName.charAt(0)}.` : "";
+    const displayName = firstName ? `${firstName} ${lastInitial}`.trim() : "User";
 
     return {
       isPrivate: false,
@@ -605,6 +642,7 @@ export const getPublicOutfit = query({
       user: {
         _id: user._id,
         clerkId: user.clerkId, // Needed for linking to closet
+        displayName, // The user's display name like "Mark M."
       },
     };
   },

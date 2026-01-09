@@ -305,10 +305,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
     setSelectedOutfitId(null);
 
     try {
-      const productIds = Array.from(selectedByCategory.values()).map((itemId) => {
-        const item = itemsById.get(itemId);
-        return item?.productId || itemId;
-      });
+      // Store the actual closet_item._id or favorites._id for proper lookup later
+      const productIds = Array.from(selectedByCategory.values());
 
       const result = await generateTryOn({
         clerkId,
@@ -325,8 +323,20 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
 
       if (result.imageUrl) {
         setGeneratedOutfit(result.imageUrl);
-        // Store the outfit data for saving later (outfit is NOT auto-saved)
-        setSavedOutfitId(null); // Clear any previous saved ID
+
+        // Save the outfit to DB immediately (without name) so it appears in Recent Outfits
+        // When user saves with a name, we'll update the existing outfit
+        const outfitId = await saveOutfitImage({
+          clerkId,
+          storageId: result.storageId,
+          itemIds: result.itemIds,
+          userPhotoId: result.userPhotoId,
+          prompt: result.prompt,
+          // No name yet - will be added when user explicitly saves
+        });
+
+        setSelectedOutfitId(outfitId);
+        // Store pending data for the save modal to use
         setPendingOutfitData({
           storageId: result.storageId,
           itemIds: result.itemIds,
@@ -398,9 +408,6 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       if (existingId) {
         const outfitId = await saveOutfitImage({
           clerkId,
-          storageId: "" as any, // Not used when existingOutfitId is provided
-          itemIds: [],
-          prompt: "",
           name: outfitName.trim() || undefined,
           collectionId: collectionId ?? undefined,
           existingOutfitId: existingId,
@@ -845,15 +852,6 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                       </span>
                     )}
                     <button
-                      onClick={handleShareOutfit}
-                      className="flex items-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                      </svg>
-                      Share
-                    </button>
-                    <button
                       onClick={handleDownloadOutfit}
                       className="flex items-center gap-1.5 rounded-lg bg-zinc-100 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300"
                     >
@@ -1079,15 +1077,6 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                         Saved
                       </span>
                     )}
-                    <button
-                      onClick={handleShareOutfit}
-                      className="flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 transition-colors dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
-                    >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
-                      </svg>
-                      Share
-                    </button>
                     <button
                       onClick={handleDownloadOutfit}
                       className="flex items-center gap-2 rounded-lg bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-200 transition-colors dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
@@ -1496,8 +1485,24 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                         className="relative flex-shrink-0 group"
                       >
                         <div
-                          onClick={() => { if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } }}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (outfit.url) { setGeneratedOutfit(outfit.url); setSelectedOutfitId(outfit._id); } } }}
+                          onClick={() => {
+                            if (outfit.url) {
+                              setGeneratedOutfit(outfit.url);
+                              setSelectedOutfitId(outfit._id);
+                              // Only set savedOutfitId if outfit has a name (was previously saved)
+                              setSavedOutfitId(outfit.name ? outfit._id : null);
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              if (outfit.url) {
+                                setGeneratedOutfit(outfit.url);
+                                setSelectedOutfitId(outfit._id);
+                                setSavedOutfitId(outfit.name ? outfit._id : null);
+                              }
+                            }
+                          }}
                           role="button"
                           tabIndex={0}
                           className="cursor-pointer"

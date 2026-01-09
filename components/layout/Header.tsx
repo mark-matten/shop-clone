@@ -111,12 +111,14 @@ export function Header() {
     }
   }, [pathname, searchParams]);
 
-  // Handle search icon click - navigate to saved context or home, but refresh if already on search homepage
+  // Handle search icon click - navigate to saved context only if on product page, otherwise go to homepage
   const handleSearchClick = useCallback((e: React.MouseEvent) => {
     if (typeof window === "undefined") return;
 
     const query = searchParams.get("q");
     const isSearchHomepage = pathname === "/" && !query;
+    const isSearchPage = pathname === "/" && query;
+    const isProductPage = pathname.startsWith("/product/");
 
     // If we're on the search homepage (no query), just refresh the page
     if (isSearchHomepage) {
@@ -125,15 +127,28 @@ export function Header() {
       return;
     }
 
-    const savedContext = sessionStorage.getItem(SEARCH_CONTEXT_KEY);
-    const currentPath = pathname + (query ? `?q=${query}` : "");
-
-    // If we have a saved context and we're not already there, navigate to it
-    if (savedContext && savedContext !== currentPath && savedContext !== "/") {
-      e.preventDefault();
-      router.push(savedContext);
+    // If we're on a search results page, just let the Link navigate to "/" normally
+    if (isSearchPage) {
+      // Clear context so we go to fresh homepage
+      sessionStorage.removeItem(SEARCH_CONTEXT_KEY);
+      sessionStorage.removeItem(SCROLL_POSITION_KEY);
+      return;
     }
-    // Otherwise, the Link will navigate to "/" normally
+
+    // If we're on a product page, navigate to saved search context if it exists
+    if (isProductPage) {
+      const savedContext = sessionStorage.getItem(SEARCH_CONTEXT_KEY);
+      if (savedContext && savedContext !== "/" && savedContext.includes("?q=")) {
+        e.preventDefault();
+        router.push(savedContext);
+        return;
+      }
+    }
+
+    // For all other pages (closet, profile, etc.), clear context and go to fresh homepage
+    sessionStorage.removeItem(SEARCH_CONTEXT_KEY);
+    sessionStorage.removeItem(SCROLL_POSITION_KEY);
+    // Let the Link navigate to "/" normally
   }, [pathname, searchParams, router]);
 
   const unreadCount = alerts.filter((a) => !a.sentAt).length;
@@ -157,7 +172,17 @@ export function Header() {
   return (
     <header className="border-b border-zinc-200 bg-zinc-100 dark:border-zinc-800 dark:bg-zinc-900">
       <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4 sm:px-6 lg:px-8">
-        <Link href="/" onClick={handleSearchClick} className="ml-2 -mt-1">
+        <Link
+          href="/"
+          onClick={(e) => {
+            // Always go to fresh homepage - clear search context
+            if (typeof window !== "undefined") {
+              sessionStorage.removeItem(SEARCH_CONTEXT_KEY);
+              sessionStorage.removeItem(SCROLL_POSITION_KEY);
+            }
+          }}
+          className="ml-2 -mt-1"
+        >
           <span className="font-[family-name:var(--font-pacifico)] text-2xl">
             <span style={{ color: '#C2311D' }}>ar</span>
             <span style={{ color: '#942010' }}>moi</span>

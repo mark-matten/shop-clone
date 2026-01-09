@@ -1,16 +1,34 @@
 "use client";
 
-import { useParams } from "next/navigation";
+import { useParams, useSearchParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 
+interface DetailsItem {
+  name: string;
+  brand?: string;
+  imageUrl?: string;
+  category?: string;
+  material?: string;
+  gender?: string;
+  colorName?: string;
+  size?: string;
+  productId?: string;
+}
+
 export default function PublicClosetPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const userId = params.userId as string;
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [detailsItem, setDetailsItem] = useState<DetailsItem | null>(null);
+
+  // Check if we came from an outfit page
+  const fromOutfitId = searchParams.get("fromOutfit");
+  const fromOutfitName = searchParams.get("outfitName");
 
   const closetData = useQuery(
     api.closet.getPublicCloset,
@@ -98,6 +116,19 @@ export default function PublicClosetPage() {
       </header>
 
       <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+        {/* Back to outfit link */}
+        {fromOutfitId && (
+          <Link
+            href={`/outfit/${fromOutfitId}`}
+            className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white mb-6"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back to {fromOutfitName || "outfit"}
+          </Link>
+        )}
+
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
@@ -147,7 +178,18 @@ export default function PublicClosetPage() {
             {displayItems.map((item: any) => (
               <div
                 key={item._id}
-                className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow"
+                onClick={() => setDetailsItem({
+                  name: item.name,
+                  brand: item.brand,
+                  imageUrl: item.imageUrl,
+                  category: item.category || item.categoryLabel,
+                  material: item.material,
+                  gender: item.gender,
+                  colorName: item.colorName,
+                  size: item.size,
+                  productId: item.productId?.toString(),
+                })}
+                className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
               >
                 <div className="relative aspect-square bg-zinc-100 dark:bg-zinc-800">
                   {item.imageUrl ? (
@@ -211,6 +253,109 @@ export default function PublicClosetPage() {
           </p>
         </div>
       </footer>
+
+      {/* Item Details Modal */}
+      {detailsItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setDetailsItem(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Image */}
+            <div className="relative aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
+              {detailsItem.imageUrl ? (
+                <img
+                  src={detailsItem.imageUrl}
+                  alt={detailsItem.name || "Item"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <svg className="h-16 w-16 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
+              {/* Close button */}
+              <button
+                onClick={() => setDetailsItem(null)}
+                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Details */}
+            <div className="p-4">
+              {/* Name */}
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-1">
+                {detailsItem.name}
+              </h3>
+
+              {/* Brand */}
+              {detailsItem.brand && (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
+                  {detailsItem.brand}
+                </p>
+              )}
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {detailsItem.category && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Category</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.category}</p>
+                  </div>
+                )}
+                {detailsItem.material && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Material</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.material}</p>
+                  </div>
+                )}
+                {detailsItem.gender && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Gender</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.gender}</p>
+                  </div>
+                )}
+                {detailsItem.colorName && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Color</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.colorName}</p>
+                  </div>
+                )}
+                {detailsItem.size && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Size</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300">{detailsItem.size}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Product details link */}
+              {detailsItem.productId && (
+                <a
+                  href={`/product/${detailsItem.productId}?from=closet-popup`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+                >
+                  View Product Details
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

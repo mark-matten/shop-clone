@@ -1954,9 +1954,15 @@ export default function ClosetPage() {
                     {(selectedOutfit as any).name || "Untitled Outfit"}
                   </h4>
                   {(selectedOutfit as any).collectionId && collections && (
-                    <p className="text-xs text-rose-500 truncate">
+                    <button
+                      onClick={() => {
+                        setOutfitCollectionFilter((selectedOutfit as any).collectionId);
+                        setSelectedOutfit(null);
+                      }}
+                      className="text-xs text-rose-500 truncate hover:underline"
+                    >
                       {collections.find((c) => c._id === (selectedOutfit as any).collectionId)?.name || ""}
-                    </p>
+                    </button>
                   )}
                 </div>
               )}
@@ -2072,22 +2078,85 @@ export default function ClosetPage() {
                     </div>
                   ) : null}
 
-                  {/* Outfit image */}
+                  {/* Outfit image and items side by side */}
                   {!isEditingOutfit && (
-                    <div className="mx-auto max-w-xs aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                      {selectedOutfit.url ? (
-                        <img
-                          src={selectedOutfit.url}
-                          alt={(selectedOutfit as any).name || "Saved outfit"}
-                          className="h-full w-full object-cover"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center">
-                          <svg className="h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
+                    <div className="flex gap-4">
+                      {/* Left: Outfit image */}
+                      <div className="w-1/2 flex-shrink-0">
+                        <div className="aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                          {selectedOutfit.url ? (
+                            <img
+                              src={selectedOutfit.url}
+                              alt={(selectedOutfit as any).name || "Saved outfit"}
+                              className="h-full w-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex h-full w-full items-center justify-center">
+                              <svg className="h-12 w-12 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                              </svg>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      </div>
+                      {/* Right: Items list */}
+                      <div className="w-1/2 space-y-2 overflow-y-auto max-h-[400px]">
+                        <h5 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 sticky top-0 bg-white dark:bg-zinc-900 py-1">
+                          Items Used ({selectedOutfit.items?.length || 0})
+                        </h5>
+                        {selectedOutfit.items?.map((item: any) => (
+                          <div
+                            key={item._id}
+                            onClick={() => setDetailsItem({
+                              productId: item.productId as Id<"products">,
+                              product: {
+                                _id: item.productId as Id<"products">,
+                                name: item.name || "",
+                                brand: item.brand || "",
+                                price: item.price || 0,
+                                imageUrl: item.imageUrl,
+                                category: item.category || "other",
+                                material: item.material,
+                                gender: item.gender,
+                                colorName: item.colorName,
+                              },
+                              selectedOptions: item.size ? { "Size": item.size } : undefined,
+                              isOwned: true,
+                              isWishlist: false,
+                              addedAt: Date.now(),
+                              isUserAdded: !item.productId, // No productId means user-added item
+                            })}
+                            className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-800/50 cursor-pointer hover:border-rose-400 transition-colors"
+                          >
+                            <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
+                              {item.imageUrl ? (
+                                <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                              ) : (
+                                <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                  </svg>
+                                </div>
+                              )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-xs font-medium text-zinc-900 dark:text-white">
+                                {item.name}
+                              </p>
+                              {item.brand && (
+                                <p className="truncate text-[10px] text-zinc-500 dark:text-zinc-400">
+                                  {item.brand}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {(!selectedOutfit.items || selectedOutfit.items.length === 0) && (
+                          <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-4">
+                            No item information available
+                          </p>
+                        )}
+                      </div>
                     </div>
                   )}
 
@@ -2178,59 +2247,6 @@ export default function ClosetPage() {
                     </div>
                   )}
 
-                  {/* Items used */}
-                  <div>
-                    <h5 className="mb-2 text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                      Items Used ({selectedOutfit.items?.length || 0})
-                    </h5>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                      {selectedOutfit.items?.map((item: any) => (
-                        <div
-                          key={item._id}
-                          className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-800/50"
-                        >
-                          <div className="h-12 w-12 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
-                            {item.imageUrl ? (
-                              <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
-                            ) : (
-                              <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                                </svg>
-                              </div>
-                            )}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-xs font-medium text-zinc-900 dark:text-white">
-                              {item.name}
-                            </p>
-                            {item.brand && (
-                              <p className="truncate text-[10px] text-zinc-500 dark:text-zinc-400">
-                                {item.brand}
-                              </p>
-                            )}
-                            <div className="mt-0.5 flex flex-wrap gap-1">
-                              {item.colorName && (
-                                <span className="rounded bg-zinc-200 px-1 py-0.5 text-[9px] text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
-                                  {item.colorName}
-                                </span>
-                              )}
-                              {item.size && (
-                                <span className="rounded bg-zinc-200 px-1 py-0.5 text-[9px] text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
-                                  {item.size}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                    {(!selectedOutfit.items || selectedOutfit.items.length === 0) && (
-                      <p className="text-center text-sm text-zinc-500 dark:text-zinc-400 py-4">
-                        No item information available
-                      </p>
-                    )}
-                  </div>
                 </div>
               ) : !savedOutfits || savedOutfits.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -2282,6 +2298,13 @@ export default function ClosetPage() {
                   )}
 
                   {/* Outfits grid */}
+                  {savedOutfits.filter((outfit) => outfitCollectionFilter === null || (outfit as any).collectionId === outfitCollectionFilter).length === 0 ? (
+                    <div className="text-center py-8">
+                      <p className="text-zinc-500 dark:text-zinc-400">
+                        No outfits have been added to this collection yet
+                      </p>
+                    </div>
+                  ) : (
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                     {savedOutfits
                       .filter((outfit) => outfitCollectionFilter === null || (outfit as any).collectionId === outfitCollectionFilter)
@@ -2321,6 +2344,7 @@ export default function ClosetPage() {
                       </div>
                     ))}
                   </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2430,10 +2454,10 @@ export default function ClosetPage() {
                 )}
               </div>
 
-              {/* Link to product page - only for non-user-added items */}
-              {!detailsItem.isUserAdded && (
+              {/* Link to product page - only for non-user-added items with valid product ID */}
+              {!detailsItem.isUserAdded && detailsItem.product._id && (
                 <a
-                  href={`/product/${detailsItem.product._id}`}
+                  href={`/product/${detailsItem.product._id}?from=closet-popup`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 transition-colors"

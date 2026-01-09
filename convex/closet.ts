@@ -1028,6 +1028,10 @@ export const getPublicCloset = query({
         let name = item.name;
         let brand = item.brand;
         let rawCategory = item.customCategory || item.category;
+        let material = item.material;
+        let gender = item.gender;
+        let colorName = item.color || item.colorName;
+        let productId: string | undefined = undefined;
 
         // For generated items, resolve storage URL
         if (item.source === "generated" && item.generatedImageStorageId) {
@@ -1042,6 +1046,10 @@ export const getPublicCloset = query({
             brand = brand || product.brand;
             imageUrl = imageUrl || product.imageUrl;
             rawCategory = rawCategory || product.category;
+            material = material || product.material;
+            gender = gender || product.gender;
+            colorName = colorName || product.colorName;
+            productId = item.productId.toString(); // String for linking to product page
           }
         }
 
@@ -1055,7 +1063,11 @@ export const getPublicCloset = query({
           imageUrl,
           category: normalizedCategory,
           categoryLabel: CATEGORY_LABELS[normalizedCategory] || "Other",
-          colorName: item.color || item.colorName,
+          colorName,
+          material,
+          gender,
+          size: item.selectedSize || item.size,
+          productId,
           addedAt: item.addedAt,
           sortOrder: item.sortOrder,
         };
@@ -1084,6 +1096,9 @@ export const getPublicCloset = query({
         count: byCategory[cat].length,
       }));
 
+    // Sort all items by category order, then by sortOrder within each category
+    const sortedItems = CATEGORY_ORDER.flatMap((cat) => byCategory[cat] || []);
+
     return {
       isPrivate: false,
       user: {
@@ -1091,10 +1106,10 @@ export const getPublicCloset = query({
         firstName: user.firstName,
         lastName: user.lastName,
       },
-      items: itemsWithDetails,
+      items: sortedItems,
       byCategory,
       orderedCategories,
-      totalItems: itemsWithDetails.length,
+      totalItems: sortedItems.length,
     };
   },
 });

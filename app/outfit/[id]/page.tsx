@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams } from "next/navigation";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
@@ -7,9 +8,27 @@ import { Id } from "@/convex/_generated/dataModel";
 import Link from "next/link";
 import Image from "next/image";
 
+interface DetailsItem {
+  product: {
+    name: string;
+    brand?: string;
+    imageUrl?: string;
+    category?: string;
+    material?: string;
+    gender?: string;
+    colorName?: string;
+    size?: string;
+  };
+  isOwned: boolean;
+  isWishlist: boolean;
+  source?: string;
+  linkedProductId?: string;
+}
+
 export default function PublicOutfitPage() {
   const params = useParams();
   const outfitId = params.id as string;
+  const [detailsItem, setDetailsItem] = useState<DetailsItem | null>(null);
 
   const outfitData = useQuery(
     api.storage.getPublicOutfit,
@@ -64,6 +83,7 @@ export default function PublicOutfitPage() {
   }
 
   const { outfit, user } = outfitData;
+  const userName = user.displayName || "User";
 
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
@@ -85,99 +105,117 @@ export default function PublicOutfitPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8">
-        {/* Outfit Image */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg overflow-hidden mb-8">
-          {outfit.name && (
-            <div className="px-6 py-4 border-b border-zinc-200 dark:border-zinc-800">
-              <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">
-                {outfit.name}
-              </h1>
-            </div>
-          )}
-          <div className="relative aspect-[3/4] max-h-[600px] bg-zinc-100 dark:bg-zinc-800">
-            {outfit.url ? (
-              <Image
-                src={outfit.url}
-                alt={outfit.name || "Outfit"}
-                fill
-                className="object-contain"
-                unoptimized
-              />
-            ) : (
-              <div className="flex items-center justify-center h-full text-zinc-400">
-                Image not available
+      <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
+        {/* Title and Attribution */}
+        <div className="mb-4">
+          <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">
+            {outfit.name || "Outfit"}
+          </h1>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            shared from{" "}
+            <Link
+              href={`/closet/${user.clerkId}?fromOutfit=${outfitId}&outfitName=${encodeURIComponent(outfit.name || "Outfit")}`}
+              className="text-rose-500 hover:underline"
+            >
+              {userName}&apos;s closet
+            </Link>
+          </p>
+        </div>
+
+        {/* Main Content: Image Left, Items Right */}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg overflow-hidden">
+          <div className="flex flex-col md:flex-row">
+            {/* Left: Outfit Image */}
+            <div className="md:w-1/2 flex-shrink-0">
+              <div className="relative aspect-[3/4] bg-zinc-100 dark:bg-zinc-800">
+                {outfit.url ? (
+                  <Image
+                    src={outfit.url}
+                    alt={outfit.name || "Outfit"}
+                    fill
+                    className="object-contain"
+                    unoptimized
+                  />
+                ) : (
+                  <div className="flex items-center justify-center h-full text-zinc-400">
+                    Image not available
+                  </div>
+                )}
               </div>
-            )}
+            </div>
+
+            {/* Right: Items List */}
+            <div className="md:w-1/2 p-4 md:p-6 overflow-y-auto max-h-[600px]">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+                Items in this outfit ({outfit.items?.length || 0})
+              </h2>
+
+              {outfit.items && outfit.items.length > 0 ? (
+                <div className="space-y-3">
+                  {outfit.items.map((item: any) => (
+                    <div
+                      key={item._id}
+                      onClick={() => setDetailsItem({
+                        product: {
+                          name: item.name,
+                          brand: item.brand,
+                          imageUrl: item.imageUrl,
+                          category: item.category,
+                          material: item.material,
+                          gender: item.gender,
+                          colorName: item.colorName,
+                          size: item.size,
+                        },
+                        isOwned: true,
+                        isWishlist: false,
+                        source: item.productId ? "product" : "generated",
+                        linkedProductId: item.productId,
+                      })}
+                      className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800 cursor-pointer hover:border-rose-400 transition-colors"
+                    >
+                      <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
+                        {item.imageUrl ? (
+                          <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-medium text-zinc-900 dark:text-white truncate">
+                          {item.name}
+                        </p>
+                        {item.brand && (
+                          <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">
+                            {item.brand}
+                          </p>
+                        )}
+                        {item.price && (
+                          <p className="text-sm font-semibold text-rose-500 mt-0.5">
+                            ${item.price.toFixed(2)}
+                          </p>
+                        )}
+                      </div>
+                      <svg className="h-5 w-5 text-zinc-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-zinc-500 dark:text-zinc-400">
+                  No item information available
+                </p>
+              )}
+            </div>
           </div>
         </div>
 
-        {/* Items Used */}
-        {outfit.items && outfit.items.length > 0 && (
-          <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg p-6 mb-8">
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
-              Items in this outfit
-            </h2>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-              {outfit.items.map((item: any) => {
-                const content = (
-                  <>
-                    <div className="relative aspect-square bg-zinc-100 dark:bg-zinc-700">
-                      {item.imageUrl ? (
-                        <Image
-                          src={item.imageUrl}
-                          alt={item.name}
-                          fill
-                          className="object-cover"
-                          unoptimized
-                        />
-                      ) : (
-                        <div className="flex items-center justify-center h-full text-zinc-400 text-sm">
-                          No image
-                        </div>
-                      )}
-                    </div>
-                    <div className="p-3">
-                      <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">
-                        {item.name}
-                      </p>
-                      {item.brand && (
-                        <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
-                          {item.brand}
-                        </p>
-                      )}
-                      {item.price && (
-                        <p className="text-sm font-semibold text-rose-500 mt-1">
-                          ${item.price.toFixed(2)}
-                        </p>
-                      )}
-                    </div>
-                  </>
-                );
-
-                return item.productId ? (
-                  <Link
-                    key={item._id}
-                    href={`/product/${item.productId}`}
-                    className="bg-zinc-50 dark:bg-zinc-800 rounded-lg overflow-hidden hover:ring-2 hover:ring-rose-400 transition-all cursor-pointer block"
-                  >
-                    {content}
-                  </Link>
-                ) : (
-                  <div
-                    key={item._id}
-                    className="bg-zinc-50 dark:bg-zinc-800 rounded-lg overflow-hidden"
-                  >
-                    {content}
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
         {/* View Full Closet CTA */}
-        <div className="bg-gradient-to-r from-rose-400 to-rose-500 rounded-2xl shadow-lg p-6 text-center">
+        <div className="mt-6 bg-gradient-to-r from-rose-400 to-rose-500 rounded-2xl shadow-lg p-6 text-center">
           <h2 className="text-xl font-semibold text-white mb-2">
             Like this style?
           </h2>
@@ -185,15 +223,15 @@ export default function PublicOutfitPage() {
             View more outfits and items from this closet
           </p>
           <Link
-            href={`/closet/${user.clerkId}`}
+            href={`/closet/${user.clerkId}?fromOutfit=${outfitId}&outfitName=${encodeURIComponent(outfit.name || "Outfit")}`}
             className="inline-block rounded-lg bg-white px-6 py-3 font-medium text-rose-500 hover:bg-rose-50 transition-colors"
           >
-            View Full Closet
+            View {userName}&apos;s Full Closet
           </Link>
         </div>
 
         {/* Sign Up CTA */}
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
           <p className="text-zinc-600 dark:text-zinc-400 mb-4">
             Create your own virtual closet and try on outfits
           </p>
@@ -207,7 +245,7 @@ export default function PublicOutfitPage() {
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-zinc-200 dark:border-zinc-800 mt-16 py-8">
+      <footer className="border-t border-zinc-200 dark:border-zinc-800 mt-12 py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
           <Link href="/" className="font-[family-name:var(--font-pacifico)] text-xl">
             <span style={{ color: '#C2311D' }}>ar</span>
@@ -218,6 +256,109 @@ export default function PublicOutfitPage() {
           </p>
         </div>
       </footer>
+
+      {/* Item Details Modal */}
+      {detailsItem && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setDetailsItem(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Image */}
+            <div className="relative aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
+              {detailsItem.product.imageUrl ? (
+                <img
+                  src={detailsItem.product.imageUrl}
+                  alt={detailsItem.product.name || "Item"}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center">
+                  <svg className="h-16 w-16 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+                </div>
+              )}
+              {/* Close button */}
+              <button
+                onClick={() => setDetailsItem(null)}
+                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            {/* Details */}
+            <div className="p-4">
+              {/* Name */}
+              <h3 className="text-base font-semibold text-zinc-900 dark:text-white mb-1">
+                {detailsItem.product.name}
+              </h3>
+
+              {/* Brand */}
+              {detailsItem.product.brand && (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400 mb-3">
+                  {detailsItem.product.brand}
+                </p>
+              )}
+
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-2 mb-4">
+                {detailsItem.product.category && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Category</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.product.category}</p>
+                  </div>
+                )}
+                {detailsItem.product.material && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Material</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.product.material}</p>
+                  </div>
+                )}
+                {detailsItem.product.gender && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Gender</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.product.gender}</p>
+                  </div>
+                )}
+                {detailsItem.product.colorName && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Color</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300 capitalize">{detailsItem.product.colorName}</p>
+                  </div>
+                )}
+                {detailsItem.product.size && (
+                  <div>
+                    <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Size</p>
+                    <p className="text-sm text-zinc-700 dark:text-zinc-300">{detailsItem.product.size}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Product details link */}
+              {detailsItem.source !== "generated" && detailsItem.linkedProductId && (
+                <a
+                  href={`/product/${detailsItem.linkedProductId}?from=outfit`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+                >
+                  View Product Details
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                  </svg>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

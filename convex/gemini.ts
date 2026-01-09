@@ -243,13 +243,41 @@ export const generateTryOnImage = action({
       throw new Error("GOOGLE_GEMINI_API_KEY environment variable not set");
     }
 
-    // Fetch products directly by productId
+    // Fetch items - try as closet_item first, then as product for backwards compatibility
     const items = await Promise.all(
-      args.productIds
-        .filter((id) => !id.startsWith("url-") && !id.startsWith("gen-")) // Skip non-product items for now
-        .map((id) =>
-          ctx.runQuery(internal.gemini.getProductWithImage, { productId: id as Id<"products"> })
-        )
+      args.productIds.map(async (id) => {
+        // Skip synthetic IDs (url- and gen- prefixed items)
+        if (id.startsWith("url-") || id.startsWith("gen-")) {
+          // For generated/url items, try to look up by the actual closet_item ID
+          const actualId = id.replace(/^(url-|gen-)/, "");
+          try {
+            return await ctx.runQuery(internal.gemini.getClosetItemWithImage, {
+              itemId: actualId as Id<"closet_items">,
+            });
+          } catch {
+            return null;
+          }
+        }
+
+        // First try as a closet_item ID
+        try {
+          const closetItem = await ctx.runQuery(internal.gemini.getClosetItemWithImage, {
+            itemId: id as Id<"closet_items">,
+          });
+          if (closetItem) return closetItem;
+        } catch {
+          // Not a valid closet_item ID, try as product
+        }
+
+        // Fallback: try as a product ID (for backwards compatibility)
+        try {
+          return await ctx.runQuery(internal.gemini.getProductWithImage, {
+            productId: id as Id<"products">,
+          });
+        } catch {
+          return null;
+        }
+      })
     );
 
     const validItems = items.filter((item): item is NonNullable<typeof item> => item !== null);

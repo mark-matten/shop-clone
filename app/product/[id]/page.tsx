@@ -200,11 +200,19 @@ export default function ProductDetailPage() {
   // Get URL params on mount
   const urlSearchParams = useSearchParams();
 
-  // Check if we came from closet and get cached search query
+  const [fromNewTab, setFromNewTab] = useState(false);
+
+  // Check if we came from closet/outfit and get cached search query
   useEffect(() => {
-    // Check if we came from closet
-    if (urlSearchParams.get("from") === "closet") {
+    const fromParam = urlSearchParams.get("from");
+
+    // Check if we came from closet (same tab navigation)
+    if (fromParam === "closet") {
       setFromCloset(true);
+    }
+    // Check if opened in a new tab (from outfit, closet popup, etc.) - hide all back links
+    if (fromParam === "outfit" || fromParam === "closet-popup") {
+      setFromNewTab(true);
     }
 
     // Get cached search query
@@ -512,45 +520,48 @@ export default function ProductDetailPage() {
       <Header />
 
       <main id="main-content" className="mx-auto max-w-6xl px-4 py-8 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-4">
-          {fromCloset ? (
-            <Link
-              href="/closet"
-              className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-            >
-              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-              </svg>
-              Back to My Closet
-            </Link>
-          ) : (
-            <>
+        {/* Show appropriate back link based on navigation source */}
+        {!fromNewTab && (
+          <div className="flex items-center gap-4">
+            {fromCloset ? (
               <Link
-                href={searchQuery ? `/?q=${encodeURIComponent(searchQuery)}` : "/"}
+                href="/closet"
                 className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
               >
                 <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
-                Back to search{searchQuery ? ` results` : ""}
+                Back to My Closet
               </Link>
-              {previousProductId && previousProductName && (
-                <>
-                  <span className="text-zinc-300 dark:text-zinc-600">|</span>
-                  <button
-                    onClick={handleBackToPreviousProduct}
-                    className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-                  >
-                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                    </svg>
-                    Back to {previousProductName.length > 25 ? previousProductName.slice(0, 25) + "..." : previousProductName}
-                  </button>
-                </>
-              )}
-            </>
-          )}
-        </div>
+            ) : (
+              <>
+                <Link
+                  href={searchQuery ? `/?q=${encodeURIComponent(searchQuery)}` : "/"}
+                  className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                >
+                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Back to search{searchQuery ? ` results` : ""}
+                </Link>
+                {previousProductId && previousProductName && (
+                  <>
+                    <span className="text-zinc-300 dark:text-zinc-600">|</span>
+                    <button
+                      onClick={handleBackToPreviousProduct}
+                      className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                      </svg>
+                      Back to {previousProductName.length > 25 ? previousProductName.slice(0, 25) + "..." : previousProductName}
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
           {/* Product Images Carousel */}
