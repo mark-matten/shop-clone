@@ -346,7 +346,8 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       }
     } catch (error) {
       console.error("Generation error:", error);
-      alert("Failed to generate outfit image. Please try again.");
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      alert(`Failed to generate outfit: ${errorMessage}`);
     } finally {
       setIsGenerating(false);
     }
