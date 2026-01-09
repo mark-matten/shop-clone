@@ -974,10 +974,10 @@ export default function ClosetPage() {
         setTimeout(() => {
           element.scrollIntoView({ behavior: "smooth", block: "center" });
           // Add a highlight animation
-          element.classList.add("ring-2", "ring-purple-500", "ring-offset-2");
+          element.classList.add("ring-2", "ring-moi-400", "ring-offset-2");
           // Remove highlight after animation
           setTimeout(() => {
-            element.classList.remove("ring-2", "ring-purple-500", "ring-offset-2");
+            element.classList.remove("ring-2", "ring-moi-400", "ring-offset-2");
             setNewlyAddedItemId(null);
           }, 2000);
         }, 300);

@@ -204,7 +204,7 @@ export const createGeneratedClosetItem = internalMutation({
     );
 
     // Create closet item (used for both owned and wishlist generated items)
-    return await ctx.db.insert("closet_items", {
+    const closetItemId = await ctx.db.insert("closet_items", {
       userId: user._id,
       addedAt: Date.now(),
       source: "generated",
@@ -220,6 +220,15 @@ export const createGeneratedClosetItem = internalMutation({
       sortOrder: maxSortOrder + 1,
       isWishlist: args.isWishlist || false,
     });
+
+    // Notify followers asynchronously
+    await ctx.scheduler.runAfter(0, internal.closet.notifyFollowersOfNewItem, {
+      userId: user._id,
+      itemName: args.name,
+      isWishlist: args.isWishlist || false,
+    });
+
+    return closetItemId;
   },
 });
 

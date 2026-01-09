@@ -1,5 +1,6 @@
 import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { mutation, query, internalMutation } from "./_generated/server";
+import { internal } from "./_generated/api";
 
 // Category normalization and ordering (matches frontend closet categories)
 const CATEGORY_ORDER = ["tops", "bottoms", "dresses", "outerwear", "shoes", "bags", "accessories", "activewear", "other"];
@@ -147,7 +148,7 @@ export const addToCloset = mutation({
       return existing._id;
     }
 
-    return await ctx.db.insert("closet_items", {
+    const closetItemId = await ctx.db.insert("closet_items", {
       userId: user._id,
       productId: args.productId,
       addedAt: Date.now(),
@@ -155,6 +156,18 @@ export const addToCloset = mutation({
       wornCount: 0,
       selectedOptions: args.selectedOptions,
     });
+
+    // Notify followers asynchronously
+    const product = await ctx.db.get(args.productId);
+    if (product) {
+      await ctx.scheduler.runAfter(0, internal.closet.notifyFollowersOfNewItem, {
+        userId: user._id,
+        itemName: product.name,
+        isWishlist: false, // addToCloset is for owned items
+      });
+    }
+
+    return closetItemId;
   },
 });
 
@@ -700,7 +713,7 @@ export const addFromUrl = mutation({
     );
 
     // Create closet item linked to product
-    return await ctx.db.insert("closet_items", {
+    const closetItemId = await ctx.db.insert("closet_items", {
       userId: user._id,
       productId: product!._id,
       addedAt: Date.now(),
@@ -712,6 +725,15 @@ export const addFromUrl = mutation({
       wornCount: 0,
       isWishlist: args.isWishlist ?? false,
     });
+
+    // Notify followers asynchronously
+    await ctx.scheduler.runAfter(0, internal.closet.notifyFollowersOfNewItem, {
+      userId: user._id,
+      itemName: args.name,
+      isWishlist: args.isWishlist ?? false,
+    });
+
+    return closetItemId;
   },
 });
 
@@ -1253,5 +1275,105 @@ export const getPublicCloset = query({
       orderedCategories,
       totalItems: sortedItems.length,
     };
+  },
+});
+
+// Internal: Notify followers when a user saves a new outfit
+export const notifyFollowersOfNewOutfit = internalMutation({
+  args: {
+    clerkId: v.string(),
+    outfitName: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    // Get the user
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) return;
+
+    const userName = user.firstName
+      ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
+      : "Someone you follow";
+
+    // Find all followers who have outfit alerts enabled
+    const alertSettings = await ctx.db
+      .query("follow_alert_settings")
+      .withIndex("by_followingId", (q) => q.eq("followingId", user._id))
+      .collect();
+
+    // Filter to those with outfit notifications enabled
+    const followersToNotify = alertSettings.filter(
+      (setting) => setting.alertsEnabled && setting.notifyNewOutfits
+    );
+
+    // Create notifications for each follower
+    const outfitLabel = args.outfitName ? `"${args.outfitName}"` : "a new outfit";
+    const message = `${userName} saved ${outfitLabel}`;
+
+    await Promise.all(
+      followersToNotify.map((setting) =>
+        ctx.db.insert("notifications", {
+          userId: setting.userId,
+          type: "new_outfit",
+          fromUserId: user._id,
+          message,
+          read: false,
+          createdAt: Date.now(),
+        })
+      )
+    );
+  },
+});
+
+// Internal: Notify followers when a user adds an item to their closet
+export const notifyFollowersOfNewItem = internalMutation({
+  args: {
+    userId: v.id("users"),
+    itemName: v.string(),
+    isWishlist: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    // Get the user's name
+    const user = await ctx.db.get(args.userId);
+    if (!user) return;
+
+    const userName = user.firstName
+      ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
+      : "Someone you follow";
+
+    // Find all followers who have alerts enabled for this type of item
+    const alertSettings = await ctx.db
+      .query("follow_alert_settings")
+      .withIndex("by_followingId", (q) => q.eq("followingId", args.userId))
+      .collect();
+
+    // Filter to those with the appropriate notification enabled
+    const followersToNotify = alertSettings.filter((setting) => {
+      if (!setting.alertsEnabled) return false;
+      return args.isWishlist
+        ? setting.notifyNewWishlistItems
+        : setting.notifyNewOwnedItems;
+    });
+
+    // Create notifications for each follower
+    const notificationType = args.isWishlist ? "new_wishlist_item" : "new_closet_item";
+    const message = args.isWishlist
+      ? `${userName} added "${args.itemName}" to their wishlist`
+      : `${userName} added "${args.itemName}" to their closet`;
+
+    await Promise.all(
+      followersToNotify.map((setting) =>
+        ctx.db.insert("notifications", {
+          userId: setting.userId,
+          type: notificationType,
+          fromUserId: args.userId,
+          message,
+          read: false,
+          createdAt: Date.now(),
+        })
+      )
+    );
   },
 });

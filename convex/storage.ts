@@ -1,5 +1,6 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
 
 // Generate an upload URL for user photos
@@ -190,7 +191,7 @@ export const saveOutfitImage = mutation({
       throw new Error("storageId, itemIds, and prompt are required for new outfits");
     }
 
-    return await ctx.db.insert("outfit_images", {
+    const outfitId = await ctx.db.insert("outfit_images", {
       clerkId: args.clerkId,
       storageId: args.storageId,
       itemIds: args.itemIds,
@@ -200,6 +201,16 @@ export const saveOutfitImage = mutation({
       name: args.name,
       collectionId: args.collectionId,
     });
+
+    // Notify followers asynchronously (only for saved outfits with a name)
+    if (args.name) {
+      await ctx.scheduler.runAfter(0, internal.closet.notifyFollowersOfNewOutfit, {
+        clerkId: args.clerkId,
+        outfitName: args.name,
+      });
+    }
+
+    return outfitId;
   },
 });
 
