@@ -7,6 +7,7 @@ import { useUser, SignOutButton } from "@clerk/nextjs";
 import { useTheme } from "next-themes";
 import { api } from "@/convex/_generated/api";
 import { Header } from "@/components/layout";
+import { FollowersList } from "@/components/social/FollowersList";
 
 const sizeOptions = {
   women: {
@@ -810,7 +811,25 @@ export default function ProfilePage() {
                 </label>
               </div>
             </div>
+          </div>
+        </section>
 
+        {/* Followers Section */}
+        {clerkUser?.id && (
+          <section className="mt-8">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+              Followers
+            </h2>
+            <FollowersList clerkId={clerkUser.id} />
+          </section>
+        )}
+
+        {/* Account Actions Section */}
+        <section className="mt-8">
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+            Account
+          </h2>
+          <div className="space-y-4">
             {/* Sign Out */}
             <div className="rounded-xl border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-900">
               <div className="flex items-center justify-between">

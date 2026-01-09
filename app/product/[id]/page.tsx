@@ -109,8 +109,33 @@ export default function ProductDetailPage() {
     api.closet.isInCloset,
     clerkUser?.id ? { clerkId: clerkUser.id, productId: productId as Id<"products"> } : "skip"
   );
+  const existingClosetItem = useQuery(
+    api.closet.getExistingClosetItem,
+    clerkUser?.id ? { clerkId: clerkUser.id, productId: productId as Id<"products"> } : "skip"
+  );
   const toggleCloset = useMutation(api.closet.toggleCloset);
+  const updateClosetItemOptions = useMutation(api.closet.updateClosetItemOptions);
   const [isTogglingCloset, setIsTogglingCloset] = useState(false);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+
+  // Check if current selection matches existing closet item
+  const checkIsDuplicate = () => {
+    if (!existingClosetItem) return false;
+    const currentOptions = getSelectedOptionsForSave() || {};
+    const existingOptions = existingClosetItem.selectedOptions || {};
+
+    // Compare size
+    const currentSize = currentOptions.Size || currentOptions.size || "";
+    const existingSize = existingOptions.Size || existingOptions.size || existingClosetItem.selectedSize || "";
+    if (currentSize !== existingSize) return false;
+
+    // Compare color
+    const currentColor = currentOptions.Color || currentOptions.Colour || currentOptions.color || "";
+    const existingColor = existingOptions.Color || existingOptions.Colour || existingOptions.color || existingClosetItem.colorName || "";
+    if (currentColor !== existingColor) return false;
+
+    return true; // Same size and color = duplicate
+  };
 
   const handleToggleCloset = async () => {
     if (!clerkUser?.id) {
@@ -118,6 +143,36 @@ export default function ProductDetailPage() {
       return;
     }
 
+    // If already in closet and clicking again, remove it
+    if (isInCloset) {
+      setIsTogglingCloset(true);
+      try {
+        await toggleCloset({
+          clerkId: clerkUser.id,
+          productId: productId as Id<"products">,
+          selectedOptions: getSelectedOptionsForSave(),
+        });
+      } catch (error) {
+        console.error("Failed to toggle closet:", error);
+      } finally {
+        setIsTogglingCloset(false);
+      }
+      return;
+    }
+
+    // If item exists in closet with same options, show duplicate modal
+    if (existingClosetItem && checkIsDuplicate()) {
+      setShowDuplicateModal(true);
+      return;
+    }
+
+    // If item exists but with different options, show overwrite confirmation
+    if (existingClosetItem) {
+      setShowDuplicateModal(true);
+      return;
+    }
+
+    // Item doesn't exist, add normally
     setIsTogglingCloset(true);
     try {
       await toggleCloset({
@@ -127,6 +182,24 @@ export default function ProductDetailPage() {
       });
     } catch (error) {
       console.error("Failed to toggle closet:", error);
+    } finally {
+      setIsTogglingCloset(false);
+    }
+  };
+
+  const handleOverwriteClosetItem = async () => {
+    if (!clerkUser?.id || !existingClosetItem) return;
+
+    setIsTogglingCloset(true);
+    try {
+      await updateClosetItemOptions({
+        clerkId: clerkUser.id,
+        productId: productId as Id<"products">,
+        selectedOptions: getSelectedOptionsForSave() || {},
+      });
+      setShowDuplicateModal(false);
+    } catch (error) {
+      console.error("Failed to update closet item:", error);
     } finally {
       setIsTogglingCloset(false);
     }
@@ -934,6 +1007,56 @@ export default function ProductDetailPage() {
               >
                 {isSaving ? "Saving..." : "Start Tracking"}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Duplicate Item Modal */}
+      {showDuplicateModal && existingClosetItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-zinc-900">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+              {checkIsDuplicate() ? "Item Already in Closet" : "Update Existing Item?"}
+            </h3>
+            <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
+              {checkIsDuplicate()
+                ? "This exact item (same size and color) is already in your closet."
+                : "This item is already in your closet with different options. Would you like to update it with your new selections?"}
+            </p>
+
+            {!checkIsDuplicate() && (
+              <div className="mt-4 rounded-lg bg-zinc-100 p-3 dark:bg-zinc-800">
+                <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 uppercase tracking-wide mb-2">
+                  Current options in closet:
+                </p>
+                <div className="text-sm text-zinc-700 dark:text-zinc-300 space-y-1">
+                  {(existingClosetItem.selectedOptions?.Size || existingClosetItem.selectedOptions?.size || existingClosetItem.selectedSize) && (
+                    <p>Size: {existingClosetItem.selectedOptions?.Size || existingClosetItem.selectedOptions?.size || existingClosetItem.selectedSize}</p>
+                  )}
+                  {(existingClosetItem.selectedOptions?.Color || existingClosetItem.selectedOptions?.Colour || existingClosetItem.colorName) && (
+                    <p>Color: {existingClosetItem.selectedOptions?.Color || existingClosetItem.selectedOptions?.Colour || existingClosetItem.colorName}</p>
+                  )}
+                </div>
+              </div>
+            )}
+
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => setShowDuplicateModal(false)}
+                className="flex-1 rounded-lg border border-zinc-300 py-2 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+              >
+                Cancel
+              </button>
+              {!checkIsDuplicate() && (
+                <button
+                  onClick={handleOverwriteClosetItem}
+                  disabled={isTogglingCloset}
+                  className="flex-1 rounded-lg bg-purple-600 py-2 font-medium text-white transition-colors hover:bg-purple-700 disabled:opacity-50"
+                >
+                  {isTogglingCloset ? "Updating..." : "Update Item"}
+                </button>
+              )}
             </div>
           </div>
         </div>

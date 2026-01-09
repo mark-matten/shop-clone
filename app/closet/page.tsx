@@ -9,6 +9,8 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
 import { AddClothesModal, TryOnModal } from "@/components/closet";
+import { FindFriendsModal } from "@/components/social/FindFriendsModal";
+import { FollowingList } from "@/components/social/FollowingList";
 import {
   DndContext,
   DragOverlay,
@@ -45,35 +47,30 @@ const CLOSET_CATEGORIES = [
   { id: "other", label: "Other" },
 ];
 
-// Map any category to a normalized key (consistent with try-on)
-function getCategoryKey(category: string): string {
-  const lower = category.toLowerCase();
+// Infer category from text (product name, description, etc.)
+function inferCategoryFromText(text: string): string | null {
+  const lower = text.toLowerCase();
 
-  // Tops: shirts, sweaters, tees, blouses, polos, bodysuits
-  if (lower.includes("top") || lower.includes("shirt") || lower.includes("blouse") ||
-      lower.includes("sweater") || lower.includes("tee") || lower.includes("polo") ||
-      lower.includes("bodysuit") || lower.includes("tank") || lower.includes("cami") ||
-      lower.includes("henley") || lower.includes("cardigan") || lower.includes("pullover")) {
-    return "tops";
+  // Check outerwear FIRST (before tops) because jackets/coats are often misclassified as tops
+  if (lower.includes("jacket") || lower.includes("coat") || lower.includes("outerwear") ||
+      lower.includes("blazer") || lower.includes("parka") || lower.includes("windbreaker") ||
+      lower.includes("anorak") || lower.includes("trench") || lower.includes("puffer") ||
+      lower.includes("bomber") || lower.includes("peacoat") || lower.includes("overcoat")) {
+    return "outerwear";
+  }
+
+  // Dresses: dresses, jumpsuits, rompers
+  if (lower.includes("dress") || lower.includes("jumpsuit") || lower.includes("romper") ||
+      lower.includes("gown") || lower.includes("maxi") || lower.includes("midi")) {
+    return "dresses";
   }
 
   // Bottoms: pants, jeans, shorts, skirts, chinos, trousers, leggings
   if (lower.includes("bottom") || lower.includes("pant") || lower.includes("jean") ||
       lower.includes("skirt") || lower.includes("short") || lower.includes("chino") ||
-      lower.includes("trouser") || lower.includes("legging") || lower.includes("jogger")) {
+      lower.includes("trouser") || lower.includes("legging") || lower.includes("jogger") ||
+      lower.includes("cargo") || lower.includes("capri") || lower.includes("culottes")) {
     return "bottoms";
-  }
-
-  // Dresses: dresses, jumpsuits, rompers
-  if (lower.includes("dress") || lower.includes("jumpsuit") || lower.includes("romper")) {
-    return "dresses";
-  }
-
-  // Outerwear: jackets, coats, blazers, vests
-  if (lower.includes("jacket") || lower.includes("coat") || lower.includes("outerwear") ||
-      lower.includes("blazer") || lower.includes("vest") || lower.includes("hoodie") ||
-      lower.includes("parka") || lower.includes("windbreaker")) {
-    return "outerwear";
   }
 
   // Shoes: all footwear
@@ -81,14 +78,16 @@ function getCategoryKey(category: string): string {
       lower.includes("heel") || lower.includes("sandal") || lower.includes("loafer") ||
       lower.includes("flat") || lower.includes("mule") || lower.includes("slipper") ||
       lower.includes("oxford") || lower.includes("pump") || lower.includes("wedge") ||
-      lower.includes("footwear") || lower.includes("trainer") || lower.includes("kicks")) {
+      lower.includes("footwear") || lower.includes("trainer") || lower.includes("kicks") ||
+      lower.includes("espadrille") || lower.includes("clog") || lower.includes("derby")) {
     return "shoes";
   }
 
   // Bags: all bags and purses
   if (lower.includes("bag") || lower.includes("tote") || lower.includes("purse") ||
       lower.includes("backpack") || lower.includes("clutch") || lower.includes("satchel") ||
-      lower.includes("crossbody") || lower.includes("wallet") || lower.includes("pouch")) {
+      lower.includes("crossbody") || lower.includes("wallet") || lower.includes("pouch") ||
+      lower.includes("handbag") || lower.includes("duffel") || lower.includes("weekender")) {
     return "bags";
   }
 
@@ -96,16 +95,58 @@ function getCategoryKey(category: string): string {
   if (lower.includes("accessor") || lower.includes("jewelry") || lower.includes("hat") ||
       lower.includes("scarf") || lower.includes("belt") || lower.includes("watch") ||
       lower.includes("sock") || lower.includes("glove") || lower.includes("sunglasse") ||
-      lower.includes("tie") || lower.includes("beanie") || lower.includes("cap")) {
+      lower.includes("tie") || lower.includes("beanie") || lower.includes("cap") ||
+      lower.includes("earring") || lower.includes("necklace") || lower.includes("bracelet") ||
+      lower.includes("ring") || lower.includes("headband")) {
     return "accessories";
   }
 
   // Activewear: athletic, sports, workout, yoga, gym
   if (lower.includes("active") || lower.includes("sport") || lower.includes("athletic") ||
       lower.includes("workout") || lower.includes("yoga") || lower.includes("gym") ||
-      lower.includes("running") || lower.includes("training")) {
+      lower.includes("running") || lower.includes("training") || lower.includes("leotard") ||
+      lower.includes("sports bra")) {
     return "activewear";
   }
+
+  // Tops checked last - it's often used as a fallback incorrectly
+  if (lower.includes("shirt") || lower.includes("blouse") ||
+      lower.includes("sweater") || lower.includes("tee") || lower.includes("polo") ||
+      lower.includes("bodysuit") || lower.includes("tank") || lower.includes("cami") ||
+      lower.includes("henley") || lower.includes("cardigan") || lower.includes("pullover") ||
+      lower.includes("hoodie") || lower.includes("vest") || lower.includes("t-shirt") ||
+      lower.includes("crop top") || lower.includes("tunic")) {
+    return "tops";
+  }
+
+  return null;
+}
+
+// Map any category to a normalized key (consistent with try-on)
+// Also checks product name for better accuracy
+function getCategoryKey(category: string, productName?: string): string {
+  // First, try to infer category from product name (more accurate)
+  if (productName) {
+    const inferredFromName = inferCategoryFromText(productName);
+    if (inferredFromName) {
+      return inferredFromName;
+    }
+  }
+
+  // Fall back to inferring from category string
+  const inferredFromCategory = inferCategoryFromText(category);
+  if (inferredFromCategory) {
+    return inferredFromCategory;
+  }
+
+  // Handle generic category names
+  const lower = category.toLowerCase();
+  if (lower === "top" || lower === "tops") return "tops";
+  if (lower === "bottom" || lower === "bottoms") return "bottoms";
+  if (lower === "dress" || lower === "dresses") return "dresses";
+  if (lower === "shoe" || lower === "shoes") return "shoes";
+  if (lower === "bag" || lower === "bags") return "bags";
+  if (lower === "accessory" || lower === "accessories") return "accessories";
 
   // Intimates/loungewear/clothing -> other
   if (lower.includes("intimate") || lower.includes("underwear") || lower.includes("bra") ||
@@ -453,9 +494,10 @@ function SortableItem({
 
   return (
     <div
+      id={item.closetItemId ? `closet-item-${item.closetItemId}` : undefined}
       ref={setNodeRef}
       style={style}
-      className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900"
+      className="group relative overflow-hidden rounded-xl border border-zinc-200 bg-white transition-all duration-300 dark:border-zinc-800 dark:bg-zinc-900"
     >
       {/* Drag Handle - visible on all devices */}
       <div
@@ -645,6 +687,7 @@ export default function ClosetPage() {
   const [showTryOnModal, setShowTryOnModal] = useState(false);
   const [tryOnInitialItem, setTryOnInitialItem] = useState<{ id: string; category: string } | undefined>(undefined);
   const [showSavedOutfitsModal, setShowSavedOutfitsModal] = useState(false);
+  const [showFindFriendsModal, setShowFindFriendsModal] = useState(false);
   const [outfitCollectionFilter, setOutfitCollectionFilter] = useState<string | null>(null);
   const [selectedOutfit, setSelectedOutfit] = useState<typeof savedOutfits extends (infer T)[] | undefined ? T | null : never>(null);
   const [isEditingOutfit, setIsEditingOutfit] = useState(false);
@@ -654,6 +697,7 @@ export default function ClosetPage() {
   const [shareCopied, setShareCopied] = useState(false);
   const [closetShareCopied, setClosetShareCopied] = useState(false);
   const [detailsItem, setDetailsItem] = useState<CombinedItem | null>(null);
+  const [newlyAddedItemId, setNewlyAddedItemId] = useState<string | null>(null);
   const pendingScrollPosition = useRef<number | null>(null);
   const hasRestoredScroll = useRef(false);
 
@@ -767,6 +811,13 @@ export default function ClosetPage() {
     user?.id ? { clerkId: user.id } : "skip"
   );
   const trackProduct = useMutation(api.tracking.trackProductByClerkId);
+  const untrackProduct = useMutation(api.tracking.untrackProductByClerkId);
+
+  // Price tracking modal state
+  const [showPriceTrackingModal, setShowPriceTrackingModal] = useState(false);
+  const [priceTrackingProductId, setPriceTrackingProductId] = useState<Id<"products"> | null>(null);
+  const [priceTrackingCurrentPrice, setPriceTrackingCurrentPrice] = useState<number>(0);
+  const [targetPrice, setTargetPrice] = useState<string>("");
 
   const removeFromCloset = useMutation(api.closet.removeFromCloset);
   const removeFavorite = useMutation(api.favorites.removeFavorite);
@@ -912,6 +963,27 @@ export default function ClosetPage() {
     });
   }, [closetItems, favorites]);
 
+  // Scroll to newly added item
+  useEffect(() => {
+    if (newlyAddedItemId && combinedItems.length > 0) {
+      // Find the element with the newly added item ID
+      const element = document.getElementById(`closet-item-${newlyAddedItemId}`);
+      if (element) {
+        // Scroll to the element with a small delay to allow rendering
+        setTimeout(() => {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          // Add a highlight animation
+          element.classList.add("ring-2", "ring-purple-500", "ring-offset-2");
+          // Remove highlight after animation
+          setTimeout(() => {
+            element.classList.remove("ring-2", "ring-purple-500", "ring-offset-2");
+            setNewlyAddedItemId(null);
+          }, 2000);
+        }, 300);
+      }
+    }
+  }, [newlyAddedItemId, combinedItems]);
+
   // Calculate stats
   const stats = useMemo(() => {
     const ownedCount = combinedItems.filter(i => i.isOwned).length;
@@ -958,7 +1030,8 @@ export default function ClosetPage() {
     const groups: Record<string, CombinedItem[]> = {};
     for (const item of filteredByType) {
       const rawCat = item.customCategory || item.product?.category || "other";
-      const normalizedCat = getCategoryKey(rawCat);
+      const productName = item.name || item.product?.name;
+      const normalizedCat = getCategoryKey(rawCat, productName);
       if (!groups[normalizedCat]) groups[normalizedCat] = [];
       groups[normalizedCat].push(item);
     }
@@ -1233,8 +1306,10 @@ export default function ClosetPage() {
 
     const activeCategoryRaw = activeItem.customCategory || activeItem.product?.category || "other";
     const overCategoryRaw = overItem.customCategory || overItem.product?.category || "other";
-    const activeCategoryNormalized = getCategoryKey(activeCategoryRaw);
-    const overCategoryNormalized = getCategoryKey(overCategoryRaw);
+    const activeProductName = activeItem.name || activeItem.product?.name;
+    const overProductName = overItem.name || overItem.product?.name;
+    const activeCategoryNormalized = getCategoryKey(activeCategoryRaw, activeProductName);
+    const overCategoryNormalized = getCategoryKey(overCategoryRaw, overProductName);
 
     // Only allow reordering within the same category
     if (activeCategoryNormalized === overCategoryNormalized) {
@@ -1632,6 +1707,30 @@ export default function ClosetPage() {
             </DragOverlay>
           </DndContext>
         )}
+
+        {/* Following Section */}
+        {user?.id && (
+          <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                Following
+              </h2>
+              <button
+                onClick={() => setShowFindFriendsModal(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
+              >
+                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                </svg>
+                Find Friends
+              </button>
+            </div>
+            <FollowingList
+              clerkId={user.id}
+              onFindFriends={() => setShowFindFriendsModal(true)}
+            />
+          </div>
+        )}
       </main>
 
       {/* Edit Modal */}
@@ -1972,6 +2071,7 @@ export default function ClosetPage() {
         isOpen={showAddClothesModal}
         onClose={() => setShowAddClothesModal(false)}
         clerkId={user.id}
+        onItemAdded={(itemId) => setNewlyAddedItemId(itemId)}
       />
 
       {/* Try On Modal */}
@@ -2524,75 +2624,255 @@ export default function ClosetPage() {
                 )}
               </div>
 
-              {/* Try This On button - opens TryOnModal with item pre-selected */}
-              {detailsItem.closetItemId && (
-                <button
-                  onClick={() => {
-                    const category = detailsItem.customCategory || detailsItem.product.category;
-                    setTryOnInitialItem({ id: detailsItem.closetItemId!, category });
-                    setDetailsItem(null);
-                    setShowTryOnModal(true);
-                  }}
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                  </svg>
-                  Try This On
-                </button>
+              {/* Ownership toggle for URL-sourced items */}
+              {detailsItem.sourceUrl && detailsItem.closetItemId && (
+                <div className="mt-4">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">Item Status</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={async () => {
+                        if (!user?.id) return;
+                        try {
+                          await updateClosetItem({
+                            clerkId: user.id,
+                            itemId: detailsItem.closetItemId as any,
+                            isWishlist: false,
+                          });
+                          // Update local state to reflect change
+                          setDetailsItem({ ...detailsItem, isOwned: true, isWishlist: false });
+                        } catch (error) {
+                          console.error("Failed to update item:", error);
+                        }
+                      }}
+                      className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        detailsItem.isOwned
+                          ? "bg-emerald-500 text-white"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                      }`}
+                    >
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      I Own This
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!user?.id) return;
+                        try {
+                          await updateClosetItem({
+                            clerkId: user.id,
+                            itemId: detailsItem.closetItemId as any,
+                            isWishlist: true,
+                          });
+                          // Update local state to reflect change
+                          setDetailsItem({ ...detailsItem, isOwned: false, isWishlist: true });
+                        } catch (error) {
+                          console.error("Failed to update item:", error);
+                        }
+                      }}
+                      className={`flex-1 flex items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                        detailsItem.isWishlist && !detailsItem.isOwned
+                          ? "bg-rose-500 text-white"
+                          : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                      }`}
+                    >
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      </svg>
+                      Wishlist
+                    </button>
+                  </div>
+                </div>
               )}
 
-              {/* Track Price button - for wishlist items that are not user-added */}
-              {detailsItem.isWishlist && !detailsItem.isUserAdded && detailsItem.product._id && (() => {
-                const isTracked = trackedItemIds?.includes(detailsItem.product._id);
-                return isTracked ? (
-                  <div className="flex items-center justify-center gap-2 w-full rounded-lg bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400">
-                    <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                    </svg>
-                    Tracking Price
-                  </div>
-                ) : (
+              {/* Action buttons with spacing */}
+              <div className="space-y-3 mt-4">
+                {/* Try This On button - opens TryOnModal with item pre-selected */}
+                {detailsItem.closetItemId && (
                   <button
-                    onClick={async () => {
-                      if (!user?.id) return;
-                      try {
-                        await trackProduct({
-                          clerkId: user.id,
-                          productId: detailsItem.product._id,
-                          selectedOptions: detailsItem.selectedOptions,
-                        });
-                      } catch (error) {
-                        console.error("Failed to track product:", error);
-                      }
+                    onClick={() => {
+                      const category = detailsItem.customCategory || detailsItem.product.category;
+                      setTryOnInitialItem({ id: detailsItem.closetItemId!, category });
+                      setDetailsItem(null);
+                      setShowTryOnModal(true);
                     }}
+                    className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                    </svg>
+                    Try This On
+                  </button>
+                )}
+
+                {/* Track Price button - for wishlist items from real products (not URL-sourced) */}
+                {detailsItem.isWishlist && !detailsItem.isUserAdded && !detailsItem.sourceUrl && detailsItem.product._id && (() => {
+                  const isTracked = trackedItemIds?.includes(detailsItem.product._id);
+                  return isTracked ? (
+                    <button
+                      onClick={async () => {
+                        if (!user?.id) return;
+                        try {
+                          await untrackProduct({
+                            clerkId: user.id,
+                            productId: detailsItem.product._id,
+                          });
+                        } catch (error) {
+                          console.error("Failed to untrack product:", error);
+                        }
+                      }}
+                      className="flex items-center justify-center gap-2 w-full rounded-lg bg-emerald-100 px-4 py-3 text-sm font-medium text-emerald-700 hover:bg-emerald-200 active:bg-emerald-300 dark:bg-emerald-900/30 dark:text-emerald-400 dark:hover:bg-emerald-900/50 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                      Tracking Price
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setPriceTrackingProductId(detailsItem.product._id);
+                        setPriceTrackingCurrentPrice(detailsItem.product.price);
+                        setTargetPrice("");
+                        setShowPriceTrackingModal(true);
+                      }}
+                      className="flex items-center justify-center gap-2 w-full rounded-lg bg-amber-100 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-200 active:bg-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition-colors"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      </svg>
+                      Track Price
+                    </button>
+                  );
+                })()}
+
+                {/* View Original link - for URL-sourced wishlist items */}
+                {detailsItem.isWishlist && detailsItem.sourceUrl && (
+                  <a
+                    href={detailsItem.sourceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
                     className="flex items-center justify-center gap-2 w-full rounded-lg bg-amber-100 px-4 py-3 text-sm font-medium text-amber-700 hover:bg-amber-200 active:bg-amber-300 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 transition-colors"
                   >
                     <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
                     </svg>
-                    Track Price
-                  </button>
-                );
-              })()}
+                    View on Store
+                  </a>
+                )}
 
-              {/* Link to product page - only for non-user-added items with valid product ID */}
-              {!detailsItem.isUserAdded && detailsItem.product._id && (
-                <a
-                  href={`/product/${detailsItem.product._id}?from=closet-popup`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg border border-rose-400 px-4 py-3 text-sm font-medium text-rose-400 hover:bg-rose-50 active:bg-rose-100 dark:hover:bg-rose-400/10 transition-colors"
-                >
-                  <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
-                  </svg>
-                  View Product Details
-                </a>
-              )}
+                {/* Link to product page - only for non-user-added items with valid product ID */}
+                {!detailsItem.isUserAdded && detailsItem.product._id && (
+                  <a
+                    href={`/product/${detailsItem.product._id}?from=closet-popup`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full rounded-lg border border-rose-400 px-4 py-3 text-sm font-medium text-rose-400 hover:bg-rose-50 active:bg-rose-100 dark:hover:bg-rose-400/10 transition-colors"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                    </svg>
+                    View Product Details
+                  </a>
+                )}
+              </div>
             </div>
           </div>
         </div>
+      )}
+
+      {/* Price Tracking Modal */}
+      {showPriceTrackingModal && priceTrackingProductId && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowPriceTrackingModal(false)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-4 py-3 border-b border-zinc-200 dark:border-zinc-700">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                Track Price
+              </h3>
+              <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-1">
+                Get notified when the price drops below your target
+              </p>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 space-y-4">
+              {/* Current Price */}
+              <div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-1">Current Price</p>
+                <p className="text-2xl font-bold text-zinc-900 dark:text-white">
+                  ${priceTrackingCurrentPrice.toFixed(2)}
+                </p>
+              </div>
+
+              {/* Target Price Input */}
+              <div>
+                <label className="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1">
+                  Alert me when price drops to
+                </label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500">$</span>
+                  <input
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={targetPrice}
+                    onChange={(e) => setTargetPrice(e.target.value)}
+                    placeholder={`e.g., ${(priceTrackingCurrentPrice * 0.8).toFixed(2)}`}
+                    className="w-full rounded-lg border border-zinc-300 bg-white pl-7 pr-3 py-2.5 text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  />
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                  Leave empty to get notified of any price drop
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-4 py-3 border-t border-zinc-200 dark:border-zinc-700 flex gap-2">
+              <button
+                onClick={() => setShowPriceTrackingModal(false)}
+                className="flex-1 rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!user?.id || !priceTrackingProductId) return;
+                  try {
+                    await trackProduct({
+                      clerkId: user.id,
+                      productId: priceTrackingProductId,
+                      targetPrice: targetPrice ? parseFloat(targetPrice) : undefined,
+                      selectedOptions: detailsItem?.selectedOptions,
+                    });
+                    setShowPriceTrackingModal(false);
+                  } catch (error) {
+                    console.error("Failed to track product:", error);
+                  }
+                }}
+                className="flex-1 rounded-lg bg-rose-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
+              >
+                Start Tracking
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Find Friends Modal */}
+      {user?.id && (
+        <FindFriendsModal
+          isOpen={showFindFriendsModal}
+          onClose={() => setShowFindFriendsModal(false)}
+          clerkId={user.id}
+        />
       )}
     </div>
   );

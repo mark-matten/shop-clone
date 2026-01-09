@@ -399,4 +399,68 @@ export default defineSchema({
     customCount: v.number(), // Weekly custom model uses (free: 0, paid: 50/week)
   })
     .index("by_clerkId_date", ["clerkId", "date"]),
+
+  // ==============================================
+  // SOCIAL / FOLLOW SYSTEM
+  // ==============================================
+
+  // User follow relationships
+  follows: defineTable({
+    followerId: v.id("users"), // The user who is following
+    followingId: v.id("users"), // The user being followed
+    createdAt: v.number(),
+  })
+    .index("by_followerId", ["followerId"])
+    .index("by_followingId", ["followingId"])
+    .index("by_followerId_followingId", ["followerId", "followingId"]),
+
+  // Pending follow requests for private accounts
+  follow_requests: defineTable({
+    requesterId: v.id("users"), // The user requesting to follow
+    targetId: v.id("users"), // The user being requested to follow
+    status: v.union(v.literal("pending"), v.literal("approved"), v.literal("rejected")),
+    createdAt: v.number(),
+    respondedAt: v.optional(v.number()),
+  })
+    .index("by_requesterId", ["requesterId"])
+    .index("by_targetId", ["targetId"])
+    .index("by_targetId_status", ["targetId", "status"])
+    .index("by_requesterId_targetId", ["requesterId", "targetId"]),
+
+  // Per-following notification/alert settings
+  follow_alert_settings: defineTable({
+    userId: v.id("users"), // The user who is following
+    followingId: v.id("users"), // The user being followed
+    notifyNewOwnedItems: v.boolean(), // Notify when they add owned items
+    notifyNewWishlistItems: v.boolean(), // Notify when they add wishlist items
+    notifyNewOutfits: v.boolean(), // Notify when they save new outfits
+    alertsEnabled: v.boolean(), // Master toggle for this following
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_followingId", ["userId", "followingId"])
+    .index("by_followingId", ["followingId"]),
+
+  // Unified notifications (social + price alerts)
+  notifications: defineTable({
+    userId: v.id("users"), // Recipient of the notification
+    type: v.union(
+      v.literal("new_follower"),
+      v.literal("follow_request"),
+      v.literal("follow_request_approved"),
+      v.literal("new_closet_item"),
+      v.literal("new_wishlist_item"),
+      v.literal("new_outfit"),
+      v.literal("price_drop"),
+      v.literal("target_reached")
+    ),
+    fromUserId: v.optional(v.id("users")), // Who triggered the notification
+    relatedId: v.optional(v.string()), // Related entity ID (closet item, outfit, etc.)
+    message: v.string(), // Display message
+    read: v.boolean(),
+    createdAt: v.number(),
+  })
+    .index("by_userId", ["userId"])
+    .index("by_userId_read", ["userId", "read"])
+    .index("by_userId_createdAt", ["userId", "createdAt"]),
 });

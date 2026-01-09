@@ -156,6 +156,35 @@ export const trackProductByClerkId = mutation({
   },
 });
 
+// Untrack product by clerkId (convenience wrapper)
+export const untrackProductByClerkId = mutation({
+  args: {
+    clerkId: v.string(),
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const tracked = await ctx.db
+      .query("tracked_items")
+      .withIndex("by_userId_productId", (q) =>
+        q.eq("userId", user._id).eq("productId", args.productId)
+      )
+      .first();
+
+    if (tracked) {
+      await ctx.db.delete(tracked._id);
+    }
+  },
+});
+
 // Get price history for a product
 export const getPriceHistory = query({
   args: { productId: v.id("products") },

@@ -16,58 +16,98 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: "Other",
 };
 
-function getCategoryKey(category: string): string {
-  const lower = category.toLowerCase();
+// Infer category from text (product name, description, etc.)
+function inferCategoryFromText(text: string): string | null {
+  const lower = text.toLowerCase();
 
-  if (lower.includes("top") || lower.includes("shirt") || lower.includes("blouse") ||
-      lower.includes("sweater") || lower.includes("tee") || lower.includes("polo") ||
-      lower.includes("bodysuit") || lower.includes("tank") || lower.includes("cami") ||
-      lower.includes("henley") || lower.includes("cardigan") || lower.includes("pullover")) {
-    return "tops";
+  // Check outerwear FIRST (before tops) because jackets/coats are often misclassified as tops
+  if (lower.includes("jacket") || lower.includes("coat") || lower.includes("outerwear") ||
+      lower.includes("blazer") || lower.includes("parka") || lower.includes("windbreaker") ||
+      lower.includes("anorak") || lower.includes("trench") || lower.includes("puffer") ||
+      lower.includes("bomber") || lower.includes("peacoat") || lower.includes("overcoat")) {
+    return "outerwear";
+  }
+
+  if (lower.includes("dress") || lower.includes("jumpsuit") || lower.includes("romper") ||
+      lower.includes("gown") || lower.includes("maxi") || lower.includes("midi")) {
+    return "dresses";
   }
 
   if (lower.includes("bottom") || lower.includes("pant") || lower.includes("jean") ||
       lower.includes("skirt") || lower.includes("short") || lower.includes("chino") ||
-      lower.includes("trouser") || lower.includes("legging") || lower.includes("jogger")) {
+      lower.includes("trouser") || lower.includes("legging") || lower.includes("jogger") ||
+      lower.includes("cargo") || lower.includes("capri") || lower.includes("culottes")) {
     return "bottoms";
-  }
-
-  if (lower.includes("dress") || lower.includes("jumpsuit") || lower.includes("romper")) {
-    return "dresses";
-  }
-
-  if (lower.includes("jacket") || lower.includes("coat") || lower.includes("outerwear") ||
-      lower.includes("blazer") || lower.includes("vest") || lower.includes("hoodie") ||
-      lower.includes("parka") || lower.includes("windbreaker")) {
-    return "outerwear";
   }
 
   if (lower.includes("shoe") || lower.includes("boot") || lower.includes("sneaker") ||
       lower.includes("heel") || lower.includes("sandal") || lower.includes("loafer") ||
       lower.includes("flat") || lower.includes("mule") || lower.includes("slipper") ||
       lower.includes("oxford") || lower.includes("pump") || lower.includes("wedge") ||
-      lower.includes("footwear") || lower.includes("trainer") || lower.includes("kicks")) {
+      lower.includes("footwear") || lower.includes("trainer") || lower.includes("kicks") ||
+      lower.includes("espadrille") || lower.includes("clog") || lower.includes("derby")) {
     return "shoes";
   }
 
   if (lower.includes("bag") || lower.includes("tote") || lower.includes("purse") ||
       lower.includes("backpack") || lower.includes("clutch") || lower.includes("satchel") ||
-      lower.includes("crossbody") || lower.includes("wallet") || lower.includes("pouch")) {
+      lower.includes("crossbody") || lower.includes("wallet") || lower.includes("pouch") ||
+      lower.includes("handbag") || lower.includes("duffel") || lower.includes("weekender")) {
     return "bags";
   }
 
   if (lower.includes("accessor") || lower.includes("jewelry") || lower.includes("hat") ||
       lower.includes("scarf") || lower.includes("belt") || lower.includes("watch") ||
       lower.includes("sock") || lower.includes("glove") || lower.includes("sunglasse") ||
-      lower.includes("tie") || lower.includes("beanie") || lower.includes("cap")) {
+      lower.includes("tie") || lower.includes("beanie") || lower.includes("cap") ||
+      lower.includes("earring") || lower.includes("necklace") || lower.includes("bracelet") ||
+      lower.includes("ring") || lower.includes("headband")) {
     return "accessories";
   }
 
   if (lower.includes("active") || lower.includes("sport") || lower.includes("athletic") ||
       lower.includes("workout") || lower.includes("yoga") || lower.includes("gym") ||
-      lower.includes("running") || lower.includes("training")) {
+      lower.includes("running") || lower.includes("training") || lower.includes("leotard") ||
+      lower.includes("sports bra")) {
     return "activewear";
   }
+
+  // Tops checked last - it's often used as a fallback incorrectly
+  if (lower.includes("shirt") || lower.includes("blouse") ||
+      lower.includes("sweater") || lower.includes("tee") || lower.includes("polo") ||
+      lower.includes("bodysuit") || lower.includes("tank") || lower.includes("cami") ||
+      lower.includes("henley") || lower.includes("cardigan") || lower.includes("pullover") ||
+      lower.includes("hoodie") || lower.includes("vest") || lower.includes("t-shirt") ||
+      lower.includes("crop top") || lower.includes("tunic")) {
+    return "tops";
+  }
+
+  return null;
+}
+
+function getCategoryKey(category: string, productName?: string): string {
+  // First, try to infer category from product name (more accurate)
+  if (productName) {
+    const inferredFromName = inferCategoryFromText(productName);
+    if (inferredFromName) {
+      return inferredFromName;
+    }
+  }
+
+  // Fall back to inferring from category string
+  const inferredFromCategory = inferCategoryFromText(category);
+  if (inferredFromCategory) {
+    return inferredFromCategory;
+  }
+
+  // Handle generic category names
+  const lower = category.toLowerCase();
+  if (lower === "top" || lower === "tops") return "tops";
+  if (lower === "bottom" || lower === "bottoms") return "bottoms";
+  if (lower === "dress" || lower === "dresses") return "dresses";
+  if (lower === "shoe" || lower === "shoes") return "shoes";
+  if (lower === "bag" || lower === "bags") return "bags";
+  if (lower === "accessory" || lower === "accessories") return "accessories";
 
   return "other";
 }
@@ -236,10 +276,20 @@ export const getClosetItems = query({
           displayImageUrl = storageUrl ?? undefined;
         }
 
+        // Determine display name for category normalization
+        const displayName = item.name ?? product?.name;
+
+        // Normalize category using product/item name for better accuracy
+        const rawCategory = item.customCategory ?? item.category ?? product?.category;
+        const normalizedCategory = item.customCategory
+          ? item.customCategory
+          : getCategoryKey(rawCategory || "other", displayName);
+
         return {
           ...item,
           product,
           displayImageUrl,
+          normalizedCategory,
         };
       })
     );
@@ -305,6 +355,47 @@ export const isInCloset = query({
       .first();
 
     return item !== null;
+  },
+});
+
+// Get existing closet item details for duplicate detection
+export const getExistingClosetItem = query({
+  args: {
+    clerkId: v.string(),
+    productId: v.id("products"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    const item = await ctx.db
+      .query("closet_items")
+      .withIndex("by_userId_productId", (q) =>
+        q.eq("userId", user._id).eq("productId", args.productId)
+      )
+      .first();
+
+    if (!item) {
+      return null;
+    }
+
+    // Get product details to compare brand
+    const product = await ctx.db.get(args.productId);
+
+    return {
+      _id: item._id,
+      selectedOptions: item.selectedOptions,
+      selectedSize: item.selectedSize,
+      colorName: item.colorName,
+      material: item.material,
+      brand: item.brand ?? product?.brand,
+    };
   },
 });
 
@@ -667,6 +758,7 @@ export const updateClosetItem = mutation({
     category: v.optional(v.string()),
     gender: v.optional(v.union(v.literal("men"), v.literal("women"), v.literal("unisex"))),
     notes: v.optional(v.string()),
+    isWishlist: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
     const user = await ctx.db
@@ -683,7 +775,7 @@ export const updateClosetItem = mutation({
       throw new Error("Item not found or access denied");
     }
 
-    const updates: Record<string, string | undefined> = {};
+    const updates: Record<string, string | boolean | undefined> = {};
     if (args.name !== undefined) updates.name = args.name;
     if (args.brand !== undefined) updates.brand = args.brand;
     if (args.size !== undefined) updates.size = args.size;
@@ -692,6 +784,7 @@ export const updateClosetItem = mutation({
     if (args.category !== undefined) updates.category = args.category;
     if (args.gender !== undefined) (updates as any).gender = args.gender;
     if (args.notes !== undefined) updates.notes = args.notes;
+    if (args.isWishlist !== undefined) updates.isWishlist = args.isWishlist;
 
     await ctx.db.patch(args.itemId, updates);
   },
@@ -758,7 +851,11 @@ export const getAllClosetItems = query({
         productIdStr = item.productId.toString();
         displayName = item.name ?? product.name;
         displayBrand = item.brand ?? product.brand;
-        displayCategory = item.customCategory ?? item.category ?? product.category;
+        // Normalize category using product name for better accuracy (unless user set a custom category)
+        const rawCategory = item.customCategory ?? item.category ?? product.category;
+        displayCategory = item.customCategory
+          ? item.customCategory
+          : getCategoryKey(rawCategory || "other", displayName);
         displayImageUrl = item.imageUrl ?? product.imageUrl;
         source = item.source ?? "product";
         material = item.material ?? product.material;
@@ -770,7 +867,11 @@ export const getAllClosetItems = query({
         productIdStr = `url-${item._id}`;
         displayName = item.name;
         displayBrand = item.brand;
-        displayCategory = item.customCategory ?? item.category;
+        // Normalize category using item name for better accuracy (unless user set a custom category)
+        const rawCategory = item.customCategory ?? item.category;
+        displayCategory = item.customCategory
+          ? item.customCategory
+          : getCategoryKey(rawCategory || "other", displayName);
         displayImageUrl = item.imageUrl;
         source = "url";
         material = item.material;
@@ -782,7 +883,11 @@ export const getAllClosetItems = query({
         productIdStr = `gen-${item._id}`;
         displayName = item.name;
         displayBrand = item.brand;
-        displayCategory = item.customCategory ?? item.category;
+        // Normalize category using item name for better accuracy (unless user set a custom category)
+        const rawCategory = item.customCategory ?? item.category;
+        displayCategory = item.customCategory
+          ? item.customCategory
+          : getCategoryKey(rawCategory || "other", displayName);
         displayImageUrl = await ctx.storage.getUrl(item.generatedImageStorageId);
         source = "generated";
         material = item.material;
@@ -841,14 +946,18 @@ export const getAllClosetItems = query({
         continue;
       }
 
-      console.log("[getAllClosetItems] Adding wishlist item:", product.name, "category:", product.category);
+      // Normalize category using product name for better accuracy
+      const normalizedCategory = item.customCategory
+        ? item.customCategory
+        : getCategoryKey(product.category || "other", product.name);
+      console.log("[getAllClosetItems] Adding wishlist item:", product.name, "raw category:", product.category, "normalized:", normalizedCategory);
 
       itemsByProductId.set(productIdStr, {
         _id: item._id.toString(),
         productId: productIdStr,
         displayName: product.name,
         displayBrand: product.brand,
-        displayCategory: item.customCategory ?? product.category,
+        displayCategory: normalizedCategory,
         displayImageUrl: product.imageUrl,
         isOwned: false,
         isWishlist: true,
@@ -951,20 +1060,20 @@ export const getClosetItemsByCategory = query({
     // Filter and map items
     const matchingItems = await Promise.all(
       closetItems.map(async (item) => {
-        let itemCategory: string | undefined;
         let displayImageUrl: string | null | undefined;
         let displayName: string | undefined;
         let displayBrand: string | undefined;
+        let rawCategory: string | undefined;
 
         if (item.productId) {
           const product = await ctx.db.get(item.productId);
           if (!product) return null;
-          itemCategory = item.customCategory ?? item.category ?? product.category;
+          rawCategory = item.customCategory ?? item.category ?? product.category;
           displayImageUrl = item.imageUrl ?? product.imageUrl;
           displayName = item.name ?? product.name;
           displayBrand = item.brand ?? product.brand;
         } else {
-          itemCategory = item.customCategory ?? item.category;
+          rawCategory = item.customCategory ?? item.category;
           displayName = item.name;
           displayBrand = item.brand;
 
@@ -975,8 +1084,13 @@ export const getClosetItemsByCategory = query({
           }
         }
 
-        // Check if category matches (case-insensitive)
-        if (!itemCategory || itemCategory.toLowerCase() !== args.category.toLowerCase()) {
+        // Normalize category using product/item name for better accuracy
+        const normalizedCategory = item.customCategory
+          ? item.customCategory
+          : getCategoryKey(rawCategory || "other", displayName);
+
+        // Check if normalized category matches the requested category
+        if (normalizedCategory.toLowerCase() !== args.category.toLowerCase()) {
           return null;
         }
 
@@ -984,7 +1098,7 @@ export const getClosetItemsByCategory = query({
           ...item,
           displayName,
           displayBrand,
-          displayCategory: itemCategory,
+          displayCategory: normalizedCategory,
           displayImageUrl,
         };
       })
@@ -1053,8 +1167,8 @@ export const getPublicCloset = query({
           }
         }
 
-        // Normalize category to standard closet categories
-        const normalizedCategory = getCategoryKey(rawCategory || "other");
+        // Normalize category to standard closet categories (using product name for better accuracy)
+        const normalizedCategory = getCategoryKey(rawCategory || "other", name);
 
         return {
           _id: item._id,

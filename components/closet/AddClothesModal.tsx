@@ -8,6 +8,7 @@ interface AddClothesModalProps {
   isOpen: boolean;
   onClose: () => void;
   clerkId: string;
+  onItemAdded?: (itemId: string) => void;
 }
 
 type Tab = "describe" | "url";
@@ -121,7 +122,7 @@ function parseDescription(text: string): {
   return result;
 }
 
-export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalProps) {
+export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddClothesModalProps) {
   const [activeTab, setActiveTab] = useState<Tab>("describe");
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -147,6 +148,35 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [hasParsedDescription, setHasParsedDescription] = useState(false);
 
+  // Image search state
+  const [searchedImage, setSearchedImage] = useState<{
+    imageUrl: string;
+    sourceUrl?: string;
+    title?: string;
+  } | null>(null);
+  const [imageSearchLoading, setImageSearchLoading] = useState(false);
+  const [imageSource, setImageSource] = useState<"search" | "generate" | null>(null);
+
+  // Search for product image
+  const searchForImage = useCallback(async (brand: string, desc: string) => {
+    setImageSearchLoading(true);
+    try {
+      const response = await fetch("/api/image-search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ brand, description: desc }),
+      });
+      const data = await response.json();
+      if (data.result) {
+        setSearchedImage(data.result);
+      }
+    } catch (err) {
+      console.error("Image search error:", err);
+    } finally {
+      setImageSearchLoading(false);
+    }
+  }, []);
+
   // Parse description when user moves to another field
   const handleDescriptionBlur = useCallback(() => {
     if (description.trim() && !hasParsedDescription) {
@@ -156,8 +186,13 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
       if (parsed.material && !genMaterial) setGenMaterial(parsed.material);
       if (parsed.category && !genCategory) setGenCategory(parsed.category);
       setHasParsedDescription(true);
+
+      // If a brand was detected, search for product image
+      if (parsed.brand && !searchedImage && !imageSource) {
+        searchForImage(parsed.brand, description);
+      }
     }
-  }, [description, hasParsedDescription, genBrand, genColor, genMaterial, genCategory]);
+  }, [description, hasParsedDescription, genBrand, genColor, genMaterial, genCategory, searchedImage, imageSource, searchForImage]);
 
   const addFromUrl = useMutation(api.closet.addFromUrl);
   const generateClothingImage = useAction(api.gemini.generateClothingImage);
@@ -199,6 +234,9 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
     setDescGender(null);
     setGeneratedImage(null);
     setHasParsedDescription(false);
+    setSearchedImage(null);
+    setImageSearchLoading(false);
+    setImageSource(null);
     setError(null);
   }, []);
 
@@ -264,7 +302,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
     setError(null);
 
     try {
-      await addFromUrl({
+      const itemId = await addFromUrl({
         clerkId,
         name: scrapedProduct.name,
         brand: scrapedProduct.brand,
@@ -278,6 +316,38 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
         isWishlist: urlOwnership === "wishlist",
       });
 
+      onItemAdded?.(itemId);
+      handleClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to add item");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Add item using the searched product image
+  const handleAddWithSearchedImage = async () => {
+    if (!searchedImage || !genCategory || !descOwnership || !descGender) return;
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const itemId = await addFromUrl({
+        clerkId,
+        name: description.trim(),
+        brand: genBrand || undefined,
+        imageUrl: searchedImage.imageUrl,
+        size: genSize || undefined,
+        color: genColor || undefined,
+        material: genMaterial || undefined,
+        category: genCategory,
+        sourceUrl: searchedImage.sourceUrl,
+        gender: descGender,
+        isWishlist: descOwnership === "wishlist",
+      });
+
+      onItemAdded?.(itemId);
       handleClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to add item");
@@ -289,6 +359,11 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
   // Generate clothing image and add to closet
   const handleGenerate = async () => {
     if (!description.trim() || !genCategory || !descOwnership || !descGender) return;
+
+    // If user selected to use the searched image, use that instead
+    if (imageSource === "search" && searchedImage) {
+      return handleAddWithSearchedImage();
+    }
 
     setIsLoading(true);
     setError(null);
@@ -308,6 +383,11 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
 
       if (result.imageUrl) {
         setGeneratedImage(result.imageUrl);
+      }
+
+      // Call onItemAdded with the closet item ID
+      if (result.closetItemId) {
+        onItemAdded?.(result.closetItemId);
       }
 
       // Item is automatically added by the action, so just close
@@ -394,6 +474,85 @@ export function AddClothesModal({ isOpen, onClose, clerkId }: AddClothesModalPro
                   Include brand, color, or material to auto-fill fields below
                 </p>
               </div>
+
+              {/* Image Search Result */}
+              {imageSearchLoading && (
+                <div className="flex items-center justify-center rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800">
+                  <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                    <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                    </svg>
+                    Searching for product image...
+                  </div>
+                </div>
+              )}
+
+              {searchedImage && !imageSource && (
+                <div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/30">
+                  <p className="mb-3 text-sm font-medium text-blue-800 dark:text-blue-300">
+                    Does this look like your item?
+                  </p>
+                  <div className="flex gap-4">
+                    <div className="flex-shrink-0">
+                      <img
+                        src={searchedImage.imageUrl}
+                        alt="Found product"
+                        className="h-24 w-24 rounded-lg object-cover"
+                        onError={(e) => {
+                          // Hide if image fails to load
+                          setSearchedImage(null);
+                        }}
+                      />
+                    </div>
+                    <div className="flex flex-1 flex-col justify-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setImageSource("search")}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700"
+                      >
+                        Yes, use this image
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageSource("generate");
+                          setSearchedImage(null);
+                        }}
+                        className="rounded-lg border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      >
+                        No, generate image
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {imageSource === "search" && searchedImage && (
+                <div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/30">
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={searchedImage.imageUrl}
+                      alt="Selected product"
+                      className="h-16 w-16 rounded-lg object-cover"
+                    />
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                        Using found image
+                      </p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setImageSource(null);
+                        }}
+                        className="mt-1 text-xs text-green-600 underline hover:text-green-700 dark:text-green-400"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Brand & Category Row */}
               <div className="grid grid-cols-2 gap-4">

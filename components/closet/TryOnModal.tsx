@@ -55,7 +55,7 @@ const CATEGORIES = [
   { id: "other", label: "Other" },
 ];
 
-type ModelMode = "generic" | "user";
+type ModelMode = "generic" | "custom" | "user";
 
 // Map category to a normalized key for selection (one per category)
 function getCategoryKey(category: string): string {
@@ -827,7 +827,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
           </div>
 
           {/* Mobile Preview Section (Bottom) - Virtual Try-On */}
-          <div className="flex-shrink-0 bg-zinc-50 dark:bg-zinc-800/50 max-h-[45vh] overflow-y-auto">
+          <div className="flex-shrink-0 bg-zinc-50 dark:bg-zinc-800/50 max-h-[55vh] overflow-y-auto pb-safe">
             {/* Virtual Try-On Header */}
             <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-700">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Virtual Try-On</h3>
@@ -936,32 +936,36 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
 
             {/* Model Selection */}
             <div className="px-3 py-2 border-t border-zinc-200 dark:border-zinc-700 space-y-2">
-              {/* Model Type Toggle - Only show My Photo for paid users */}
-              <div className="flex gap-2">
+              {/* Model Type Toggle */}
+              <div className="flex gap-1">
                 <button
                   onClick={() => { setModelMode("generic"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
-                  className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
                 >
-                  Generic Model
+                  Generic
                 </button>
-                {isPaidUser && (
-                  <button
-                    onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
-                    className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
-                  >
-                    My Photo
-                  </button>
-                )}
+                <button
+                  onClick={() => { setModelMode("custom"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
+                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "custom" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                >
+                  Custom
+                </button>
+                <button
+                  onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
+                  className={`flex-1 rounded-lg px-2 py-2 text-xs font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"}`}
+                >
+                  My Photo
+                </button>
               </div>
 
-              {/* Usage counter for free users */}
-              {!isPaidUser && (
+              {/* Usage counter for free users - only on Generic tab */}
+              {!isPaidUser && modelMode === "generic" && (
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center">
                   {FREE_DAILY_LIMIT - genericUsedToday} of {FREE_DAILY_LIMIT} free try-ons remaining today
                 </p>
               )}
 
-              {/* Generic Model Options - Gender only for free users, full options for paid */}
+              {/* Generic Model Options - Gender only */}
               {modelMode === "generic" && (
                 <div className="space-y-2">
                   {/* Gender */}
@@ -982,84 +986,109 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       </button>
                     </div>
                   </div>
-                  {/* Height - Paid users only */}
-                  {isPaidUser && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Height</span>
-                      <span className="text-xs text-zinc-900 dark:text-white w-10">{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
-                      <input
-                        type="range"
-                        min="54"
-                        max="78"
-                        value={modelHeight}
-                        onChange={(e) => setModelHeight(Number(e.target.value))}
-                        onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                        className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
-                      />
+                </div>
+              )}
+
+              {/* Custom Model Options - Full customization */}
+              {modelMode === "custom" && (
+                <div className="space-y-2">
+                  {/* Gender */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Gender</span>
+                    <div className="flex-1 flex gap-2">
+                      <button
+                        onClick={() => setModelGender("male")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "male" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                      >
+                        Male
+                      </button>
+                      <button
+                        onClick={() => setModelGender("female")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-medium ${modelGender === "female" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-400"}`}
+                      >
+                        Female
+                      </button>
                     </div>
-                  )}
-                  {/* Weight - Paid users only */}
-                  {isPaidUser && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Weight</span>
-                      <span className="text-xs text-zinc-900 dark:text-white w-10">{modelWeight} lbs</span>
-                      <input
-                        type="range"
-                        min="90"
-                        max="280"
-                        step="5"
-                        value={modelWeight}
-                        onChange={(e) => setModelWeight(Number(e.target.value))}
-                        onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                        className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
-                      />
-                    </div>
-                  )}
-                  {/* Skin Tone - Paid users only */}
-                  {isPaidUser && (
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Skin Tone</span>
-                      <span className="text-xs text-zinc-900 dark:text-white w-10">{modelSkinTone < 20 ? "Fair" : modelSkinTone < 40 ? "Light" : modelSkinTone < 60 ? "Med" : modelSkinTone < 80 ? "Tan" : "Deep"}</span>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={modelSkinTone}
-                        onChange={(e) => setModelSkinTone(Number(e.target.value))}
+                  </div>
+                  {/* Height */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Height</span>
+                    <span className="text-xs text-zinc-900 dark:text-white w-10">{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
+                    <input
+                      type="range"
+                      min="54"
+                      max="78"
+                      value={modelHeight}
+                      onChange={(e) => setModelHeight(Number(e.target.value))}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                    />
+                  </div>
+                  {/* Weight */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Weight</span>
+                    <span className="text-xs text-zinc-900 dark:text-white w-10">{modelWeight} lbs</span>
+                    <input
+                      type="range"
+                      min="90"
+                      max="280"
+                      step="5"
+                      value={modelWeight}
+                      onChange={(e) => setModelWeight(Number(e.target.value))}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="flex-1 h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                    />
+                  </div>
+                  {/* Skin Tone */}
+                  <div className="flex items-center gap-3">
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 w-16">Skin Tone</span>
+                    <span className="text-xs text-zinc-900 dark:text-white w-10">{modelSkinTone < 20 ? "Fair" : modelSkinTone < 40 ? "Light" : modelSkinTone < 60 ? "Med" : modelSkinTone < 80 ? "Tan" : "Deep"}</span>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={modelSkinTone}
+                      onChange={(e) => setModelSkinTone(Number(e.target.value))}
                       onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
                       className="flex-1 h-2 rounded-lg appearance-none cursor-pointer accent-rose-400"
                       style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
                     />
-                    </div>
-                  )}
+                  </div>
+                  {/* Other Details */}
+                  <input
+                    type="text"
+                    value={otherDetails}
+                    onChange={(e) => setOtherDetails(e.target.value)}
+                    placeholder="Other details (e.g., cuffed pants, tucked shirt)"
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  />
                 </div>
               )}
 
               {/* Photo Manager for User Mode */}
               {modelMode === "user" && showPhotoManager && (
-                <div className="mt-2">
+                <div className="space-y-2">
                   <PhotoManager clerkId={clerkId} onSelectPhoto={handleSelectPhoto} selectedPhotoId={selectedPhotoId} />
+                  {/* Other Details for My Photo mode too */}
+                  <input
+                    type="text"
+                    value={otherDetails}
+                    onChange={(e) => setOtherDetails(e.target.value)}
+                    placeholder="Other details (e.g., cuffed pants, tucked shirt)"
+                    className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
+                  />
                 </div>
               )}
-
-              {/* Other Details */}
-              <input
-                type="text"
-                value={otherDetails}
-                onChange={(e) => setOtherDetails(e.target.value)}
-                placeholder="Other details (e.g., cuffed pants, tucked shirt)"
-                className="w-full rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"
-              />
             </div>
 
             {/* Generate Button */}
             <div className="px-3 py-3">
               <button
                 onClick={handleGenerate}
-                disabled={selectedByCategory.size === 0 || isGenerating}
+                disabled={selectedByCategory.size === 0 || isGenerating || ((modelMode === "custom" || modelMode === "user") && !isPaidUser)}
                 className="w-full rounded-xl bg-rose-400 px-4 py-3 text-sm font-semibold text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {isGenerating ? "Generating..." : selectedByCategory.size > 0 ? `Generate Outfit (${selectedByCategory.size})` : "Select items to try on"}
+                {(modelMode === "custom" || modelMode === "user") && !isPaidUser ? "Upgrade to Pro" : isGenerating ? "Generating..." : selectedByCategory.size > 0 ? `Generate Outfit (${selectedByCategory.size})` : "Select items to try on"}
               </button>
             </div>
 
@@ -1260,26 +1289,30 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   onClick={() => { setModelMode("generic"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
                   className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "generic" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
                 >
-                  Generic Model
+                  Generic
                 </button>
-                {isPaidUser && (
-                  <button
-                    onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
-                    className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
-                  >
-                    My Photo
-                  </button>
-                )}
+                <button
+                  onClick={() => { setModelMode("custom"); setSelectedPhotoId(null); setSelectedPhotoStorageId(null); setShowPhotoManager(false); }}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "custom" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
+                >
+                  Custom
+                </button>
+                <button
+                  onClick={() => { setModelMode("user"); setShowPhotoManager(true); }}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${modelMode === "user" ? "bg-rose-400 text-white" : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"}`}
+                >
+                  My Photo
+                </button>
               </div>
 
-              {/* Usage counter for free users */}
-              {!isPaidUser && (
+              {/* Usage counter for free users - only on Generic tab */}
+              {!isPaidUser && modelMode === "generic" && (
                 <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mt-2">
                   {FREE_DAILY_LIMIT - genericUsedToday} of {FREE_DAILY_LIMIT} free try-ons remaining today
                 </p>
               )}
 
-              {/* Generic Model Customization */}
+              {/* Generic Model - Gender only */}
               {modelMode === "generic" && (
                 <div className="mt-3 space-y-2">
                   {/* Gender Toggle */}
@@ -1310,96 +1343,137 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       </button>
                     </div>
                   </div>
-                  {/* Height Slider - Paid users only */}
-                  {isPaidUser && (
-                    <div>
-                      <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
-                        <span>Height</span>
-                        <span>{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="54"
-                        max="78"
-                        value={modelHeight}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setModelHeight(val);
-                        }}
-                        onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                        onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                        className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
-                      />
-                    </div>
-                  )}
-                  {/* Weight Slider - Paid users only */}
-                  {isPaidUser && (
-                    <div>
-                      <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
-                        <span>Weight</span>
-                        <span>{modelWeight} lbs</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="90"
-                        max="280"
-                        step="5"
-                        value={modelWeight}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setModelWeight(val);
-                        }}
-                        onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                        onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                        className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
-                      />
-                    </div>
-                  )}
-                  {/* Skin Tone Slider - Paid users only */}
-                  {isPaidUser && (
-                    <div>
-                      <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
-                        <span>Skin Tone</span>
-                        <span>{modelSkinTone < 20 ? "Fair" : modelSkinTone < 40 ? "Light" : modelSkinTone < 60 ? "Medium" : modelSkinTone < 80 ? "Tan" : "Deep"}</span>
-                      </div>
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={modelSkinTone}
-                        onChange={(e) => {
-                          const val = Number(e.target.value);
-                          setModelSkinTone(val);
-                        }}
-                        onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                        onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
-                        className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-rose-400"
-                        style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
-                      />
-                    </div>
-                  )}
                 </div>
               )}
 
+              {/* Custom Model - Full customization */}
+              {modelMode === "custom" && (
+                <div className="mt-3 space-y-2">
+                  {/* Gender Toggle */}
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400 mb-0.5">
+                      <span>Gender</span>
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setModelGender("male")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                          modelGender === "male"
+                            ? "bg-rose-400 text-white"
+                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        M
+                      </button>
+                      <button
+                        onClick={() => setModelGender("female")}
+                        className={`flex-1 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors ${
+                          modelGender === "female"
+                            ? "bg-rose-400 text-white"
+                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                        }`}
+                      >
+                        F
+                      </button>
+                    </div>
+                  </div>
+                  {/* Height Slider */}
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
+                      <span>Height</span>
+                      <span>{Math.floor(modelHeight / 12)}'{modelHeight % 12}"</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="54"
+                      max="78"
+                      value={modelHeight}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setModelHeight(val);
+                      }}
+                      onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                    />
+                  </div>
+                  {/* Weight Slider */}
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
+                      <span>Weight</span>
+                      <span>{modelWeight} lbs</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="90"
+                      max="280"
+                      step="5"
+                      value={modelWeight}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setModelWeight(val);
+                      }}
+                      onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="w-full h-2 bg-zinc-200 rounded-lg appearance-none cursor-pointer dark:bg-zinc-700 accent-rose-400"
+                    />
+                  </div>
+                  {/* Skin Tone Slider */}
+                  <div>
+                    <div className="flex justify-between text-xs text-zinc-600 dark:text-zinc-400">
+                      <span>Skin Tone</span>
+                      <span>{modelSkinTone < 20 ? "Fair" : modelSkinTone < 40 ? "Light" : modelSkinTone < 60 ? "Medium" : modelSkinTone < 80 ? "Tan" : "Deep"}</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      value={modelSkinTone}
+                      onChange={(e) => {
+                        const val = Number(e.target.value);
+                        setModelSkinTone(val);
+                      }}
+                      onMouseUp={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      onTouchEnd={() => saveModelPrefs(modelHeight, modelWeight, modelSkinTone)}
+                      className="w-full h-2 rounded-lg appearance-none cursor-pointer accent-rose-400"
+                      style={{ background: "linear-gradient(to right, #fde8dc, #c68642, #5c3d2e)" }}
+                    />
+                  </div>
+                  {/* Other Details */}
+                  <div>
+                    <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-0.5">
+                      Other Details (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={otherDetails}
+                      onChange={(e) => setOtherDetails(e.target.value)}
+                      placeholder="e.g., cuffed pants, shirt tucked in"
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* My Photo Mode */}
               {modelMode === "user" && showPhotoManager && (
-                <div className="mt-3">
+                <div className="mt-3 space-y-2">
                   <PhotoManager clerkId={clerkId} onSelectPhoto={handleSelectPhoto} selectedPhotoId={selectedPhotoId} />
+                  {/* Other Details */}
+                  <div>
+                    <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-0.5">
+                      Other Details (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={otherDetails}
+                      onChange={(e) => setOtherDetails(e.target.value)}
+                      placeholder="e.g., cuffed pants, shirt tucked in"
+                      className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                    />
+                  </div>
                 </div>
               )}
-
-              {/* Other Details Input */}
-              <div className="mt-3">
-                <label className="block text-xs text-zinc-600 dark:text-zinc-400 mb-0.5">
-                  Other Details (optional)
-                </label>
-                <input
-                  type="text"
-                  value={otherDetails}
-                  onChange={(e) => setOtherDetails(e.target.value)}
-                  placeholder="e.g., cuffed pants, shirt tucked in"
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-1.5 text-sm text-zinc-900 placeholder-zinc-400 focus:border-rose-400 focus:outline-none focus:ring-1 focus:ring-rose-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
-                />
-              </div>
             </div>
           </div>
 
@@ -1407,10 +1481,10 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
           <div className="flex-shrink-0 border-t border-zinc-200 p-4 dark:border-zinc-800">
             <button
               onClick={handleGenerate}
-              disabled={selectedByCategory.size === 0 || isGenerating}
+              disabled={selectedByCategory.size === 0 || isGenerating || ((modelMode === "custom" || modelMode === "user") && !isPaidUser)}
               className="w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white transition-colors hover:bg-rose-500 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {isGenerating ? "Generating..." : `Generate Outfit (${selectedByCategory.size} item${selectedByCategory.size !== 1 ? "s" : ""})`}
+              {(modelMode === "custom" || modelMode === "user") && !isPaidUser ? "Upgrade to Pro" : isGenerating ? "Generating..." : `Generate Outfit (${selectedByCategory.size} item${selectedByCategory.size !== 1 ? "s" : ""})`}
             </button>
           </div>
         </div>
