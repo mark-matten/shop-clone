@@ -1677,18 +1677,23 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       {/* Item Details Modal */}
       {detailsItem && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
           onClick={(e) => {
             e.stopPropagation();
             setDetailsItem(null);
           }}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[85vh] overflow-y-auto"
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center py-2 bg-white dark:bg-zinc-900 sticky top-0 z-10">
+              <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
+
             {/* Image */}
-            <div className="relative aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
+            <div className="relative aspect-square sm:aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
               {detailsItem.displayImageUrl ? (
                 <img
                   src={detailsItem.displayImageUrl}
@@ -1705,7 +1710,7 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
               {/* Close button */}
               <button
                 onClick={() => setDetailsItem(null)}
-                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+                className="absolute right-3 top-3 rounded-full bg-black/50 p-2.5 text-white hover:bg-black/70 active:bg-black/80 transition-colors"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -1782,10 +1787,10 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
               {/* Link to product page - show for items that aren't generated (source !== "generated") */}
               {detailsItem.source !== "generated" && detailsItem.linkedProductId && (
                 <a
-                  href={`/product/${detailsItem.linkedProductId}`}
+                  href={`/product/${detailsItem.linkedProductId}?from=closet-popup`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

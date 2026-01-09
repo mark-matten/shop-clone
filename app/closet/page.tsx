@@ -1924,13 +1924,17 @@ export default function ClosetPage() {
       {/* Saved Outfits Modal */}
       {showSavedOutfitsModal && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
           onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); }}
         >
           <div
-            className="w-full max-w-2xl rounded-2xl bg-white p-4 sm:p-6 dark:bg-zinc-900 max-h-[85vh] overflow-hidden flex flex-col"
+            className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl bg-white p-3 sm:p-4 sm:p-6 dark:bg-zinc-900 max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center pb-2 -mt-1">
+              <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
             <div className="flex items-center justify-between mb-4">
               {selectedOutfit ? (
                 <button
@@ -2078,12 +2082,12 @@ export default function ClosetPage() {
                     </div>
                   ) : null}
 
-                  {/* Outfit image and items side by side */}
+                  {/* Outfit image and items side by side (stacked on mobile) */}
                   {!isEditingOutfit && (
-                    <div className="flex gap-4">
-                      {/* Left: Outfit image */}
-                      <div className="w-1/2 flex-shrink-0">
-                        <div className="aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
+                    <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+                      {/* Left/Top: Outfit image */}
+                      <div className="w-full sm:w-1/2 flex-shrink-0">
+                        <div className="aspect-square sm:aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800 max-h-[200px] sm:max-h-none mx-auto sm:mx-0 w-fit sm:w-full">
                           {selectedOutfit.url ? (
                             <img
                               src={selectedOutfit.url}
@@ -2099,8 +2103,8 @@ export default function ClosetPage() {
                           )}
                         </div>
                       </div>
-                      {/* Right: Items list */}
-                      <div className="w-1/2 space-y-2 overflow-y-auto max-h-[400px]">
+                      {/* Right/Bottom: Items list */}
+                      <div className="w-full sm:w-1/2 space-y-2 overflow-y-auto max-h-[200px] sm:max-h-[400px]">
                         <h5 className="text-sm font-medium text-zinc-700 dark:text-zinc-300 sticky top-0 bg-white dark:bg-zinc-900 py-1">
                           Items Used ({selectedOutfit.items?.length || 0})
                         </h5>
@@ -2270,13 +2274,13 @@ export default function ClosetPage() {
                 <div className="space-y-4">
                   {/* Collection filter tabs */}
                   {collections && collections.length > 0 && (
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap scrollbar-hide">
                       <button
                         onClick={() => setOutfitCollectionFilter(null)}
-                        className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                        className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                           outfitCollectionFilter === null
                             ? "bg-rose-400 text-white"
-                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                            : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                         }`}
                       >
                         All
@@ -2285,10 +2289,10 @@ export default function ClosetPage() {
                         <button
                           key={col._id}
                           onClick={() => setOutfitCollectionFilter(col._id)}
-                          className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                          className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                             outfitCollectionFilter === col._id
                               ? "bg-rose-400 text-white"
-                              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                              : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 active:bg-zinc-300 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
                           }`}
                         >
                           {col.name}
@@ -2305,14 +2309,14 @@ export default function ClosetPage() {
                       </p>
                     </div>
                   ) : (
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3">
                     {savedOutfits
                       .filter((outfit) => outfitCollectionFilter === null || (outfit as any).collectionId === outfitCollectionFilter)
                       .map((outfit) => (
                       <div
                         key={outfit._id}
                         onClick={() => setSelectedOutfit(outfit)}
-                        className="group relative aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800 cursor-pointer hover:ring-2 hover:ring-rose-400 transition-all"
+                        className="group relative aspect-[3/4] overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800 cursor-pointer hover:ring-2 hover:ring-rose-400 active:scale-[0.98] transition-all"
                       >
                         {outfit.url ? (
                           <img
@@ -2355,15 +2359,20 @@ export default function ClosetPage() {
       {/* Item Details Modal */}
       {detailsItem && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
           onClick={() => setDetailsItem(null)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[85vh] overflow-y-auto"
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center py-2 bg-white dark:bg-zinc-900 sticky top-0 z-10">
+              <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
+
             {/* Image */}
-            <div className="relative aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
+            <div className="relative aspect-square sm:aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
               {detailsItem.product.imageUrl ? (
                 <img
                   src={detailsItem.product.imageUrl}
@@ -2380,14 +2389,14 @@ export default function ClosetPage() {
               {/* Close button */}
               <button
                 onClick={() => setDetailsItem(null)}
-                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+                className="absolute right-3 top-3 rounded-full bg-black/50 p-2.5 text-white hover:bg-black/70 active:bg-black/80 transition-colors"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
               {/* Owned/Wishlist badge */}
-              <div className="absolute left-3 top-3 rounded-full bg-white/90 dark:bg-zinc-900/90 px-2 py-1 flex items-center gap-1 shadow-sm">
+              <div className="absolute left-3 top-3 rounded-full bg-white/90 dark:bg-zinc-900/90 px-2.5 py-1.5 flex items-center gap-1 shadow-sm">
                 {detailsItem.isOwned ? (
                   <>
                     <svg className="h-4 w-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
@@ -2421,7 +2430,7 @@ export default function ClosetPage() {
               )}
 
               {/* Details Grid */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
                 {(detailsItem.customCategory || detailsItem.product.category) && (
                   <div>
                     <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Category</p>
@@ -2460,7 +2469,7 @@ export default function ClosetPage() {
                   href={`/product/${detailsItem.product._id}?from=closet-popup`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-2 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
                 >
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />

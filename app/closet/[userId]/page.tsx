@@ -115,12 +115,12 @@ export default function PublicClosetPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <main className="mx-auto max-w-7xl px-3 sm:px-6 lg:px-8 py-4 sm:py-8">
         {/* Back to outfit link */}
         {fromOutfitId && (
           <Link
             href={`/outfit/${fromOutfitId}`}
-            className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white mb-6"
+            className="inline-flex items-center gap-1 text-sm text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white mb-4 sm:mb-6 py-1"
           >
             <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -130,51 +130,53 @@ export default function PublicClosetPage() {
         )}
 
         {/* Header */}
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-zinc-900 dark:text-white mb-2">
+        <div className="text-center mb-4 sm:mb-8">
+          <h1 className="text-xl sm:text-3xl font-bold text-zinc-900 dark:text-white mb-1 sm:mb-2">
             {userName ? `${userName}'s Virtual Closet` : "Virtual Closet"}
           </h1>
-          <p className="text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400">
             {totalItems} item{totalItems !== 1 ? "s" : ""} in this closet
           </p>
         </div>
 
-        {/* Category Filter */}
-        <div className="flex flex-wrap gap-2 justify-center mb-8">
-          <button
-            onClick={() => setSelectedCategory(null)}
-            className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-              selectedCategory === null
-                ? "bg-rose-400 text-white"
-                : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
-            }`}
-          >
-            All ({totalItems})
-          </button>
-          {(orderedCategories || []).map((cat: { id: string; label: string; count: number }) => (
+        {/* Category Filter - Horizontal scroll on mobile */}
+        <div className="mb-4 sm:mb-8 -mx-3 sm:mx-0 px-3 sm:px-0">
+          <div className="flex sm:flex-wrap gap-2 sm:justify-center overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
             <button
-              key={cat.id}
-              onClick={() => setSelectedCategory(cat.id)}
-              className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                selectedCategory === cat.id
+              onClick={() => setSelectedCategory(null)}
+              className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                selectedCategory === null
                   ? "bg-rose-400 text-white"
                   : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
               }`}
             >
-              {cat.label} ({cat.count})
+              All ({totalItems})
             </button>
-          ))}
+            {(orderedCategories || []).map((cat: { id: string; label: string; count: number }) => (
+              <button
+                key={cat.id}
+                onClick={() => setSelectedCategory(cat.id)}
+                className={`flex-shrink-0 px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition-colors ${
+                  selectedCategory === cat.id
+                    ? "bg-rose-400 text-white"
+                    : "bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                }`}
+              >
+                {cat.label} ({cat.count})
+              </button>
+            ))}
+          </div>
         </div>
 
         {/* Items Grid */}
         {displayItems.length === 0 ? (
-          <div className="text-center py-16">
+          <div className="text-center py-12 sm:py-16">
             <p className="text-zinc-500 dark:text-zinc-400">
               No items in this category
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 sm:gap-4">
             {displayItems.map((item: any) => (
               <div
                 key={item._id}
@@ -189,7 +191,7 @@ export default function PublicClosetPage() {
                   size: item.size,
                   productId: item.productId?.toString(),
                 })}
-                className="bg-white dark:bg-zinc-900 rounded-xl shadow-sm overflow-hidden hover:shadow-md transition-shadow cursor-pointer"
+                className="bg-white dark:bg-zinc-900 rounded-lg sm:rounded-xl shadow-sm overflow-hidden hover:shadow-md active:scale-[0.98] transition-all cursor-pointer"
               >
                 <div className="relative aspect-square bg-zinc-100 dark:bg-zinc-800">
                   {item.imageUrl ? (
@@ -201,21 +203,21 @@ export default function PublicClosetPage() {
                       unoptimized
                     />
                   ) : (
-                    <div className="flex items-center justify-center h-full text-zinc-400 text-sm">
+                    <div className="flex items-center justify-center h-full text-zinc-400 text-xs sm:text-sm">
                       No image
                     </div>
                   )}
                 </div>
-                <div className="p-3">
-                  <p className="text-sm font-medium text-zinc-900 dark:text-white truncate">
+                <div className="p-2 sm:p-3">
+                  <p className="text-xs sm:text-sm font-medium text-zinc-900 dark:text-white truncate">
                     {item.name}
                   </p>
                   {item.brand && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate">
+                    <p className="text-[10px] sm:text-xs text-zinc-500 dark:text-zinc-400 truncate">
                       {item.brand}
                     </p>
                   )}
-                  <p className="text-xs text-rose-400 mt-1">
+                  <p className="text-[10px] sm:text-xs text-rose-400 mt-0.5 sm:mt-1">
                     {item.categoryLabel}
                   </p>
                 </div>
@@ -225,16 +227,16 @@ export default function PublicClosetPage() {
         )}
 
         {/* Sign Up CTA */}
-        <div className="mt-16 bg-gradient-to-r from-rose-400 to-rose-500 rounded-2xl shadow-lg p-8 text-center">
-          <h2 className="text-2xl font-semibold text-white mb-2">
+        <div className="mt-8 sm:mt-16 bg-gradient-to-r from-rose-400 to-rose-500 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-8 text-center">
+          <h2 className="text-lg sm:text-2xl font-semibold text-white mb-1 sm:mb-2">
             Create Your Own Closet
           </h2>
-          <p className="text-rose-100 mb-6 max-w-md mx-auto">
+          <p className="text-rose-100 text-sm sm:text-base mb-4 sm:mb-6 max-w-md mx-auto">
             Track your wardrobe, try on outfits virtually, and share your style with friends
           </p>
           <Link
             href="/sign-in"
-            className="inline-block rounded-lg bg-white px-8 py-3 font-medium text-rose-500 hover:bg-rose-50 transition-colors"
+            className="inline-block rounded-lg bg-white px-6 sm:px-8 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-rose-500 hover:bg-rose-50 active:bg-rose-100 transition-colors"
           >
             Get Started Free
           </Link>
@@ -257,15 +259,20 @@ export default function PublicClosetPage() {
       {/* Item Details Modal */}
       {detailsItem && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
           onClick={() => setDetailsItem(null)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[85vh] overflow-y-auto"
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center py-2 bg-white dark:bg-zinc-900 sticky top-0 z-10">
+              <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
+
             {/* Image */}
-            <div className="relative aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
+            <div className="relative aspect-square sm:aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
               {detailsItem.imageUrl ? (
                 <img
                   src={detailsItem.imageUrl}
@@ -282,7 +289,7 @@ export default function PublicClosetPage() {
               {/* Close button */}
               <button
                 onClick={() => setDetailsItem(null)}
-                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+                className="absolute right-3 top-3 rounded-full bg-black/50 p-2.5 text-white hover:bg-black/70 active:bg-black/80 transition-colors"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -305,7 +312,7 @@ export default function PublicClosetPage() {
               )}
 
               {/* Details Grid */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
                 {detailsItem.category && (
                   <div>
                     <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Category</p>
@@ -344,7 +351,7 @@ export default function PublicClosetPage() {
                   href={`/product/${detailsItem.productId}?from=closet-popup`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
                 >
                   View Product Details
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

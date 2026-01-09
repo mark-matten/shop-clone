@@ -105,10 +105,10 @@ export default function PublicOutfitPage() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8 py-6">
+      <main className="mx-auto max-w-5xl px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
         {/* Title and Attribution */}
-        <div className="mb-4">
-          <h1 className="text-xl font-semibold text-zinc-900 dark:text-white">
+        <div className="mb-3 sm:mb-4">
+          <h1 className="text-lg sm:text-xl font-semibold text-zinc-900 dark:text-white">
             {outfit.name || "Outfit"}
           </h1>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">
@@ -123,7 +123,7 @@ export default function PublicOutfitPage() {
         </div>
 
         {/* Main Content: Image Left, Items Right */}
-        <div className="bg-white dark:bg-zinc-900 rounded-2xl shadow-lg overflow-hidden">
+        <div className="bg-white dark:bg-zinc-900 rounded-xl sm:rounded-2xl shadow-lg overflow-hidden">
           <div className="flex flex-col md:flex-row">
             {/* Left: Outfit Image */}
             <div className="md:w-1/2 flex-shrink-0">
@@ -145,13 +145,13 @@ export default function PublicOutfitPage() {
             </div>
 
             {/* Right: Items List */}
-            <div className="md:w-1/2 p-4 md:p-6 overflow-y-auto max-h-[600px]">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+            <div className="md:w-1/2 p-3 sm:p-4 md:p-6 overflow-y-auto max-h-[50vh] md:max-h-[600px]">
+              <h2 className="text-base sm:text-lg font-semibold text-zinc-900 dark:text-white mb-3 sm:mb-4 sticky top-0 bg-white dark:bg-zinc-900 py-1 -mt-1">
                 Items in this outfit ({outfit.items?.length || 0})
               </h2>
 
               {outfit.items && outfit.items.length > 0 ? (
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {outfit.items.map((item: any) => (
                     <div
                       key={item._id}
@@ -171,30 +171,30 @@ export default function PublicOutfitPage() {
                         source: item.productId ? "product" : "generated",
                         linkedProductId: item.productId,
                       })}
-                      className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-3 dark:border-zinc-700 dark:bg-zinc-800 cursor-pointer hover:border-rose-400 transition-colors"
+                      className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 sm:p-3 dark:border-zinc-700 dark:bg-zinc-800 cursor-pointer hover:border-rose-400 active:bg-zinc-100 dark:active:bg-zinc-700 transition-colors"
                     >
-                      <div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
+                      <div className="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
                         {item.imageUrl ? (
                           <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-zinc-400">
-                            <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
                           </div>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="font-medium text-zinc-900 dark:text-white truncate">
+                        <p className="text-sm sm:text-base font-medium text-zinc-900 dark:text-white truncate">
                           {item.name}
                         </p>
                         {item.brand && (
-                          <p className="text-sm text-zinc-500 dark:text-zinc-400 truncate">
+                          <p className="text-xs sm:text-sm text-zinc-500 dark:text-zinc-400 truncate">
                             {item.brand}
                           </p>
                         )}
                         {item.price && (
-                          <p className="text-sm font-semibold text-rose-500 mt-0.5">
+                          <p className="text-xs sm:text-sm font-semibold text-rose-500 mt-0.5">
                             ${item.price.toFixed(2)}
                           </p>
                         )}
@@ -215,29 +215,29 @@ export default function PublicOutfitPage() {
         </div>
 
         {/* View Full Closet CTA */}
-        <div className="mt-6 bg-gradient-to-r from-rose-400 to-rose-500 rounded-2xl shadow-lg p-6 text-center">
-          <h2 className="text-xl font-semibold text-white mb-2">
+        <div className="mt-4 sm:mt-6 bg-gradient-to-r from-rose-400 to-rose-500 rounded-xl sm:rounded-2xl shadow-lg p-4 sm:p-6 text-center">
+          <h2 className="text-lg sm:text-xl font-semibold text-white mb-1 sm:mb-2">
             Like this style?
           </h2>
-          <p className="text-rose-100 mb-4">
+          <p className="text-rose-100 text-sm sm:text-base mb-3 sm:mb-4">
             View more outfits and items from this closet
           </p>
           <Link
             href={`/closet/${user.clerkId}?fromOutfit=${outfitId}&outfitName=${encodeURIComponent(outfit.name || "Outfit")}`}
-            className="inline-block rounded-lg bg-white px-6 py-3 font-medium text-rose-500 hover:bg-rose-50 transition-colors"
+            className="inline-block rounded-lg bg-white px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-rose-500 hover:bg-rose-50 active:bg-rose-100 transition-colors"
           >
             View {userName}&apos;s Full Closet
           </Link>
         </div>
 
         {/* Sign Up CTA */}
-        <div className="mt-6 text-center">
-          <p className="text-zinc-600 dark:text-zinc-400 mb-4">
+        <div className="mt-4 sm:mt-6 text-center">
+          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400 mb-3 sm:mb-4">
             Create your own virtual closet and try on outfits
           </p>
           <Link
             href="/sign-in"
-            className="inline-block rounded-lg border-2 border-rose-400 px-6 py-3 font-medium text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/20 transition-colors"
+            className="inline-block rounded-lg border-2 border-rose-400 px-5 sm:px-6 py-2.5 sm:py-3 text-sm sm:text-base font-medium text-rose-500 hover:bg-rose-50 active:bg-rose-100 dark:hover:bg-rose-950/20 transition-colors"
           >
             Get Started Free
           </Link>
@@ -260,15 +260,20 @@ export default function PublicOutfitPage() {
       {/* Item Details Modal */}
       {detailsItem && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
           onClick={() => setDetailsItem(null)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[85vh] overflow-y-auto"
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center py-2 bg-white dark:bg-zinc-900 sticky top-0 z-10">
+              <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
+
             {/* Image */}
-            <div className="relative aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
+            <div className="relative aspect-square sm:aspect-[4/3] bg-zinc-100 dark:bg-zinc-800">
               {detailsItem.product.imageUrl ? (
                 <img
                   src={detailsItem.product.imageUrl}
@@ -285,7 +290,7 @@ export default function PublicOutfitPage() {
               {/* Close button */}
               <button
                 onClick={() => setDetailsItem(null)}
-                className="absolute right-3 top-3 rounded-full bg-black/50 p-2 text-white hover:bg-black/70 transition-colors"
+                className="absolute right-3 top-3 rounded-full bg-black/50 p-2.5 text-white hover:bg-black/70 active:bg-black/80 transition-colors"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -308,7 +313,7 @@ export default function PublicOutfitPage() {
               )}
 
               {/* Details Grid */}
-              <div className="grid grid-cols-2 gap-2 mb-4">
+              <div className="grid grid-cols-2 gap-x-4 gap-y-2 mb-4">
                 {detailsItem.product.category && (
                   <div>
                     <p className="text-xs text-zinc-400 dark:text-zinc-500 uppercase tracking-wide">Category</p>
@@ -347,7 +352,7 @@ export default function PublicOutfitPage() {
                   href={`/product/${detailsItem.linkedProductId}?from=outfit`}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-2.5 text-sm font-medium text-white hover:bg-rose-500 transition-colors"
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-rose-400 px-4 py-3 text-sm font-medium text-white hover:bg-rose-500 active:bg-rose-600 transition-colors"
                 >
                   View Product Details
                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
