@@ -1009,6 +1009,66 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
                 {isGenerating ? "Generating..." : selectedByCategory.size > 0 ? `Generate Outfit (${selectedByCategory.size})` : "Select items to try on"}
               </button>
             </div>
+
+            {/* Recent Outfits - Mobile */}
+            {outfitHistory && outfitHistory.length > 0 && (
+              <div className="px-3 py-2 border-t border-zinc-200 dark:border-zinc-700">
+                <button
+                  onClick={() => setShowOutfitHistory(!showOutfitHistory)}
+                  className="flex items-center justify-between w-full text-sm font-medium text-zinc-700 dark:text-zinc-300"
+                >
+                  <span>Recent Outfits ({outfitHistory.length})</span>
+                  <svg
+                    className={`h-4 w-4 transition-transform ${showOutfitHistory ? "rotate-180" : ""}`}
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {showOutfitHistory && (
+                  <div className="flex gap-2 overflow-x-auto py-2 mt-2">
+                    {(outfitHistory as OutfitHistoryItem[]).map((outfit) => (
+                      <div
+                        key={outfit._id}
+                        onClick={() => {
+                          if (outfit.url) {
+                            setGeneratedOutfit(outfit.url);
+                            setSelectedOutfitId(outfit._id);
+                            setSavedOutfitId(outfit.name ? outfit._id : null);
+                          }
+                        }}
+                        className="relative flex-shrink-0 cursor-pointer"
+                      >
+                        {outfit.url ? (
+                          <div className="relative">
+                            <img
+                              src={outfit.url}
+                              alt={outfit.name || "Saved outfit"}
+                              className={`h-14 w-14 rounded-lg object-cover ${selectedOutfitId === outfit._id ? "ring-2 ring-rose-400" : ""}`}
+                            />
+                            {outfit.name && (
+                              <div className="absolute -bottom-1 left-0 right-0 text-center">
+                                <span className="inline-block max-w-[56px] truncate rounded bg-black/60 px-1 text-[8px] text-white">
+                                  {outfit.name}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        ) : (
+                          <div className="flex h-14 w-14 items-center justify-center rounded-lg bg-zinc-200 dark:bg-zinc-700">
+                            <svg className="h-5 w-5 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                            </svg>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
 
@@ -1573,13 +1633,17 @@ export function TryOnModal({ isOpen, onClose, clerkId }: TryOnModalProps) {
       {/* Save Outfit Modal */}
       {showSaveModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/50 p-4"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
           onClick={() => setShowSaveModal(false)}
         >
           <div
-            className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-zinc-900"
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-zinc-900 max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center pb-3 -mt-1">
+              <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
             <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
               Save Outfit
             </h3>
