@@ -1059,6 +1059,35 @@ export const filterProductsInternal = internalQuery({
       "realreal": "TheRealReal",
     };
 
+    // Brand names mapped to normalized brand values (for search detection)
+    const BRAND_NAMES: Record<string, string[]> = {
+      "jcrew": ["J.Crew", "J. Crew"],
+      "j.crew": ["J.Crew", "J. Crew"],
+      "j crew": ["J.Crew", "J. Crew"],
+      "everlane": ["Everlane"],
+      "nike": ["Nike"],
+      "adidas": ["Adidas"],
+      "gucci": ["Gucci"],
+      "prada": ["Prada"],
+      "zara": ["Zara"],
+      "h&m": ["H&M"],
+      "hm": ["H&M"],
+      "uniqlo": ["Uniqlo"],
+      "gap": ["Gap", "GAP"],
+      "levis": ["Levi's", "Levis"],
+      "levi's": ["Levi's", "Levis"],
+      "madewell": ["Madewell"],
+      "reformation": ["Reformation"],
+      "aritzia": ["Aritzia"],
+      "anthropologie": ["Anthropologie"],
+      "free people": ["Free People"],
+      "freepeople": ["Free People"],
+      "allbirds": ["Allbirds"],
+      "patagonia": ["Patagonia"],
+      "north face": ["The North Face", "North Face"],
+      "northface": ["The North Face", "North Face"],
+    };
+
     // Parse query to extract color words and category words separately
     const queryLower = (args.query || "").toLowerCase();
     const queryTokens = queryLower.split(/\s+/).filter(w => w.length > 1);
@@ -1072,15 +1101,28 @@ export const filterProductsInternal = internalQuery({
       }
     }
 
+    // Detect brand in the query
+    let detectedBrandVariants: string[] | null = null;
+    for (const [key, variants] of Object.entries(BRAND_NAMES)) {
+      if (queryLower.includes(key)) {
+        detectedBrandVariants = variants;
+        break;
+      }
+    }
+
     // Marketplace keywords to exclude from text matching
     const marketplaceWords = ["poshmark", "ebay", "depop", "therealreal", "realreal"];
 
-    // Get query words for name matching (exclude gender, color, and marketplace words)
+    // Brand keywords to exclude from text matching when brand filter is active
+    const brandWords = Object.keys(BRAND_NAMES);
+
+    // Get query words for name matching (exclude gender, color, marketplace, and brand words)
     // This allows product names like "The Glove Mule" to match when searching "glove mule"
     const nameMatchWords = queryTokens.filter(token =>
       !genderWords.includes(token) &&
       !ALL_COLOR_WORDS.has(token) &&
-      !marketplaceWords.includes(token)
+      !marketplaceWords.includes(token) &&
+      !brandWords.includes(token)
     );
 
     // Detect color words in the query
@@ -1115,6 +1157,17 @@ export const filterProductsInternal = internalQuery({
         if (detectedMarketplace) {
           if (product.sourcePlatform !== detectedMarketplace) {
             return null;  // Product is not from the searched marketplace
+          }
+        }
+
+        // BRAND FILTER: If user searched for a brand, only show products from that brand
+        if (detectedBrandVariants) {
+          const productBrand = product.brand.toLowerCase();
+          const matchesBrand = detectedBrandVariants.some(variant =>
+            productBrand.includes(variant.toLowerCase()) || variant.toLowerCase().includes(productBrand)
+          );
+          if (!matchesBrand) {
+            return null;  // Product is not from the searched brand
           }
         }
 
