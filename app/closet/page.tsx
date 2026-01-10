@@ -701,10 +701,18 @@ export default function ClosetPage() {
   const [newlyAddedItemId, setNewlyAddedItemId] = useState<string | null>(null);
   const pendingScrollPosition = useRef<number | null>(null);
   const hasRestoredScroll = useRef(false);
+  const highlightAttempted = useRef(false);
 
-  // Restore scroll position on mount
+  // Restore scroll position on mount (skip if highlighting an item)
   useEffect(() => {
     if (hasRestoredScroll.current) return;
+
+    // Don't restore scroll if we're highlighting an item - let the highlight effect handle scrolling
+    const highlightId = searchParams.get("highlight");
+    if (highlightId) {
+      hasRestoredScroll.current = true;
+      return;
+    }
 
     try {
       const saved = sessionStorage.getItem(CLOSET_STATE_KEY);
@@ -731,7 +739,7 @@ export default function ClosetPage() {
       // Ignore errors
     }
     hasRestoredScroll.current = true;
-  }, []);
+  }, [searchParams]);
 
   // Save scroll position on scroll (debounced)
   useEffect(() => {
@@ -984,6 +992,56 @@ export default function ClosetPage() {
       }
     }
   }, [newlyAddedItemId, combinedItems]);
+
+  // Handle highlight URL parameter (from product detail page "View in Closet")
+  useEffect(() => {
+    const highlightId = searchParams.get("highlight");
+    if (!highlightId) {
+      highlightAttempted.current = false;
+      return;
+    }
+
+    // Reset filters to ensure the item is visible
+    if (typeFilter !== "all") setTypeFilter("all");
+    if (selectedCategory !== null) setSelectedCategory(null);
+
+    // Wait for combinedItems to have data
+    if (combinedItems.length === 0) return;
+
+    // Find the item by productId (compare as strings to handle Convex IDs)
+    const item = combinedItems.find(i => String(i.productId) === highlightId);
+
+    // If item not found yet, wait for data to update
+    if (!item) return;
+
+    // Only attempt highlight once per URL
+    if (highlightAttempted.current) return;
+    highlightAttempted.current = true;
+
+    // Use setTimeout to allow the filter reset to take effect and DOM to update
+    setTimeout(() => {
+      const elementId = item.closetItemId || String(item.productId);
+      const element = document.getElementById(`closet-item-${elementId}`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        // Add a highlight animation
+        element.classList.add("ring-2", "ring-moi-400", "ring-offset-2");
+        // Remove highlight after animation
+        setTimeout(() => {
+          element.classList.remove("ring-2", "ring-moi-400", "ring-offset-2");
+          // Clear the URL parameter without scrolling
+          const newUrl = new URL(window.location.href);
+          newUrl.searchParams.delete("highlight");
+          router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+        }, 2000);
+      } else {
+        // Element not found, clear URL without scrolling
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("highlight");
+        router.replace(newUrl.pathname + newUrl.search, { scroll: false });
+      }
+    }, 500); // Delay to allow DOM to update after filter reset
+  }, [searchParams, combinedItems, typeFilter, selectedCategory, router]);
 
   // Calculate stats
   const stats = useMemo(() => {

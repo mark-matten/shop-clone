@@ -191,6 +191,18 @@ export const saveOutfitImage = mutation({
       throw new Error("storageId, itemIds, and prompt are required for new outfits");
     }
 
+    // Generate default name if not provided
+    let outfitName = args.name;
+    if (!outfitName || outfitName.trim() === "") {
+      // Count existing outfits to generate the next number
+      const existingOutfits = await ctx.db
+        .query("outfit_images")
+        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+        .collect();
+      const outfitNumber = existingOutfits.length + 1;
+      outfitName = `Outfit #${outfitNumber}`;
+    }
+
     const outfitId = await ctx.db.insert("outfit_images", {
       clerkId: args.clerkId,
       storageId: args.storageId,
@@ -198,17 +210,15 @@ export const saveOutfitImage = mutation({
       userPhotoId: args.userPhotoId,
       generatedAt: Date.now(),
       prompt: args.prompt,
-      name: args.name,
+      name: outfitName,
       collectionId: args.collectionId,
     });
 
-    // Notify followers asynchronously (only for saved outfits with a name)
-    if (args.name) {
-      await ctx.scheduler.runAfter(0, internal.closet.notifyFollowersOfNewOutfit, {
-        clerkId: args.clerkId,
-        outfitName: args.name,
-      });
-    }
+    // Notify followers asynchronously
+    await ctx.scheduler.runAfter(0, internal.closet.notifyFollowersOfNewOutfit, {
+      clerkId: args.clerkId,
+      outfitName: outfitName,
+    });
 
     return outfitId;
   },

@@ -231,6 +231,8 @@ export default function ProductDetailPage() {
   const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
+  const [highlightViewInCloset, setHighlightViewInCloset] = useState(false);
+  const prevInClosetOrFavorited = useRef<boolean | null>(null);
 
   // Compute the view URL with variant ID when a size is selected
   const viewUrl = useMemo(() => {
@@ -504,6 +506,25 @@ export default function ProductDetailPage() {
       });
     }
   }, [product, productId, addViewed]);
+
+  // Highlight the "View in Closet" button when it first appears
+  useEffect(() => {
+    const isNowInClosetOrFavorited = isFavorited || isInCloset;
+
+    // Detect transition from false/undefined to true
+    if (isNowInClosetOrFavorited && prevInClosetOrFavorited.current === false) {
+      setHighlightViewInCloset(true);
+      // Remove highlight after 1.5 seconds
+      setTimeout(() => {
+        setHighlightViewInCloset(false);
+      }, 1500);
+    }
+
+    // Update the ref (only after initial load)
+    if (isFavorited !== undefined || isInCloset !== undefined) {
+      prevInClosetOrFavorited.current = isNowInClosetOrFavorited;
+    }
+  }, [isFavorited, isInCloset]);
 
   const handleTrack = async () => {
     if (!convexUser?._id) {
@@ -852,6 +873,40 @@ export default function ProductDetailPage() {
                 </svg>
                 {isInCloset ? "In My Closet" : "I Own This"}
               </button>
+
+              {/* View in Closet - shows when item is favorited or owned */}
+              {(isFavorited || isInCloset) && (
+                <Link
+                  href={`/closet?highlight=${productId}`}
+                  className={`flex items-center gap-2 rounded-xl border px-4 py-3 font-medium transition-all ${
+                    highlightViewInCloset
+                      ? "border-moi-400 bg-moi-50 text-moi-700 ring-2 ring-moi-400 ring-offset-2 dark:border-moi-500 dark:bg-moi-950 dark:text-moi-300"
+                      : "border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                  }`}
+                  title="View in My Closet"
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                    stroke="currentColor"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"
+                    />
+                  </svg>
+                  View in Closet
+                </Link>
+              )}
 
               {/* Track */}
               {isTracking ? (

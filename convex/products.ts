@@ -236,6 +236,33 @@ export const deleteProduct = mutation({
   },
 });
 
+// Fix Depop image URLs (P10 -> P0 for better quality)
+export const fixDepopImages = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect();
+    let updated = 0;
+
+    for (const product of products) {
+      if (product.sourcePlatform === "Depop" && product.imageUrl) {
+        let newUrl = product.imageUrl;
+        if (newUrl.includes("/P10.jpg")) {
+          newUrl = newUrl.replace("/P10.jpg", "/P0.jpg");
+        } else if (newUrl.includes("/P8.jpg")) {
+          newUrl = newUrl.replace("/P8.jpg", "/P0.jpg");
+        }
+
+        if (newUrl !== product.imageUrl) {
+          await ctx.db.patch(product._id, { imageUrl: newUrl });
+          updated++;
+        }
+      }
+    }
+
+    return { updated, total: products.length };
+  },
+});
+
 // Debug: Search products and show colorGroupId info
 export const debugColorGroups = query({
   args: { searchTerm: v.string() },

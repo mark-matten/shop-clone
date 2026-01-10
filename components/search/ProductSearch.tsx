@@ -293,6 +293,7 @@ export function ProductSearch() {
   const [sidebarFilters, setSidebarFilters] = useState<FilterState | null>(null);
   const [showMySizesOnly, setShowMySizesOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"relevance" | "price_low" | "price_high" | "newest">("relevance");
+  const [conditionFilter, setConditionFilter] = useState<"all" | "new" | "used">("all");
   const [displayCount, setDisplayCount] = useState(20);
   const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
   const [saveSearchName, setSaveSearchName] = useState("");
@@ -397,6 +398,19 @@ export function ProductSearch() {
     if (showMySizesOnly && convexUser?.preferences && products.length > 0) {
       const prefs = convexUser.preferences;
       filtered = filtered.filter((product) => {
+        const shopsWomen = prefs.shopsWomen ?? false;
+        const shopsMen = prefs.shopsMen ?? false;
+        const gender = product.gender;
+
+        // First, filter by gender preference
+        // If product has a specific gender, check if user shops that gender
+        if (gender === "women" && !shopsWomen) return false;
+        if (gender === "men" && !shopsMen) return false;
+        // For unisex or unknown gender, include if user shops either
+        if (!gender || gender === "unisex") {
+          if (!shopsWomen && !shopsMen) return false;
+        }
+
         // Get all available sizes for this product
         const allSizes: string[] = [];
 
@@ -417,11 +431,10 @@ export function ProductSearch() {
           }
         }
 
-        // If no size info at all, include the product
+        // If no size info at all, include the product (already passed gender filter)
         if (allSizes.length === 0) return true;
 
         const category = product.category.toLowerCase();
-        const gender = product.gender;
 
         // Helper function to check if ANY size matches
         const anySizeMatches = (minSize: string | undefined, maxSize: string | undefined, sizeScale: string[]): boolean => {
@@ -429,10 +442,6 @@ export function ProductSearch() {
           if (!minSize && !maxSize) return true;
           return allSizes.some(size => isSizeInRange(size, minSize, maxSize, sizeScale));
         };
-
-        // Determine which size preferences to use based on product gender/category
-        const shopsWomen = prefs.shopsWomen ?? false;
-        const shopsMen = prefs.shopsMen ?? false;
 
         // Check women's sizes if product is women's or unisex/unknown and user shops women's
         if ((gender === "women" || gender === "unisex" || !gender) && shopsWomen) {
@@ -523,8 +532,14 @@ export function ProductSearch() {
         if (filterToApply.gender === "women" && product.gender !== "women" && product.gender !== "unisex") return false;
       }
 
-      // Condition filter
+      // Condition filter from search parsing
       if (filterToApply.condition && product.condition !== filterToApply.condition) return false;
+
+      // Condition filter from UI dropdown
+      if (conditionFilter !== "all") {
+        if (conditionFilter === "new" && product.condition !== "new") return false;
+        if (conditionFilter === "used" && product.condition !== "used" && product.condition !== "like_new") return false;
+      }
 
       // Category filter with synonym expansion (also checks product name for specific types)
       if (filterToApply.category && !categoryMatches(product.category, filterToApply.category, product.name)) return false;
@@ -603,8 +618,8 @@ export function ProductSearch() {
     setDisplayCount(20); // Reset pagination
     setCurrentSearchQuery(query); // Track current query
 
-    // Scroll to top when search is triggered
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Scroll to top immediately when new search is triggered
+    window.scrollTo(0, 0);
 
     // Clear product navigation stack when starting a fresh search
     // This ensures clicking a product from search results starts a fresh chain
@@ -913,7 +928,7 @@ export function ProductSearch() {
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
               Found{" "}
               <span className="font-medium text-zinc-900 dark:text-white">
-                {getFilteredAndSortedProducts().length}
+                {getFilteredAndSortedProducts().length >= 500 ? "500+" : getFilteredAndSortedProducts().length}
               </span>{" "}
               {getFilteredAndSortedProducts().length === 1 ? "product" : "products"}
             </p>
@@ -932,6 +947,16 @@ export function ProductSearch() {
                 <span className="text-zinc-600 dark:text-zinc-400">My sizes only</span>
               </label>
             )}
+
+            <select
+              value={conditionFilter}
+              onChange={(e) => setConditionFilter(e.target.value as typeof conditionFilter)}
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+            >
+              <option value="all">Condition: All</option>
+              <option value="new">New</option>
+              <option value="used">Used</option>
+            </select>
 
             <select
               value={sortBy}

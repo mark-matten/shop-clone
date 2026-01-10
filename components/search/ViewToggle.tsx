@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 type ViewMode = "grid" | "list";
 
 interface ViewToggleProps {
@@ -247,12 +249,13 @@ export function ProductListItem({ product, isFavorited, onFavoriteClick }: Produ
                 </svg>
               </button>
             )}
-            <a
+            <Link
               href={`/product/${product._id}`}
+              scroll={true}
               className="rounded-lg bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-zinc-200"
             >
               View
-            </a>
+            </Link>
           </div>
         </div>
       </div>

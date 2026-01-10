@@ -10,11 +10,19 @@ crons.interval(
   internal.priceChecker.checkAllTrackedPrices
 );
 
-// Run scrapers every 6 hours to update inventory
+// Run legacy scrapers every 6 hours to update inventory
 crons.interval(
   "update inventory from scrapers",
   { hours: 6 },
   internal.scraper.runScrapers
+);
+
+// Run product scrapers daily to discover new products
+crons.daily(
+  "scrape brand catalogs and marketplaces",
+  { hourUTC: 6, minuteUTC: 0 }, // 6 AM UTC
+  internal.productScraper.runAllScrapers,
+  {} // empty args
 );
 
 export default crons;

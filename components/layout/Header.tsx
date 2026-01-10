@@ -106,20 +106,19 @@ export function Header() {
       return;
     }
 
-    // If we're on a product page, navigate to saved search context if it exists
-    if (isProductPage) {
-      const savedContext = sessionStorage.getItem(SEARCH_CONTEXT_KEY);
-      if (savedContext && savedContext !== "/" && savedContext.includes("?q=")) {
+    // If we're on any page other than search, try to restore saved search context
+    // This includes product pages, closet, profile, etc.
+    const savedContext = sessionStorage.getItem(SEARCH_CONTEXT_KEY);
+    if (savedContext && savedContext !== "/") {
+      // Restore if it's a search page (?q=) or a product page (/product/)
+      if (savedContext.includes("?q=") || savedContext.startsWith("/product/")) {
         e.preventDefault();
         router.push(savedContext);
         return;
       }
     }
 
-    // For all other pages (closet, profile, etc.), clear context and go to fresh homepage
-    sessionStorage.removeItem(SEARCH_CONTEXT_KEY);
-    sessionStorage.removeItem(SCROLL_POSITION_KEY);
-    // Let the Link navigate to "/" normally
+    // No saved context, let the Link navigate to "/" normally (fresh homepage)
   }, [pathname, searchParams, router]);
 
   return (

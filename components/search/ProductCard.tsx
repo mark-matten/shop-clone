@@ -255,7 +255,7 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
   return (
     <>
       <div className="group relative flex flex-col overflow-hidden rounded-xl border border-zinc-200 bg-white transition-all hover:border-zinc-300 hover:shadow-lg dark:border-zinc-800 dark:bg-zinc-900 dark:hover:border-zinc-700">
-        <Link href={`/product/${product._id}`} className="flex flex-1 flex-col">
+        <Link href={`/product/${product._id}`} scroll={true} className="flex flex-1 flex-col">
           <div className="relative aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
             {product.imageUrl ? (
               <LazyImage

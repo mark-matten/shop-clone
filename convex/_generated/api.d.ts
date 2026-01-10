@@ -22,6 +22,7 @@ import type * as migrations from "../migrations.js";
 import type * as notifications from "../notifications.js";
 import type * as priceChecker from "../priceChecker.js";
 import type * as priceFetcher from "../priceFetcher.js";
+import type * as productScraper from "../productScraper.js";
 import type * as products from "../products.js";
 import type * as recommendations from "../recommendations.js";
 import type * as referrals from "../referrals.js";
@@ -56,6 +57,7 @@ declare const fullApi: ApiFromModules<{
   notifications: typeof notifications;
   priceChecker: typeof priceChecker;
   priceFetcher: typeof priceFetcher;
+  productScraper: typeof productScraper;
   products: typeof products;
   recommendations: typeof recommendations;
   referrals: typeof referrals;

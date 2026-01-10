@@ -8,6 +8,8 @@ const isPublicRoute = createRouteMatcher([
   "/compare",
   "/favorites",
   "/api/webhooks(.*)",
+  "/api/scrape(.*)",   // Scraping API routes
+  "/api/import-scraped",  // Import scraped products
   "/outfit/(.*)",      // Public outfit sharing pages
   "/closet/(.*)",      // Public closet sharing pages (with userId)
 ]);

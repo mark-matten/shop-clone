@@ -415,7 +415,7 @@ export const searchProducts = action({
     totalResults: number;
     partialMatches?: any[];
   }> => {
-    const limit = args.limit ?? 100; // Fetch more products before grouping
+    const limit = args.limit ?? 500; // Fetch more products before grouping
 
     // Step 1: Parse search query with Claude
     const filter: SearchFilter = await ctx.runAction(internal.search.parseSearchQuery, {
@@ -1049,15 +1049,38 @@ export const filterProductsInternal = internalQuery({
     // Words that are handled by specific filters and shouldn't require text matching
     const genderWords = ["women", "womens", "women's", "men", "mens", "men's", "unisex"];
 
+    // Marketplace names mapped to sourcePlatform values
+    const MARKETPLACE_NAMES: Record<string, string> = {
+      "poshmark": "Poshmark",
+      "ebay": "eBay",
+      "depop": "Depop",
+      "therealreal": "TheRealReal",
+      "the realreal": "TheRealReal",
+      "realreal": "TheRealReal",
+    };
+
     // Parse query to extract color words and category words separately
     const queryLower = (args.query || "").toLowerCase();
     const queryTokens = queryLower.split(/\s+/).filter(w => w.length > 1);
 
-    // Get query words for name matching (exclude only gender and color words, keep category words)
+    // Detect marketplace in the query
+    let detectedMarketplace: string | null = null;
+    for (const [key, value] of Object.entries(MARKETPLACE_NAMES)) {
+      if (queryLower.includes(key)) {
+        detectedMarketplace = value;
+        break;
+      }
+    }
+
+    // Marketplace keywords to exclude from text matching
+    const marketplaceWords = ["poshmark", "ebay", "depop", "therealreal", "realreal"];
+
+    // Get query words for name matching (exclude gender, color, and marketplace words)
     // This allows product names like "The Glove Mule" to match when searching "glove mule"
     const nameMatchWords = queryTokens.filter(token =>
       !genderWords.includes(token) &&
-      !ALL_COLOR_WORDS.has(token)
+      !ALL_COLOR_WORDS.has(token) &&
+      !marketplaceWords.includes(token)
     );
 
     // Detect color words in the query
@@ -1087,6 +1110,13 @@ export const filterProductsInternal = internalQuery({
       .map((product) => {
         // Exclude gift cards from search results
         if (product.name.toLowerCase().includes('gift card')) return null;
+
+        // MARKETPLACE FILTER: If user searched for a marketplace, only show products from that marketplace
+        if (detectedMarketplace) {
+          if (product.sourcePlatform !== detectedMarketplace) {
+            return null;  // Product is not from the searched marketplace
+          }
+        }
 
         // Calculate name match score FIRST
         const nameScore = calculateNameMatchScore(product.name, nameMatchWords);
