@@ -178,8 +178,23 @@ export const saveOutfitImage = mutation({
     if (args.existingOutfitId) {
       const existing = await ctx.db.get(args.existingOutfitId);
       if (existing && existing.clerkId === args.clerkId) {
+        // Generate default name if not provided
+        let outfitName = args.name;
+        if (!outfitName || outfitName.trim() === "") {
+          // Keep existing name if it exists, otherwise generate new one
+          if (existing.name && existing.name.trim() !== "") {
+            outfitName = existing.name;
+          } else {
+            const existingOutfits = await ctx.db
+              .query("outfit_images")
+              .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+              .collect();
+            const outfitNumber = existingOutfits.length + 1;
+            outfitName = `Outfit #${outfitNumber}`;
+          }
+        }
         await ctx.db.patch(args.existingOutfitId, {
-          name: args.name,
+          name: outfitName,
           collectionId: args.collectionId,
         });
         return args.existingOutfitId;
