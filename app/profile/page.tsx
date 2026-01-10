@@ -8,6 +8,8 @@ import { useTheme } from "next-themes";
 import { api } from "@/convex/_generated/api";
 import { Header } from "@/components/layout";
 import { FollowersList } from "@/components/social/FollowersList";
+import { FollowingList } from "@/components/social/FollowingList";
+import { FindFriendsModal } from "@/components/social/FindFriendsModal";
 
 const sizeOptions = {
   women: {
@@ -174,6 +176,9 @@ export default function ProfilePage() {
   const [lastName, setLastName] = useState("");
   const [isNameSaving, setIsNameSaving] = useState(false);
   const [nameSaveMessage, setNameSaveMessage] = useState<string | null>(null);
+
+  // Social settings
+  const [showFindFriendsModal, setShowFindFriendsModal] = useState(false);
 
   // Update preferences when user data loads
   useEffect(() => {
@@ -814,6 +819,19 @@ export default function ProfilePage() {
           </div>
         </section>
 
+        {/* Following Section */}
+        {clerkUser?.id && (
+          <section className="mt-8">
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+              Following
+            </h2>
+            <FollowingList
+              clerkId={clerkUser.id}
+              onFindFriends={() => setShowFindFriendsModal(true)}
+            />
+          </section>
+        )}
+
         {/* Followers Section */}
         {clerkUser?.id && (
           <section className="mt-8">
@@ -858,6 +876,15 @@ export default function ProfilePage() {
           </div>
         </section>
       </main>
+
+      {/* Find Friends Modal */}
+      {clerkUser?.id && (
+        <FindFriendsModal
+          isOpen={showFindFriendsModal}
+          onClose={() => setShowFindFriendsModal(false)}
+          clerkId={clerkUser.id}
+        />
+      )}
     </div>
   );
 }

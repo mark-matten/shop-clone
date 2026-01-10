@@ -1,8 +1,10 @@
 "use client";
 
 import { useParams, useSearchParams } from "next/navigation";
-import { useQuery } from "convex/react";
+import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { Id } from "@/convex/_generated/dataModel";
+import { useUser } from "@clerk/nextjs";
 import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
@@ -23,8 +25,10 @@ export default function PublicClosetPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const userId = params.userId as string;
+  const { user: clerkUser, isLoaded: isUserLoaded } = useUser();
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [detailsItem, setDetailsItem] = useState<DetailsItem | null>(null);
+  const [isFollowActionLoading, setIsFollowActionLoading] = useState(false);
 
   // Check if we came from an outfit page
   const fromOutfitId = searchParams.get("fromOutfit");
@@ -34,6 +38,55 @@ export default function PublicClosetPage() {
     api.closet.getPublicCloset,
     userId ? { clerkId: userId } : "skip"
   );
+
+  // Get social counts for the closet owner
+  const socialCounts = useQuery(
+    api.social.getUserSocialCounts,
+    closetData && !("isPrivate" in closetData) && closetData.user?._id
+      ? { userId: closetData.user._id as Id<"users"> }
+      : "skip"
+  );
+
+  // Check if current viewer is following this user
+  const followStatus = useQuery(
+    api.social.getFollowStatusByUserId,
+    clerkUser?.id && closetData && !("isPrivate" in closetData) && closetData.user?._id
+      ? { viewerClerkId: clerkUser.id, targetUserId: closetData.user._id as Id<"users"> }
+      : "skip"
+  );
+
+  const followUser = useMutation(api.social.followUser);
+  const unfollowUser = useMutation(api.social.unfollowUser);
+
+  const handleFollow = async () => {
+    if (!clerkUser?.id || !closetData || "isPrivate" in closetData || !closetData.user?._id) return;
+    setIsFollowActionLoading(true);
+    try {
+      await followUser({
+        clerkId: clerkUser.id,
+        targetUserId: closetData.user._id as Id<"users">,
+      });
+    } catch (error) {
+      console.error("Failed to follow:", error);
+    } finally {
+      setIsFollowActionLoading(false);
+    }
+  };
+
+  const handleUnfollow = async () => {
+    if (!clerkUser?.id || !closetData || "isPrivate" in closetData || !closetData.user?._id) return;
+    setIsFollowActionLoading(true);
+    try {
+      await unfollowUser({
+        clerkId: clerkUser.id,
+        targetUserId: closetData.user._id as Id<"users">,
+      });
+    } catch (error) {
+      console.error("Failed to unfollow:", error);
+    } finally {
+      setIsFollowActionLoading(false);
+    }
+  };
 
   if (closetData === undefined) {
     return (
@@ -95,6 +148,9 @@ export default function PublicClosetPage() {
     ? byCategory[selectedCategory] || []
     : items;
 
+  // Check if this is the viewer's own closet
+  const isOwnCloset = clerkUser?.id === userId;
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-black">
       {/* Header */}
@@ -105,12 +161,21 @@ export default function PublicClosetPage() {
               <span style={{ color: '#942010' }}>ar</span>
               <span style={{ color: '#C2311D' }}>moi</span>
             </Link>
-            <Link
-              href="/sign-in"
-              className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500 transition-colors"
-            >
-              Sign Up Free
-            </Link>
+            {clerkUser ? (
+              <Link
+                href="/closet"
+                className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500 transition-colors"
+              >
+                My Closet
+              </Link>
+            ) : (
+              <Link
+                href="/sign-in"
+                className="rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500 transition-colors"
+              >
+                Sign Up Free
+              </Link>
+            )}
           </div>
         </div>
       </header>
@@ -129,14 +194,63 @@ export default function PublicClosetPage() {
           </Link>
         )}
 
-        {/* Header */}
+        {/* Profile Header */}
         <div className="text-center mb-4 sm:mb-8">
+          {/* Avatar */}
+          <div className="mx-auto mb-3 flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-full bg-gradient-to-br from-moi-400 to-moi-300 text-2xl sm:text-3xl font-semibold text-white">
+            {userName?.charAt(0).toUpperCase() || "?"}
+          </div>
+
           <h1 className="text-xl sm:text-3xl font-bold text-zinc-900 dark:text-white mb-1 sm:mb-2">
             {userName ? `${userName}'s Virtual Closet` : "Virtual Closet"}
           </h1>
-          <p className="text-sm sm:text-base text-zinc-600 dark:text-zinc-400">
-            {totalItems} item{totalItems !== 1 ? "s" : ""} in this closet
-          </p>
+
+          {/* Stats Row */}
+          <div className="flex items-center justify-center gap-4 sm:gap-6 text-sm sm:text-base text-zinc-600 dark:text-zinc-400 mb-3">
+            <span>
+              <span className="font-semibold text-zinc-900 dark:text-white">{totalItems}</span> item{totalItems !== 1 ? "s" : ""}
+            </span>
+            {socialCounts && (
+              <>
+                <span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">{socialCounts.followers}</span> follower{socialCounts.followers !== 1 ? "s" : ""}
+                </span>
+                <span>
+                  <span className="font-semibold text-zinc-900 dark:text-white">{socialCounts.following}</span> following
+                </span>
+              </>
+            )}
+          </div>
+
+          {/* Follow Button - only show for logged in users viewing someone else's closet */}
+          {clerkUser && user._id && !isOwnCloset && (
+            <div className="mt-2">
+              {followStatus?.isFollowing ? (
+                <button
+                  onClick={handleUnfollow}
+                  disabled={isFollowActionLoading}
+                  className="rounded-lg border border-zinc-300 dark:border-zinc-600 px-6 py-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors disabled:opacity-50"
+                >
+                  {isFollowActionLoading ? "..." : "Following"}
+                </button>
+              ) : followStatus?.hasPendingRequest ? (
+                <button
+                  disabled
+                  className="rounded-lg border border-moi-300 dark:border-moi-600 bg-moi-50 dark:bg-moi-900/30 px-6 py-2 text-sm font-medium text-moi-700 dark:text-moi-400"
+                >
+                  Requested
+                </button>
+              ) : (
+                <button
+                  onClick={handleFollow}
+                  disabled={isFollowActionLoading}
+                  className="rounded-lg bg-moi-400 px-6 py-2 text-sm font-medium text-white hover:bg-moi-500 transition-colors disabled:opacity-50"
+                >
+                  {isFollowActionLoading ? "..." : "Follow"}
+                </button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Category Filter - Horizontal scroll on mobile */}

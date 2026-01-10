@@ -11,6 +11,7 @@ import { Header } from "@/components/layout";
 import { useRecentlyViewed } from "@/components/search/RecentlyViewed";
 import { ImageCarousel } from "@/components/ui/ImageCarousel";
 import { VariantSelector } from "@/components/ui/VariantSelector";
+import { PriceHistoryChart } from "@/components/product/PriceHistoryChart";
 
 // Helper to get price from product
 function getProductPrice(product: { price?: number }): number {
@@ -54,6 +55,12 @@ export default function ProductDetailPage() {
   const trackedItems = useQuery(
     api.tracking.getTrackedItems,
     convexUser?._id ? { userId: convexUser._id } : "skip"
+  );
+
+  // Get price history for this product
+  const priceHistory = useQuery(
+    api.tracking.getPriceHistory,
+    productId ? { productId: productId as Id<"products"> } : "skip"
   );
 
   const trackProduct = useMutation(api.tracking.trackProduct);
@@ -219,6 +226,7 @@ export default function ProductDetailPage() {
 
   const [targetPrice, setTargetPrice] = useState("");
   const [showTrackingModal, setShowTrackingModal] = useState(false);
+  const [showPriceHistoryModal, setShowPriceHistoryModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
@@ -873,6 +881,19 @@ export default function ProductDetailPage() {
                 </button>
               )}
 
+              {/* Price History */}
+              {priceHistory && priceHistory.length > 1 && (
+                <button
+                  onClick={() => setShowPriceHistoryModal(true)}
+                  className="flex items-center gap-2 rounded-xl border border-zinc-300 px-4 py-3 font-medium text-zinc-700 transition-colors hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                >
+                  <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 12l3-3 3 3 4-4M8 21l4-4 4 4M3 4h18M4 4h16v12a1 1 0 01-1 1H5a1 1 0 01-1-1V4z" />
+                  </svg>
+                  Price History
+                </button>
+              )}
+
               {/* Copy Link */}
               <button
                 onClick={handleCopyLink}
@@ -1008,6 +1029,38 @@ export default function ProductDetailPage() {
                 {isSaving ? "Saving..." : "Start Tracking"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Price History Modal */}
+      {showPriceHistoryModal && priceHistory && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+          onClick={() => setShowPriceHistoryModal(false)}
+        >
+          <div
+            className="w-full max-w-lg rounded-2xl bg-white p-6 dark:bg-zinc-900"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                Price History
+              </h3>
+              <button
+                onClick={() => setShowPriceHistoryModal(false)}
+                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              >
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <PriceHistoryChart
+              priceHistory={priceHistory}
+              currentPrice={getProductPrice(product)}
+              targetPrice={trackedItem?.targetPrice}
+            />
           </div>
         </div>
       )}

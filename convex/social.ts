@@ -265,6 +265,70 @@ export const getFollowStatus = query({
   },
 });
 
+// Get follower/following counts for a user (public data)
+export const getUserSocialCounts = query({
+  args: {
+    userId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    // Count followers (people following this user)
+    const followers = await ctx.db
+      .query("follows")
+      .withIndex("by_followingId", (q) => q.eq("followingId", args.userId))
+      .collect();
+
+    // Count following (people this user follows)
+    const following = await ctx.db
+      .query("follows")
+      .withIndex("by_followerId", (q) => q.eq("followerId", args.userId))
+      .collect();
+
+    return {
+      followers: followers.length,
+      following: following.length,
+    };
+  },
+});
+
+// Get follow status by target user ID (for public closet page, uses userId not clerkId for target)
+export const getFollowStatusByUserId = query({
+  args: {
+    viewerClerkId: v.string(),
+    targetUserId: v.id("users"),
+  },
+  handler: async (ctx, args) => {
+    const viewer = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.viewerClerkId))
+      .first();
+
+    if (!viewer) {
+      return { isFollowing: false, hasPendingRequest: false };
+    }
+
+    // Check if following
+    const follow = await ctx.db
+      .query("follows")
+      .withIndex("by_followerId_followingId", (q) =>
+        q.eq("followerId", viewer._id).eq("followingId", args.targetUserId)
+      )
+      .first();
+
+    // Check for pending request
+    const pendingRequest = await ctx.db
+      .query("follow_requests")
+      .withIndex("by_requesterId_targetId", (q) =>
+        q.eq("requesterId", viewer._id).eq("targetId", args.targetUserId)
+      )
+      .first();
+
+    return {
+      isFollowing: follow !== null,
+      hasPendingRequest: pendingRequest?.status === "pending",
+    };
+  },
+});
+
 // Follow a user (public) or send follow request (private)
 export const followUser = mutation({
   args: {
@@ -712,43 +776,54 @@ export const notifyFollowersOfNewItem = internalMutation({
     const user = await ctx.db.get(args.userId);
     if (!user) return;
 
-    // Get all followers with their alert settings
+    // Get all followers
     const followers = await ctx.db
       .query("follows")
       .withIndex("by_followingId", (q) => q.eq("followingId", args.userId))
       .collect();
 
+    if (followers.length === 0) return;
+
+    // Batch fetch all alert settings for this user's followers (optimized: single query)
+    const allSettings = await ctx.db
+      .query("follow_alert_settings")
+      .withIndex("by_followingId", (q) => q.eq("followingId", args.userId))
+      .collect();
+
+    // Create a Map for quick lookup by userId
+    const settingsMap = new Map(
+      allSettings.map((s) => [s.userId.toString(), s])
+    );
+
     const userName = user.firstName
       ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
       : "Someone you follow";
 
-    for (const follow of followers) {
-      // Get alert settings
-      const settings = await ctx.db
-        .query("follow_alert_settings")
-        .withIndex("by_userId_followingId", (q) =>
-          q.eq("userId", follow.followerId).eq("followingId", args.userId)
-        )
-        .first();
+    // Filter followers who should receive notifications
+    const followersToNotify = followers.filter((follow) => {
+      const settings = settingsMap.get(follow.followerId.toString());
+      if (!settings?.alertsEnabled) return false;
+      if (args.isWishlist && !settings.notifyNewWishlistItems) return false;
+      if (!args.isWishlist && !settings.notifyNewOwnedItems) return false;
+      return true;
+    });
 
-      // Check if alerts are enabled and the specific type is enabled
-      if (!settings?.alertsEnabled) continue;
-      if (args.isWishlist && !settings.notifyNewWishlistItems) continue;
-      if (!args.isWishlist && !settings.notifyNewOwnedItems) continue;
-
-      // Create notification
-      await ctx.db.insert("notifications", {
-        userId: follow.followerId,
-        type: args.isWishlist ? "new_wishlist_item" : "new_closet_item",
-        fromUserId: args.userId,
-        relatedId: args.itemId,
-        message: args.isWishlist
-          ? `${userName} added "${args.itemName}" to their wishlist`
-          : `${userName} added "${args.itemName}" to their closet`,
-        read: false,
-        createdAt: Date.now(),
-      });
-    }
+    // Batch insert all notifications in parallel
+    await Promise.all(
+      followersToNotify.map((follow) =>
+        ctx.db.insert("notifications", {
+          userId: follow.followerId,
+          type: args.isWishlist ? "new_wishlist_item" : "new_closet_item",
+          fromUserId: args.userId,
+          relatedId: args.itemId,
+          message: args.isWishlist
+            ? `${userName} added "${args.itemName}" to their wishlist`
+            : `${userName} added "${args.itemName}" to their closet`,
+          read: false,
+          createdAt: Date.now(),
+        })
+      )
+    );
   },
 });
 
@@ -763,40 +838,50 @@ export const notifyFollowersOfNewOutfit = internalMutation({
     const user = await ctx.db.get(args.userId);
     if (!user) return;
 
-    // Get all followers with their alert settings
+    // Get all followers
     const followers = await ctx.db
       .query("follows")
       .withIndex("by_followingId", (q) => q.eq("followingId", args.userId))
       .collect();
 
+    if (followers.length === 0) return;
+
+    // Batch fetch all alert settings for this user's followers (optimized: single query)
+    const allSettings = await ctx.db
+      .query("follow_alert_settings")
+      .withIndex("by_followingId", (q) => q.eq("followingId", args.userId))
+      .collect();
+
+    // Create a Map for quick lookup by userId
+    const settingsMap = new Map(
+      allSettings.map((s) => [s.userId.toString(), s])
+    );
+
     const userName = user.firstName
       ? `${user.firstName}${user.lastName ? ` ${user.lastName}` : ""}`
       : "Someone you follow";
 
-    for (const follow of followers) {
-      // Get alert settings
-      const settings = await ctx.db
-        .query("follow_alert_settings")
-        .withIndex("by_userId_followingId", (q) =>
-          q.eq("userId", follow.followerId).eq("followingId", args.userId)
-        )
-        .first();
+    // Filter followers who should receive outfit notifications
+    const followersToNotify = followers.filter((follow) => {
+      const settings = settingsMap.get(follow.followerId.toString());
+      return settings?.alertsEnabled && settings.notifyNewOutfits;
+    });
 
-      // Check if alerts are enabled and outfit notifications are enabled
-      if (!settings?.alertsEnabled || !settings.notifyNewOutfits) continue;
-
-      // Create notification
-      await ctx.db.insert("notifications", {
-        userId: follow.followerId,
-        type: "new_outfit",
-        fromUserId: args.userId,
-        relatedId: args.outfitId,
-        message: args.outfitName
-          ? `${userName} saved a new outfit: "${args.outfitName}"`
-          : `${userName} saved a new outfit`,
-        read: false,
-        createdAt: Date.now(),
-      });
-    }
+    // Batch insert all notifications in parallel
+    await Promise.all(
+      followersToNotify.map((follow) =>
+        ctx.db.insert("notifications", {
+          userId: follow.followerId,
+          type: "new_outfit",
+          fromUserId: args.userId,
+          relatedId: args.outfitId,
+          message: args.outfitName
+            ? `${userName} saved a new outfit: "${args.outfitName}"`
+            : `${userName} saved a new outfit`,
+          read: false,
+          createdAt: Date.now(),
+        })
+      )
+    );
   },
 });
