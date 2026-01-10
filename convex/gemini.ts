@@ -246,7 +246,13 @@ export const generateTryOnImage = action({
     modelSkinTone: v.optional(v.number()), // 0-100 scale
     otherDetails: v.optional(v.string()), // e.g., "cuffed pants, shirt tucked in"
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<{
+    storageId: Id<"_storage">;
+    imageUrl: string | null;
+    itemIds: string[];
+    userPhotoId: Id<"user_photos"> | undefined;
+    prompt: string;
+  }> => {
     console.log("[TryOn] Starting with", args.productIds.length, "items, useGenericModel:", args.useGenericModel);
 
     const apiKey = process.env.GOOGLE_GEMINI_API_KEY;

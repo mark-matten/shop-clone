@@ -1,6 +1,7 @@
 import { internalMutation, internalAction } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel";
 
 // Sample product data for seeding
 const sampleProducts = [
@@ -213,10 +214,9 @@ export const insertProductWithoutEmbedding = internalMutation({
     sourceUrl: v.string(),
     sourcePlatform: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx, args): Promise<Id<"products">> => {
     return await ctx.db.insert("products", {
       ...args,
-      embedding: undefined,
     });
   },
 });
@@ -224,7 +224,7 @@ export const insertProductWithoutEmbedding = internalMutation({
 // Seed database with sample products (without embeddings - for quick testing)
 export const seedProductsQuick = internalAction({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx): Promise<Array<{ success: boolean; id?: Id<"products">; name: string; error?: string }>> => {
     console.log("Seeding database with sample products (no embeddings)...");
 
     const results = [];
@@ -244,39 +244,19 @@ export const seedProductsQuick = internalAction({
   },
 });
 
-// Seed database with sample products (with embeddings - requires OpenAI API key)
+// Seed database with sample products (alias for seedProductsQuick - embeddings removed from schema)
 export const seedProductsWithEmbeddings = internalAction({
   args: {},
-  handler: async (ctx) => {
-    console.log("Seeding database with sample products (with embeddings)...");
+  handler: async (ctx): Promise<Array<{ success: boolean; id?: Id<"products">; name: string; error?: string }>> => {
+    // Embeddings were removed from the schema, so this now works the same as seedProductsQuick
+    console.log("Seeding database with sample products...");
 
-    const results = [];
+    const results: Array<{ success: boolean; id?: Id<"products">; name: string; error?: string }> = [];
     for (const product of sampleProducts) {
       try {
-        // Generate embedding
-        const textForEmbedding = [
-          product.name,
-          product.description,
-          product.brand,
-          product.category,
-          product.material,
-          product.gender,
-          product.condition,
-        ]
-          .filter(Boolean)
-          .join(" ");
-
-        const embedding = await ctx.runAction(internal.search.generateEmbedding, {
-          text: textForEmbedding,
-        });
-
-        const id = await ctx.runMutation(internal.products.insertProduct, {
-          ...product,
-          embedding,
-        });
-
+        const id = await ctx.runMutation(internal.seed.insertProductWithoutEmbedding, product);
         results.push({ success: true, id, name: product.name });
-        console.log(`Added with embedding: ${product.name}`);
+        console.log(`Added: ${product.name}`);
       } catch (error) {
         results.push({ success: false, name: product.name, error: String(error) });
         console.error(`Failed: ${product.name}`, error);

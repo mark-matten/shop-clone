@@ -12,6 +12,8 @@ interface NotificationCenterProps {
   onClose: () => void;
 }
 
+type FilterType = "all" | "social" | "closet" | "alerts";
+
 export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCenterProps) {
   const notifications = useQuery(api.notifications.getNotifications, { clerkId, limit: 30 });
   const markAsRead = useMutation(api.notifications.markAsRead);
@@ -23,6 +25,22 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
   const rejectRequest = useMutation(api.social.rejectFollowRequest);
 
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
+  const [filter, setFilter] = useState<FilterType>("all");
+
+  // Filter notifications based on selected tab
+  const filteredNotifications = notifications?.filter((n) => {
+    if (filter === "all") return true;
+    if (filter === "social") {
+      return ["new_follower", "follow_request", "follow_request_approved"].includes(n.type);
+    }
+    if (filter === "closet") {
+      return ["new_closet_item", "new_wishlist_item", "new_outfit"].includes(n.type);
+    }
+    if (filter === "alerts") {
+      return ["price_drop", "target_reached"].includes(n.type);
+    }
+    return true;
+  });
 
   const handleMarkAllRead = async () => {
     try {
@@ -161,46 +179,68 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
       {/* Panel */}
       <div className="fixed right-0 top-0 h-full w-full max-w-md bg-white shadow-xl dark:bg-zinc-900 sm:right-4 sm:top-4 sm:h-[calc(100vh-2rem)] sm:rounded-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-zinc-200 p-4 dark:border-zinc-700">
-          <div>
-            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-              Notifications
-            </h2>
-            {unreadCount > 0 && (
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
-                {unreadCount} unread
-              </p>
-            )}
-          </div>
-          <div className="flex items-center gap-2">
-            {unreadCount > 0 && (
+        <div className="border-b border-zinc-200 dark:border-zinc-700">
+          <div className="flex items-center justify-between p-4 pb-2">
+            <div>
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                Notifications
+              </h2>
+              {unreadCount > 0 && (
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  {unreadCount} unread
+                </p>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              {unreadCount > 0 && (
+                <button
+                  onClick={handleMarkAllRead}
+                  className="text-sm font-medium text-moi-600 hover:text-moi-700 dark:text-moi-400"
+                >
+                  Mark all read
+                </button>
+              )}
               <button
-                onClick={handleMarkAllRead}
-                className="text-sm font-medium text-moi-600 hover:text-moi-700 dark:text-moi-400"
+                onClick={onClose}
+                className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
-                Mark all read
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
               </button>
-            )}
-            <button
-              onClick={onClose}
-              className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
-            >
-              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+            </div>
+          </div>
+
+          {/* Filter Tabs */}
+          <div className="flex gap-1 px-4 pb-3">
+            {(["all", "social", "closet", "alerts"] as FilterType[]).map((tab) => (
+              <button
+                key={tab}
+                onClick={() => setFilter(tab)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  filter === tab
+                    ? "bg-moi-600 text-white"
+                    : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                }`}
+              >
+                {tab === "all" && "All"}
+                {tab === "social" && "Social"}
+                {tab === "closet" && "Closet"}
+                {tab === "alerts" && "Alerts"}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Notifications List */}
-        <div className="h-[calc(100%-4rem)] overflow-y-auto">
+        <div className="h-[calc(100%-7rem)] overflow-y-auto">
           {notifications === undefined ? (
             <div className="animate-pulse space-y-3 p-4">
               {[1, 2, 3, 4, 5].map((i) => (
                 <div key={i} className="h-16 rounded-lg bg-zinc-200 dark:bg-zinc-800" />
               ))}
             </div>
-          ) : notifications.length === 0 ? (
+          ) : filteredNotifications?.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center p-8 text-center">
               <svg
                 className="h-16 w-16 text-zinc-300 dark:text-zinc-600"
@@ -216,12 +256,14 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
                 />
               </svg>
               <p className="mt-4 text-zinc-500 dark:text-zinc-400">
-                No notifications yet
+                {filter === "all"
+                  ? "No notifications yet"
+                  : `No ${filter} notifications`}
               </p>
             </div>
           ) : (
             <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-              {notifications.map((notification) => (
+              {filteredNotifications?.map((notification) => (
                 <div
                   key={notification._id}
                   className={`relative p-4 ${

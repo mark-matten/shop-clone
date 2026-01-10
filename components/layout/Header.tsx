@@ -171,6 +171,24 @@ export function Header() {
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8a2 2 0 100-4 2 2 0 000 4zM12 8v2m0 0l-8 6h16l-8-6z" />
             </svg>
           </Link>
+          {/* Mobile Notifications */}
+          {clerkUser?.id && (
+            <button
+              onClick={() => setShowNotifications(!showNotifications)}
+              className="relative rounded-lg p-2 text-zinc-600 transition-colors hover:bg-zinc-50 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-white"
+              title="Notifications"
+            >
+              <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
+                />
+              </svg>
+              <NotificationBadge clerkId={clerkUser.id} />
+            </button>
+          )}
           <Link
             href="/profile"
             className={`rounded-lg p-2 transition-colors ${

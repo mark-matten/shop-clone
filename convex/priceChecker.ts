@@ -1,6 +1,7 @@
 import { internalAction, internalQuery } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { v } from "convex/values";
+import { fetchPriceFromSource, simulatePriceFetch } from "./priceFetcher";
 
 // Get all unique tracked product IDs
 export const getTrackedProductIds = internalQuery({
@@ -33,7 +34,7 @@ export const getTrackedProductIds = internalQuery({
 
         if (currentPrice === undefined || sourceUrl === undefined) return null;
 
-        return { productId, currentPrice, sourceUrl };
+        return { productId, currentPrice, sourceUrl, sourcePlatform: product.sourcePlatform };
       })
     );
 
@@ -41,15 +42,7 @@ export const getTrackedProductIds = internalQuery({
   },
 });
 
-// Simulate fetching price from external source
-// In production, this would scrape or call APIs for each marketplace
-function simulatePriceFetch(currentPrice: number): number {
-  // Simulate price fluctuation: -10% to +10%
-  const fluctuation = (Math.random() - 0.5) * 0.2;
-  const newPrice = currentPrice * (1 + fluctuation);
-  // Round to 2 decimal places
-  return Math.round(newPrice * 100) / 100;
-}
+// simulatePriceFetch is now imported from priceFetcher.ts
 
 // Main cron job action - checks all tracked prices
 export const checkAllTrackedPrices = internalAction({
@@ -58,23 +51,52 @@ export const checkAllTrackedPrices = internalAction({
     checked: number;
     updated: number;
     unchanged: number;
+    realFetched: number;
+    simulated: number;
     alertsCreated: number;
   }> => {
     console.log("Starting price check for all tracked items...");
 
     // Get all tracked products with current prices
-    const trackedProducts: Array<{ productId: any; currentPrice: number; sourceUrl: string }> =
-      await ctx.runQuery(internal.priceChecker.getTrackedProductIds);
+    const trackedProducts: Array<{
+      productId: any;
+      currentPrice: number;
+      sourceUrl: string;
+      sourcePlatform: string;
+    }> = await ctx.runQuery(internal.priceChecker.getTrackedProductIds);
 
     console.log(`Found ${trackedProducts.length} products to check`);
 
     let updatedCount = 0;
     let unchangedCount = 0;
+    let realFetchedCount = 0;
+    let simulatedCount = 0;
 
     for (const product of trackedProducts) {
       try {
-        // Simulate fetching new price (replace with actual scraping in production)
-        const newPrice = simulatePriceFetch(product.currentPrice);
+        let newPrice: number;
+
+        // Try to fetch real price from source
+        const priceResult = await fetchPriceFromSource(
+          product.sourceUrl,
+          product.sourcePlatform
+        );
+
+        if (priceResult.success && priceResult.price !== undefined && priceResult.price > 0) {
+          // Use real fetched price
+          newPrice = priceResult.price;
+          realFetchedCount++;
+          console.log(
+            `Real price fetched for ${product.sourcePlatform}: $${newPrice}`
+          );
+        } else {
+          // Fall back to simulation if real fetch fails
+          newPrice = simulatePriceFetch(product.currentPrice);
+          simulatedCount++;
+          console.log(
+            `Price simulated for ${product.sourcePlatform} (${priceResult.error || "unknown error"}): $${newPrice}`
+          );
+        }
 
         // Record price history
         await ctx.runMutation(internal.tracking.recordPriceCheck, {
@@ -82,8 +104,8 @@ export const checkAllTrackedPrices = internalAction({
           price: newPrice,
         });
 
-        // Update product price if changed
-        if (newPrice !== product.currentPrice) {
+        // Update product price if changed significantly (more than 0.01)
+        if (Math.abs(newPrice - product.currentPrice) > 0.01) {
           await ctx.runMutation(internal.tracking.updateProductPrice, {
             productId: product.productId,
             newPrice,
@@ -102,7 +124,7 @@ export const checkAllTrackedPrices = internalAction({
     }
 
     console.log(
-      `Price check complete. Updated: ${updatedCount}, Unchanged: ${unchangedCount}`
+      `Price check complete. Updated: ${updatedCount}, Unchanged: ${unchangedCount}, Real: ${realFetchedCount}, Simulated: ${simulatedCount}`
     );
 
     // Check for alerts after price updates
@@ -112,6 +134,8 @@ export const checkAllTrackedPrices = internalAction({
       checked: trackedProducts.length,
       updated: updatedCount,
       unchanged: unchangedCount,
+      realFetched: realFetchedCount,
+      simulated: simulatedCount,
       alertsCreated: alertResult.alertsCreated,
     };
   },

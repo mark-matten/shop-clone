@@ -104,7 +104,7 @@ export const checkPricesAndAlert = internalAction({
         // New structure: get price from the tracked color variant or first variant
         const colorName = item.colorName;
         const variant = colorName
-          ? item.product.colorVariants.find(v => v.colorName === colorName)
+          ? item.product.colorVariants.find((v: { colorName?: string }) => v.colorName === colorName)
           : item.product.colorVariants[0];
         currentPrice = variant?.price;
       } else {

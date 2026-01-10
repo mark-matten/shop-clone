@@ -614,7 +614,7 @@ export const getPublicOutfit = query({
               gender: closetItemDoc.gender || product?.gender,
               size: closetItemDoc.selectedSize || closetItemDoc.size,
               price: product?.price,
-              originalUrl: product?.originalUrl,
+              sourceUrl: product?.sourceUrl,
             };
           }
 
