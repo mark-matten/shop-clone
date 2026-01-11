@@ -452,7 +452,10 @@ export const searchProducts = action({
     totalResults: number;
     partialMatches?: any[];
   }> => {
-    const limit = args.limit ?? 500; // Fetch more products before grouping
+    const requestedLimit = args.limit ?? 500;
+    // Fetch many more products before grouping to ensure we get a mix of new and used items
+    // (used items may be stored later in the database, so a small limit would miss them)
+    const fetchLimit = Math.max(requestedLimit * 3, 1500);
 
     // Step 1: Parse search query with Claude
     const filter: SearchFilter = await ctx.runAction(internal.search.parseSearchQuery, {
@@ -466,11 +469,11 @@ export const searchProducts = action({
       query: filter.query,
       gender: filter.gender,
       condition: filter.condition,
-      limit,
+      limit: fetchLimit,
     });
 
     // Step 3: Group products by color and pick best representative
-    const groupedProducts = groupByColor(products, filter.color);
+    const groupedProducts = groupByColor(products, filter.color).slice(0, requestedLimit);
 
     // Step 4: If no exact matches, get partial matches based on name similarity
     let partialMatches: any[] | undefined;
@@ -1423,30 +1426,9 @@ export const filterProductsInternal = internalQuery({
       }
 
       // STRICT MATERIAL MATCHING: If user searched for a material, product MUST match that material
-      // Checks material field, product name, and description
+      // Uses materialMatchesTargets which checks material field, name, description, AND synonyms
       if (detectedMaterials.length > 0 && !hasStrongNameMatch) {
-        // INLINE material matching to debug
-        const productMaterial = (product.material || "").toLowerCase();
-        const productNameLower = (product.name || "").toLowerCase();
-        const productDescLower = (product.description || "").toLowerCase();
-
-        let hasMaterialMatch = false;
-        for (const targetMaterial of detectedMaterials) {
-          if (productMaterial.includes(targetMaterial)) {
-            hasMaterialMatch = true;
-            break;
-          }
-          if (productNameLower.includes(targetMaterial)) {
-            hasMaterialMatch = true;
-            break;
-          }
-          if (productDescLower.includes(targetMaterial)) {
-            hasMaterialMatch = true;
-            break;
-          }
-        }
-
-        if (!hasMaterialMatch) {
+        if (!materialMatchesTargets(product.material || "", detectedMaterials, product.name, product.description)) {
           continue;
         }
       }
@@ -1531,14 +1513,21 @@ export const filterProductsInternal = internalQuery({
       scoredProducts.push({ product, score, soldOut });
     }
 
-    // Sort by: in-stock first, then by relevance score
+    // Sort by: in-stock first, then by relevance score, then by price (ascending)
+    // The price sort helps mix new and used products when scores are equal
     scoredProducts.sort((a, b) => {
       // Sold out items go to the end
       if (a.soldOut !== b.soldOut) {
         return a.soldOut ? 1 : -1;
       }
-      // Within same availability, sort by score
-      return b.score - a.score;
+      // Within same availability, sort by score (higher first)
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      // Tiebreaker: sort by price (lower first) to mix new and used products
+      const priceA = a.product.colorVariants?.[0]?.price ?? a.product.price ?? 999999;
+      const priceB = b.product.colorVariants?.[0]?.price ?? b.product.price ?? 999999;
+      return priceA - priceB;
     });
 
     // Return with or without scores based on flag
