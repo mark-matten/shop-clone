@@ -1314,12 +1314,24 @@ export const filterProductsInternal = internalQuery({
       }
     }
 
-    // Detect brand in the query
+    // Detect brand in the query (use word boundary matching to avoid false positives like "cashmere" matching "hm")
     let detectedBrandVariants: string[] | null = null;
     for (const [key, variants] of Object.entries(BRAND_NAMES)) {
-      if (queryLower.includes(key)) {
-        detectedBrandVariants = variants;
-        break;
+      // Use regex with word boundaries for keys without special chars
+      // For short keys (2 chars or less), require exact token match to avoid false positives
+      if (key.length <= 2) {
+        // Short keys like "hm" should only match as whole words
+        if (queryTokens.includes(key)) {
+          detectedBrandVariants = variants;
+          break;
+        }
+      } else {
+        // Longer keys can use includes but check word boundaries
+        const regex = new RegExp(`\\b${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        if (regex.test(queryLower)) {
+          detectedBrandVariants = variants;
+          break;
+        }
       }
     }
 
@@ -1370,131 +1382,153 @@ export const filterProductsInternal = internalQuery({
     const nonGenderWords = queryWords.filter(word => !genderWords.includes(word.toLowerCase()));
 
     // Filter and score products
-    const scoredProducts = products
-      .map((product) => {
-        // Exclude gift cards from search results
-        if (product.name.toLowerCase().includes('gift card')) return null;
+    const scoredProducts: { product: typeof products[0]; score: number; soldOut: boolean }[] = [];
 
-        // MARKETPLACE FILTER: If user searched for a marketplace, only show products from that marketplace
-        if (detectedMarketplace) {
-          if (product.sourcePlatform !== detectedMarketplace) {
-            return null;  // Product is not from the searched marketplace
+    for (const product of products) {
+      // Exclude gift cards from search results
+      if (product.name.toLowerCase().includes('gift card')) continue;
+
+      // MARKETPLACE FILTER: If user searched for a marketplace, only show products from that marketplace
+      if (detectedMarketplace) {
+        if (product.sourcePlatform !== detectedMarketplace) {
+          continue;
+        }
+      }
+
+      // BRAND FILTER: If user searched for a brand, only show products from that brand
+      if (detectedBrandVariants) {
+        const productBrand = product.brand.toLowerCase();
+        const matchesBrand = detectedBrandVariants.some(variant =>
+          productBrand.includes(variant.toLowerCase()) || variant.toLowerCase().includes(productBrand)
+        );
+        if (!matchesBrand) {
+          continue;
+        }
+      }
+
+      // Calculate name match score FIRST
+      const nameScore = calculateNameMatchScore(product.name, nameMatchWords);
+
+      // If we have a strong name match (multiple words match), bypass strict filters
+      const hasStrongNameMatch = nameScore >= 80;
+
+      // STRICT COLOR MATCHING: If user searched for a color, product MUST match that color
+      // (unless we have a strong name match)
+      if (detectedColors.length > 0 && !hasStrongNameMatch) {
+        const productColor = product.colorName || "";
+        if (!colorNameMatchesTargets(productColor, detectedColors, product.name, product.description, product.colorVariants, product.options)) {
+          continue;
+        }
+      }
+
+      // STRICT MATERIAL MATCHING: If user searched for a material, product MUST match that material
+      // Checks material field, product name, and description
+      if (detectedMaterials.length > 0 && !hasStrongNameMatch) {
+        // INLINE material matching to debug
+        const productMaterial = (product.material || "").toLowerCase();
+        const productNameLower = (product.name || "").toLowerCase();
+        const productDescLower = (product.description || "").toLowerCase();
+
+        let hasMaterialMatch = false;
+        for (const targetMaterial of detectedMaterials) {
+          if (productMaterial.includes(targetMaterial)) {
+            hasMaterialMatch = true;
+            break;
+          }
+          if (productNameLower.includes(targetMaterial)) {
+            hasMaterialMatch = true;
+            break;
+          }
+          if (productDescLower.includes(targetMaterial)) {
+            hasMaterialMatch = true;
+            break;
           }
         }
 
-        // BRAND FILTER: If user searched for a brand, only show products from that brand
-        if (detectedBrandVariants) {
-          const productBrand = product.brand.toLowerCase();
-          const matchesBrand = detectedBrandVariants.some(variant =>
-            productBrand.includes(variant.toLowerCase()) || variant.toLowerCase().includes(productBrand)
-          );
-          if (!matchesBrand) {
-            return null;  // Product is not from the searched brand
+        if (!hasMaterialMatch) {
+          continue;
+        }
+      }
+
+      // STRICT CATEGORY MATCHING: If user searched for a category, product MUST match that category group
+      // (unless we have a strong name match)
+      if (detectedCategoryGroup && !hasStrongNameMatch) {
+        if (!productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
+          continue;
+        }
+      }
+
+      // Gender filter: exclude products explicitly marked as the opposite gender
+      // Products with undefined gender or "unisex" are included in both men's and women's searches
+      if (args.gender) {
+        // Normalize gender value (handle "mens", "men's", "womens", "women's")
+        const normalizedGender = args.gender.toLowerCase().replace(/['s]+$/, '');
+        // If searching for men's, exclude products explicitly marked as women's only
+        if (normalizedGender === "men" && product.gender === "women") continue;
+        // If searching for women's, exclude products explicitly marked as men's only
+        if (normalizedGender === "women" && product.gender === "men") continue;
+        // If searching for unisex specifically, only show unisex products
+        if (normalizedGender === "unisex" && product.gender !== "unisex") continue;
+      }
+
+      if (args.condition && product.condition !== args.condition) continue;
+
+      // Category filter with synonym expansion (for explicit category filter)
+      if (args.category) {
+        const categoryLower = args.category.toLowerCase();
+        const productCategoryLower = product.category.toLowerCase();
+        const expandedCategories = expandQueryWithSynonyms(categoryLower);
+        const categoryMatches = expandedCategories.some(cat =>
+          productCategoryLower.includes(cat) || cat.includes(productCategoryLower)
+        );
+        if (!categoryMatches) continue;
+      }
+
+      if (args.brand && !product.brand.toLowerCase().includes(args.brand.toLowerCase())) continue;
+      if (args.material && product.material && !product.material.toLowerCase().includes(args.material.toLowerCase())) continue;
+      if (args.size && product.size && !product.size.toLowerCase().includes(args.size.toLowerCase())) continue;
+
+      // Price filters - get price from colorVariants or legacy field
+      const productPrice = product.colorVariants?.[0]?.price ?? product.price;
+      if (productPrice !== undefined) {
+        if (args.minPrice !== undefined && productPrice < args.minPrice) continue;
+        if (args.maxPrice !== undefined && productPrice > args.maxPrice) continue;
+      }
+
+      // Calculate relevance score
+      let score = nameScore; // Start with name match score
+
+      // Score for color match
+      if (detectedColors.length > 0) {
+        if (colorNameMatchesTargets(product.colorName || "", detectedColors, product.name, product.description, product.colorVariants, product.options)) {
+          score += 25;  // Bonus for matching color
+        }
+      }
+
+      // Score for material match
+      if (detectedMaterials.length > 0) {
+        if (materialMatchesTargets(product.material || "", detectedMaterials, product.name, product.description)) {
+          score += 20;  // Bonus for matching material
+        }
+      }
+
+      // Score for category match
+      if (detectedCategoryGroup) {
+        if (productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
+          score += 20;  // Base score for matching category
+          // Bonus for exact category match
+          const categoryLower = product.category.toLowerCase();
+          if (CATEGORY_GROUPS[detectedCategoryGroup]?.some(kw => categoryLower.includes(kw))) {
+            score += 10;
           }
         }
+      }
 
-        // Calculate name match score FIRST
-        const nameScore = calculateNameMatchScore(product.name, nameMatchWords);
+      // Check if product is sold out
+      const soldOut = isProductSoldOut(product);
 
-        // If we have a strong name match (multiple words match), bypass strict filters
-        const hasStrongNameMatch = nameScore >= 80;
-
-        // STRICT COLOR MATCHING: If user searched for a color, product MUST match that color
-        // (unless we have a strong name match)
-        if (detectedColors.length > 0 && !hasStrongNameMatch) {
-          const productColor = product.colorName || "";
-          if (!colorNameMatchesTargets(productColor, detectedColors, product.name, product.description, product.colorVariants, product.options)) {
-            return null;  // Product doesn't match the searched color - exclude it
-          }
-        }
-
-        // STRICT MATERIAL MATCHING: If user searched for a material, product MUST match that material
-        // Checks material field, product name, and description
-        if (detectedMaterials.length > 0 && !hasStrongNameMatch) {
-          const productMaterial = product.material || "";
-          if (!materialMatchesTargets(productMaterial, detectedMaterials, product.name, product.description)) {
-            return null;  // Product doesn't match the searched material - exclude it
-          }
-        }
-
-        // STRICT CATEGORY MATCHING: If user searched for a category, product MUST match that category group
-        // (unless we have a strong name match)
-        if (detectedCategoryGroup && !hasStrongNameMatch) {
-          if (!productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
-            return null;  // Product doesn't match the searched category - exclude it
-          }
-        }
-
-        // Gender filter: exclude products explicitly marked as the opposite gender
-        // Products with undefined gender or "unisex" are included in both men's and women's searches
-        if (args.gender) {
-          // Normalize gender value (handle "mens", "men's", "womens", "women's")
-          const normalizedGender = args.gender.toLowerCase().replace(/['s]+$/, '');
-          // If searching for men's, exclude products explicitly marked as women's only
-          if (normalizedGender === "men" && product.gender === "women") return null;
-          // If searching for women's, exclude products explicitly marked as men's only
-          if (normalizedGender === "women" && product.gender === "men") return null;
-          // If searching for unisex specifically, only show unisex products
-          if (normalizedGender === "unisex" && product.gender !== "unisex") return null;
-        }
-        if (args.condition && product.condition !== args.condition) return null;
-
-        // Category filter with synonym expansion (for explicit category filter)
-        if (args.category) {
-          const categoryLower = args.category.toLowerCase();
-          const productCategoryLower = product.category.toLowerCase();
-          const expandedCategories = expandQueryWithSynonyms(categoryLower);
-          const categoryMatches = expandedCategories.some(cat =>
-            productCategoryLower.includes(cat) || cat.includes(productCategoryLower)
-          );
-          if (!categoryMatches) return null;
-        }
-        if (args.brand && !product.brand.toLowerCase().includes(args.brand.toLowerCase())) return null;
-        if (args.material && product.material && !product.material.toLowerCase().includes(args.material.toLowerCase())) return null;
-        if (args.size && product.size && !product.size.toLowerCase().includes(args.size.toLowerCase())) return null;
-
-        // Price filters - get price from colorVariants or legacy field
-        const productPrice = product.colorVariants?.[0]?.price ?? product.price;
-        if (productPrice !== undefined) {
-          if (args.minPrice !== undefined && productPrice < args.minPrice) return null;
-          if (args.maxPrice !== undefined && productPrice > args.maxPrice) return null;
-        }
-
-        // Calculate relevance score
-        let score = nameScore; // Start with name match score
-
-        // Score for color match
-        if (detectedColors.length > 0) {
-          if (colorNameMatchesTargets(product.colorName || "", detectedColors, product.name, product.description, product.colorVariants, product.options)) {
-            score += 25;  // Bonus for matching color
-          }
-        }
-
-        // Score for material match
-        if (detectedMaterials.length > 0) {
-          if (materialMatchesTargets(product.material || "", detectedMaterials, product.name, product.description)) {
-            score += 20;  // Bonus for matching material
-          }
-        }
-
-        // Score for category match
-        if (detectedCategoryGroup) {
-          if (productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
-            score += 20;  // Base score for matching category
-            // Bonus for exact category match
-            const categoryLower = product.category.toLowerCase();
-            if (CATEGORY_GROUPS[detectedCategoryGroup]?.some(kw => categoryLower.includes(kw))) {
-              score += 10;
-            }
-          }
-        }
-
-        // Check if product is sold out
-        const soldOut = isProductSoldOut(product);
-
-        return { product, score, soldOut };
-      })
-      .filter((item): item is { product: typeof products[0]; score: number; soldOut: boolean } => item !== null);
+      scoredProducts.push({ product, score, soldOut });
+    }
 
     // Sort by: in-stock first, then by relevance score
     scoredProducts.sort((a, b) => {
