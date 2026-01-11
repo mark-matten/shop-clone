@@ -391,9 +391,20 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
 
       if (result.imageUrl) {
         setGeneratedOutfit(result.imageUrl);
-        // Don't save to DB yet - only save when user explicitly clicks Save
-        // Store pending data for the save modal to use later
-        setSelectedOutfitId(null);
+
+        // Save to DB immediately WITHOUT a name so it appears in Recent Outfits
+        // When user clicks "Save Outfit", we'll update this record with a name
+        const outfitId = await saveOutfitImage({
+          clerkId,
+          storageId: result.storageId,
+          itemIds: result.itemIds,
+          userPhotoId: result.userPhotoId,
+          prompt: result.prompt,
+          // No name - will be added when user explicitly saves
+        });
+
+        setSelectedOutfitId(outfitId);
+        // Store pending data for the save modal to use
         setPendingOutfitData({
           storageId: result.storageId,
           itemIds: result.itemIds,
