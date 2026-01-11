@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery } from "convex/react";
 import { useUser } from "@clerk/nextjs";
 import { api } from "@/convex/_generated/api";
@@ -70,6 +71,7 @@ const genderLabels = {
 
 export function ProductCard({ product, isFavorited = false }: ProductCardProps) {
   const { user } = useUser();
+  const router = useRouter();
   const [isFavorite, setIsFavorite] = useState(isFavorited);
   const [isLoading, setIsLoading] = useState(false);
   const [showFavoriteModal, setShowFavoriteModal] = useState(false);
@@ -432,9 +434,12 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
             </p>
 
             {!user && (
-              <div className="mt-4 rounded-lg bg-moi-50 p-3 text-sm text-moi-700 dark:bg-moi-900/30 dark:text-moi-200">
+              <button
+                onClick={() => router.push("/sign-in")}
+                className="mt-4 w-full rounded-lg bg-moi-50 p-3 text-sm text-moi-700 hover:bg-moi-100 dark:bg-moi-900/30 dark:text-moi-200 dark:hover:bg-moi-900/50 transition-colors cursor-pointer text-left"
+              >
                 Please sign in to save favorites.
-              </div>
+              </button>
             )}
 
             {/* Size Selection */}

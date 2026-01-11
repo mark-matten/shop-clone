@@ -89,7 +89,7 @@ export default function ProductDetailPage() {
 
   const handleToggleFavorite = async () => {
     if (!clerkUser?.id) {
-      alert("Please sign in to save favorites");
+      router.push("/sign-in");
       return;
     }
 
@@ -146,7 +146,7 @@ export default function ProductDetailPage() {
 
   const handleToggleCloset = async () => {
     if (!clerkUser?.id) {
-      alert("Please sign in to add items to your closet");
+      router.push("/sign-in");
       return;
     }
 
@@ -528,7 +528,7 @@ export default function ProductDetailPage() {
 
   const handleTrack = async () => {
     if (!convexUser?._id) {
-      alert("Please sign in to track prices");
+      router.push("/sign-in");
       return;
     }
 
@@ -1044,9 +1044,12 @@ export default function ProductDetailPage() {
             </p>
 
             {!clerkUser && (
-              <div className="mt-4 rounded-lg bg-moi-50 p-3 text-sm text-moi-700 dark:bg-moi-900/30 dark:text-moi-200">
+              <button
+                onClick={() => router.push("/sign-in")}
+                className="mt-4 w-full rounded-lg bg-moi-50 p-3 text-sm text-moi-700 hover:bg-moi-100 dark:bg-moi-900/30 dark:text-moi-200 dark:hover:bg-moi-900/50 transition-colors cursor-pointer text-left"
+              >
                 Please sign in to track prices.
-              </div>
+              </button>
             )}
 
             <div className="mt-4">
