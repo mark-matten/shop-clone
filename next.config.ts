@@ -24,6 +24,14 @@ const nextConfig: NextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Configure external packages for serverless functions (Chromium for scraping)
+  serverExternalPackages: ["@sparticuz/chromium"],
+  // Experimental settings for better serverless function bundling
+  experimental: {
+    outputFileTracingIncludes: {
+      "/api/scrape-marketplace": ["./node_modules/@sparticuz/chromium/**/*"],
+    },
+  },
 };
 
 export default withPWA(nextConfig);

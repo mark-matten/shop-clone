@@ -756,13 +756,12 @@ export const scrapeBrandCollections = internalAction({
   },
 });
 
-// Scrape marketplace search results via headless browser API
+// Scrape marketplace search results via the deployed API (uses Puppeteer on Vercel)
 export const scrapeMarketplace = internalAction({
   args: {
     marketplace: v.union(v.literal("poshmark"), v.literal("therealreal"), v.literal("ebay")),
     searchQuery: v.string(),
     maxItems: v.optional(v.number()),
-    apiBaseUrl: v.optional(v.string()), // Base URL for the API (for production deployment)
   },
   handler: async (ctx, args): Promise<{
     success: boolean;
@@ -773,11 +772,11 @@ export const scrapeMarketplace = internalAction({
   }> => {
     const maxItems = args.maxItems || 30;
 
-    console.log(`Scraping ${args.marketplace} for "${args.searchQuery}" via headless browser API...`);
+    // Use the production Vercel URL for the scraping API
+    const appUrl = process.env.APP_URL || "https://shop-clone-gamma.vercel.app";
+    const apiUrl = `${appUrl}/api/scrape-marketplace`;
 
-    // Get the API base URL from environment or use default
-    const baseUrl = args.apiBaseUrl || process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-    const apiUrl = `${baseUrl}/api/scrape-marketplace`;
+    console.log(`Scraping ${args.marketplace} for "${args.searchQuery}" via ${apiUrl}...`);
 
     try {
       const response = await fetch(apiUrl, {
@@ -794,12 +793,13 @@ export const scrapeMarketplace = internalAction({
 
       if (!response.ok) {
         const errorText = await response.text();
+        console.error(`API error ${response.status}: ${errorText}`);
         return {
           success: false,
           productsScraped: 0,
           productsAdded: 0,
           productsUpdated: 0,
-          error: `API error ${response.status}: ${errorText}`,
+          error: `API error ${response.status}: ${errorText.slice(0, 200)}`,
         };
       }
 
