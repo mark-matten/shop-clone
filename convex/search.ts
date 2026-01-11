@@ -864,31 +864,115 @@ function productMatchesCategoryGroup(productCategory: string, productName: strin
   return false;
 }
 
+// Check if a color word appears as a standalone word (not part of another word)
+// Also filters out common false positive patterns like "silver-rated", "rated Silver by"
+function colorWordMatchesText(text: string, colorWord: string): boolean {
+  if (!text) return false;
+  const textLower = text.toLowerCase();
+
+  // False positive patterns to exclude (color used in non-color contexts)
+  const falsePositivePatterns = [
+    // Certification/rating contexts
+    `${colorWord}-rated`,
+    `${colorWord}-certified`,
+    `rated ${colorWord}`,
+    `${colorWord} rating`,
+    `${colorWord} by the`,
+    `gold and ${colorWord}`,
+    `${colorWord} and gold`,
+    // Hardware/trim contexts (for silver, gold)
+    `${colorWord} hardware`,
+    `${colorWord} zipper`,
+    `${colorWord} zippers`,
+    `${colorWord} buckle`,
+    `${colorWord} buckles`,
+    `${colorWord} studs`,
+    `${colorWord} metal`,
+    `${colorWord} buttons`,
+    `${colorWord} chain`,
+    `${colorWord} clasp`,
+    `${colorWord} grommets`,
+    `${colorWord} rings`,
+    `${colorWord} accents`,
+    `${colorWord} trim`,
+    `${colorWord} detailing`,
+    `${colorWord} logo`,
+  ];
+
+  // If the text contains a false positive pattern, don't match
+  for (const pattern of falsePositivePatterns) {
+    if (textLower.includes(pattern)) {
+      // Check if this is the ONLY occurrence of the color word
+      const withoutPattern = textLower.replace(new RegExp(pattern, 'g'), '');
+      // Use word boundary regex to check for remaining color matches
+      const wordBoundaryRegex = new RegExp(`\\b${colorWord}\\b`, 'i');
+      if (!wordBoundaryRegex.test(withoutPattern)) {
+        return false;
+      }
+    }
+  }
+
+  // Check for color word at word boundaries
+  const wordBoundaryRegex = new RegExp(`\\b${colorWord}\\b`, 'i');
+  return wordBoundaryRegex.test(textLower);
+}
+
 // Check if product color matches any of the target colors (with synonym support)
-// Checks colorName field, product name, and description
-function colorNameMatchesTargets(productColorName: string, targetColors: string[], productName?: string, productDescription?: string): boolean {
+// Checks colorName field, colorVariants, options, product name, and description
+// Uses word boundary matching to avoid false positives
+function colorNameMatchesTargets(
+  productColorName: string,
+  targetColors: string[],
+  productName?: string,
+  productDescription?: string,
+  colorVariants?: Array<{ colorName?: string }>,
+  options?: Array<{ name?: string; values?: string[] }>
+): boolean {
   const colorLower = productColorName.toLowerCase();
-  const nameLower = (productName || "").toLowerCase();
-  const descLower = (productDescription || "").toLowerCase();
 
   for (const targetColor of targetColors) {
-    // Check for the color word in the product's color name
+    // Check for the color word in the product's color name (more lenient - includes is OK here)
     if (colorLower.includes(targetColor)) {
       return true;
     }
-    // Check in product name (e.g., "Blue Floral Dress")
-    if (nameLower.includes(targetColor)) {
+
+    // Check colorVariants for color names
+    if (colorVariants) {
+      for (const variant of colorVariants) {
+        if (variant.colorName && variant.colorName.toLowerCase().includes(targetColor)) {
+          return true;
+        }
+      }
+    }
+
+    // Check options for color values (e.g., options: [{name: "Color", values: ["Silver", "Gold"]}])
+    if (options) {
+      for (const opt of options) {
+        if (opt.name?.toLowerCase() === "color" && opt.values) {
+          for (const value of opt.values) {
+            if (value.toLowerCase().includes(targetColor)) {
+              return true;
+            }
+          }
+        }
+      }
+    }
+
+    // Check in product name using word boundary matching
+    if (colorWordMatchesText(productName || "", targetColor)) {
       return true;
     }
-    // Check in description
-    if (descLower.includes(targetColor)) {
+    // Check in description using word boundary matching with false positive filtering
+    if (colorWordMatchesText(productDescription || "", targetColor)) {
       return true;
     }
     // Also check synonyms
     const synonyms = SYNONYMS[targetColor];
     if (synonyms) {
       for (const syn of synonyms) {
-        if (colorLower.includes(syn) || nameLower.includes(syn) || descLower.includes(syn)) {
+        if (colorLower.includes(syn) ||
+            colorWordMatchesText(productName || "", syn) ||
+            colorWordMatchesText(productDescription || "", syn)) {
           return true;
         }
       }
@@ -1057,7 +1141,7 @@ export const searchWithScores = query({
         // STRICT COLOR MATCHING: If user searched for a color, product MUST match that color
         if (detectedColors.length > 0) {
           const productColor = product.colorName || "";
-          if (!colorNameMatchesTargets(productColor, detectedColors, product.name, product.description)) {
+          if (!colorNameMatchesTargets(productColor, detectedColors, product.name, product.description, product.colorVariants, product.options)) {
             return null;
           }
         }
@@ -1319,7 +1403,7 @@ export const filterProductsInternal = internalQuery({
         // (unless we have a strong name match)
         if (detectedColors.length > 0 && !hasStrongNameMatch) {
           const productColor = product.colorName || "";
-          if (!colorNameMatchesTargets(productColor, detectedColors, product.name, product.description)) {
+          if (!colorNameMatchesTargets(productColor, detectedColors, product.name, product.description, product.colorVariants, product.options)) {
             return null;  // Product doesn't match the searched color - exclude it
           }
         }
@@ -1381,7 +1465,7 @@ export const filterProductsInternal = internalQuery({
 
         // Score for color match
         if (detectedColors.length > 0) {
-          if (colorNameMatchesTargets(product.colorName || "", detectedColors, product.name, product.description)) {
+          if (colorNameMatchesTargets(product.colorName || "", detectedColors, product.name, product.description, product.colorVariants, product.options)) {
             score += 25;  // Bonus for matching color
           }
         }
