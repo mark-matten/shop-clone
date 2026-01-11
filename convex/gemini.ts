@@ -334,18 +334,31 @@ export const generateTryOnImage = action({
     const hasBottoms = categories.some(c => c.includes("bottom") || c.includes("pant") || c.includes("jean") || c.includes("short") || c.includes("skirt"));
     const hasShoes = categories.some(c => c.includes("shoe") || c.includes("boot") || c.includes("sneaker") || c.includes("heel") || c.includes("sandal") || c.includes("footwear"));
 
-    // START with the most critical instruction
-    promptParts.push(
-      `CRITICAL INSTRUCTION: This outfit contains EXACTLY ${validItems.length} clothing items. You must show ONLY these ${validItems.length} items - nothing more, nothing less.`,
-      ""
-    );
-
-    // If dress + top but NO bottoms, be VERY explicit upfront
+    // START with the most critical instruction - especially for dress+top combos
     if (hasDress && hasTop && !hasBottoms) {
+      // ULTRA EXPLICIT for dress + top without bottoms - this is the most common failure case
       promptParts.push(
-        "IMPORTANT: This outfit has a DRESS and a TOP but NO PANTS/JEANS.",
-        "The model should wear the TOP over the DRESS. The DRESS is the bottom half - NO JEANS OR PANTS.",
-        "You must NOT add any pants, jeans, or other bottoms to this outfit.",
+        "⚠️ CRITICAL WARNING - READ FIRST ⚠️",
+        "This is a DRESS + TOP outfit with NO PANTS.",
+        "The model's legs should be BARE or showing the DRESS FABRIC - NOT wearing jeans or pants.",
+        "DO NOT ADD JEANS. DO NOT ADD PANTS. DO NOT ADD TROUSERS.",
+        "The dress IS the bottom half of this outfit.",
+        "",
+        `ITEMS TO SHOW (exactly ${validItems.length}):`,
+        ...validItems.map(item => `  ✓ ${item.name} (${item.category})`),
+        "",
+        "ITEMS THAT MUST NOT APPEAR:",
+        "  ✗ Jeans",
+        "  ✗ Pants",
+        "  ✗ Trousers",
+        "  ✗ Any bottoms not in the list above",
+        "",
+        "VISUAL RESULT: Model wearing TOP layered over DRESS. Below the top, you should see DRESS FABRIC on the legs, NOT denim or pants material.",
+        ""
+      );
+    } else {
+      promptParts.push(
+        `CRITICAL INSTRUCTION: This outfit contains EXACTLY ${validItems.length} clothing items. You must show ONLY these ${validItems.length} items - nothing more, nothing less.`,
         ""
       );
     }
@@ -482,6 +495,14 @@ export const generateTryOnImage = action({
       "- No harsh shadows or dramatic lighting",
       "- High quality, professional fashion photography"
     );
+
+    // Final reminder for dress+top combinations
+    if (hasDress && hasTop && !hasBottoms) {
+      promptParts.push(
+        "",
+        "🚨 FINAL REMINDER: NO JEANS OR PANTS IN THIS IMAGE. The model wears ONLY the dress and top listed. Legs show DRESS FABRIC, not denim."
+      );
+    }
 
     const textPrompt = promptParts.join("\n");
 

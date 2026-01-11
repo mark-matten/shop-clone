@@ -249,11 +249,13 @@ export const getSavedOutfits = query({
           (outfit.closetItemIds ? outfit.closetItemIds.map(id => id.toString()) : []);
         const items = await Promise.all(
           itemIdsToLookup.map(async (id) => {
-            // Try by _id first
-            let closetItemDoc = await ctx.db
-              .query("closet_items")
-              .filter((q) => q.eq(q.field("_id"), id as any))
-              .first();
+            // Try direct lookup by _id first (most reliable method)
+            let closetItemDoc = null;
+            try {
+              closetItemDoc = await ctx.db.get(id as Id<"closet_items">);
+            } catch {
+              // ID format might not match, try productId lookup
+            }
 
             // If not found, try by productId
             if (!closetItemDoc) {
@@ -347,11 +349,13 @@ export const getOutfitHistory = query({
           (outfit.closetItemIds ? outfit.closetItemIds.map(id => id.toString()) : []);
         const items = await Promise.all(
           itemIdsToLookup.map(async (id) => {
-            // Try closet_items table first - by _id
-            let closetItemDoc = await ctx.db
-              .query("closet_items")
-              .filter((q) => q.eq(q.field("_id"), id as any))
-              .first();
+            // Try direct lookup by _id first (most reliable method)
+            let closetItemDoc = null;
+            try {
+              closetItemDoc = await ctx.db.get(id as Id<"closet_items">);
+            } catch {
+              // ID format might not match, try other lookups
+            }
 
             // If not found by _id, try by productId (for items saved with product IDs)
             if (!closetItemDoc) {
@@ -400,10 +404,12 @@ export const getOutfitHistory = query({
             }
 
             // Try favorites table (for wishlist items)
-            const favorite = await ctx.db
-              .query("favorites")
-              .filter((q) => q.eq(q.field("_id"), id as any))
-              .first();
+            let favorite = null;
+            try {
+              favorite = await ctx.db.get(id as Id<"favorites">);
+            } catch {
+              // ID format might not match
+            }
 
             if (favorite && favorite.productId) {
               const product = await ctx.db.get(favorite.productId);
@@ -584,11 +590,13 @@ export const getPublicOutfit = query({
 
     const items = await Promise.all(
       itemIdsToLookup.map(async (id) => {
-        // Try by _id first
-        let closetItemDoc = await ctx.db
-          .query("closet_items")
-          .filter((q) => q.eq(q.field("_id"), id as any))
-          .first();
+        // Try direct lookup by _id first (most reliable method)
+        let closetItemDoc = null;
+        try {
+          closetItemDoc = await ctx.db.get(id as Id<"closet_items">);
+        } catch {
+          // ID format might not match, try productId lookup
+        }
 
         // If not found, try by productId
         if (!closetItemDoc) {
