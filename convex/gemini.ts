@@ -327,9 +327,32 @@ export const generateTryOnImage = action({
       return "dark/deep";
     };
 
+    // Categorize items FIRST for use throughout the prompt
+    const categories = validItems.map(item => (item.category || "").toLowerCase());
+    const hasDress = categories.some(c => c.includes("dress"));
+    const hasTop = categories.some(c => c.includes("top") || c.includes("shirt") || c.includes("blouse") || c.includes("sweater") || c.includes("jacket") || c.includes("coat"));
+    const hasBottoms = categories.some(c => c.includes("bottom") || c.includes("pant") || c.includes("jean") || c.includes("short") || c.includes("skirt"));
+    const hasShoes = categories.some(c => c.includes("shoe") || c.includes("boot") || c.includes("sneaker") || c.includes("heel") || c.includes("sandal") || c.includes("footwear"));
+
+    // START with the most critical instruction
+    promptParts.push(
+      `CRITICAL INSTRUCTION: This outfit contains EXACTLY ${validItems.length} clothing items. You must show ONLY these ${validItems.length} items - nothing more, nothing less.`,
+      ""
+    );
+
+    // If dress + top but NO bottoms, be VERY explicit upfront
+    if (hasDress && hasTop && !hasBottoms) {
+      promptParts.push(
+        "IMPORTANT: This outfit has a DRESS and a TOP but NO PANTS/JEANS.",
+        "The model should wear the TOP over the DRESS. The DRESS is the bottom half - NO JEANS OR PANTS.",
+        "You must NOT add any pants, jeans, or other bottoms to this outfit.",
+        ""
+      );
+    }
+
     if (args.userPhotoStorageId && !args.useGenericModel) {
       promptParts.push(
-        `Generate a FULL BODY fashion photo of a real ${genderDescription} person wearing an outfit.`,
+        `Generate a FULL BODY fashion photo of a real ${genderDescription} person wearing ONLY the ${validItems.length} items listed below.`,
         "Use the provided reference photo to match the person's appearance, face, and body type exactly.",
         "Show the person's face clearly with a friendly, moderate smile.",
         "IMPORTANT: Use a real human model, NOT a mannequin or faceless figure.",
@@ -349,7 +372,7 @@ export const generateTryOnImage = action({
       }
 
       promptParts.push(
-        `Generate a FULL BODY fashion photo of ${modelDescParts.join(", ")} wearing an outfit.`,
+        `Generate a FULL BODY fashion photo of ${modelDescParts.join(", ")} wearing ONLY the ${validItems.length} items listed below.`,
         "The model should have a friendly, moderate smile and relaxed, natural pose.",
         "Show the ENTIRE body from head to toe, standing upright.",
         "IMPORTANT: Use a real human model, NOT a mannequin or faceless figure.",
@@ -358,14 +381,8 @@ export const generateTryOnImage = action({
     }
 
     promptParts.push(
-      "Outfit items (reference images provided below - MATCH EXACTLY):"
+      `THE COMPLETE OUTFIT (exactly ${validItems.length} items - use ONLY these):`
     );
-
-    // Categorize items for layering logic
-    const categories = validItems.map(item => (item.category || "").toLowerCase());
-    const hasDress = categories.some(c => c.includes("dress"));
-    const hasTop = categories.some(c => c.includes("top") || c.includes("shirt") || c.includes("blouse") || c.includes("sweater") || c.includes("jacket") || c.includes("coat"));
-    const hasBottoms = categories.some(c => c.includes("bottom") || c.includes("pant") || c.includes("jean") || c.includes("short") || c.includes("skirt"));
 
     for (const item of validItems) {
       const desc = [item.name];
