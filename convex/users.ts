@@ -316,6 +316,32 @@ export const incrementTryOnUsage = mutation({
   },
 });
 
+// Admin query to list all users and usage
+export const listAllUsersAndUsage = query({
+  args: {},
+  handler: async (ctx) => {
+    const users = await ctx.db.query("users").collect();
+    const usage = await ctx.db.query("try_on_usage").collect();
+    return { users, usage };
+  },
+});
+
+// Admin function to reset ALL try-on usage for today (nuclear option)
+export const resetAllTryOnUsage = mutation({
+  args: {},
+  handler: async (ctx) => {
+    const today = new Date().toISOString().split("T")[0];
+    const allUsage = await ctx.db.query("try_on_usage").collect();
+    const todayUsage = allUsage.filter(u => u.date === today);
+
+    for (const usage of todayUsage) {
+      await ctx.db.delete(usage._id);
+    }
+
+    return { deleted: todayUsage.length, message: `Deleted ${todayUsage.length} usage records for today` };
+  },
+});
+
 // Admin function to reset try-on usage for a user (for testing/support)
 export const resetTryOnUsage = mutation({
   args: { clerkId: v.string() },
