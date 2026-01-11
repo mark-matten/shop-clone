@@ -429,3 +429,74 @@ export const migrateUserReferences = internalMutation({
     };
   },
 });
+
+// Color words to detect in product names/descriptions
+const COLOR_WORDS = [
+  "white", "black", "blue", "navy", "grey", "gray", "brown", "tan", "green",
+  "red", "pink", "cream", "ivory", "beige", "olive", "burgundy", "purple",
+  "orange", "yellow", "gold", "silver", "teal", "coral", "maroon", "charcoal",
+  "khaki", "mint", "lavender", "rose", "blush", "nude", "camel", "rust",
+  "indigo", "denim", "chambray", "heather", "mauve", "plum", "sage", "forest",
+  "mustard", "wine", "berry", "peach", "aqua", "turquoise", "cobalt", "slate"
+];
+
+// Extract color from product name or description
+function extractColorFromText(name: string, description?: string): string | null {
+  const text = `${name} ${description || ""}`.toLowerCase();
+
+  // Check for color words at word boundaries
+  for (const color of COLOR_WORDS) {
+    // Match color as a whole word (not part of another word)
+    const regex = new RegExp(`\\b${color}\\b`, "i");
+    if (regex.test(text)) {
+      // Capitalize first letter
+      return color.charAt(0).toUpperCase() + color.slice(1);
+    }
+  }
+
+  return null;
+}
+
+// Extract colors from product names/descriptions for products without colorName
+// Processes a small batch at a time - call repeatedly until done
+export const extractColorsFromNames = internalMutation({
+  args: {
+    dryRun: v.optional(v.boolean()),
+  },
+  handler: async (ctx, args) => {
+    // Get a batch of products without colorName
+    const products = await ctx.db
+      .query("products")
+      .take(200);
+
+    let updatedCount = 0;
+    let skippedCount = 0;
+    const colorCounts: Record<string, number> = {};
+
+    for (const product of products) {
+      // Skip products that already have colorName
+      if (product.colorName) {
+        skippedCount++;
+        continue;
+      }
+
+      const extractedColor = extractColorFromText(product.name, product.description);
+      const key = extractedColor || "No color found";
+      colorCounts[key] = (colorCounts[key] || 0) + 1;
+
+      if (extractedColor && !args.dryRun) {
+        await ctx.db.patch(product._id, { colorName: extractedColor });
+        updatedCount++;
+      }
+    }
+
+    return {
+      batchSize: products.length,
+      skipped: skippedCount,
+      processed: products.length - skippedCount,
+      updated: updatedCount,
+      dryRun: args.dryRun || false,
+      colorCounts,
+    };
+  },
+});

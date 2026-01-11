@@ -839,19 +839,31 @@ function productMatchesCategoryGroup(productCategory: string, productName: strin
   return false;
 }
 
-// Check if product color name matches any of the target colors (with synonym support)
-function colorNameMatchesTargets(productColorName: string, targetColors: string[]): boolean {
+// Check if product color matches any of the target colors (with synonym support)
+// Checks colorName field, product name, and description
+function colorNameMatchesTargets(productColorName: string, targetColors: string[], productName?: string, productDescription?: string): boolean {
   const colorLower = productColorName.toLowerCase();
+  const nameLower = (productName || "").toLowerCase();
+  const descLower = (productDescription || "").toLowerCase();
+
   for (const targetColor of targetColors) {
     // Check for the color word in the product's color name
     if (colorLower.includes(targetColor)) {
+      return true;
+    }
+    // Check in product name (e.g., "Blue Floral Dress")
+    if (nameLower.includes(targetColor)) {
+      return true;
+    }
+    // Check in description
+    if (descLower.includes(targetColor)) {
       return true;
     }
     // Also check synonyms
     const synonyms = SYNONYMS[targetColor];
     if (synonyms) {
       for (const syn of synonyms) {
-        if (colorLower.includes(syn)) {
+        if (colorLower.includes(syn) || nameLower.includes(syn) || descLower.includes(syn)) {
           return true;
         }
       }
@@ -979,7 +991,7 @@ export const searchWithScores = query({
         // STRICT COLOR MATCHING: If user searched for a color, product MUST match that color
         if (detectedColors.length > 0) {
           const productColor = product.colorName || "";
-          if (!colorNameMatchesTargets(productColor, detectedColors)) {
+          if (!colorNameMatchesTargets(productColor, detectedColors, product.name, product.description)) {
             return null;
           }
         }
@@ -1218,7 +1230,7 @@ export const filterProductsInternal = internalQuery({
         // (unless we have a strong name match)
         if (detectedColors.length > 0 && !hasStrongNameMatch) {
           const productColor = product.colorName || "";
-          if (!colorNameMatchesTargets(productColor, detectedColors)) {
+          if (!colorNameMatchesTargets(productColor, detectedColors, product.name, product.description)) {
             return null;  // Product doesn't match the searched color - exclude it
           }
         }
@@ -1270,8 +1282,8 @@ export const filterProductsInternal = internalQuery({
         let score = nameScore; // Start with name match score
 
         // Score for color match
-        if (detectedColors.length > 0 && product.colorName) {
-          if (colorNameMatchesTargets(product.colorName, detectedColors)) {
+        if (detectedColors.length > 0) {
+          if (colorNameMatchesTargets(product.colorName || "", detectedColors, product.name, product.description)) {
             score += 25;  // Bonus for matching color
           }
         }
