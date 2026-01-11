@@ -392,6 +392,17 @@ export const generateTryOnImage = action({
       ""
     );
 
+    // CRITICAL: All selected items must appear
+    promptParts.push(
+      "",
+      "MANDATORY - ALL ITEMS MUST APPEAR:",
+      "- You MUST include EVERY clothing item listed above in the final image.",
+      "- Do NOT substitute any item with a different item (e.g., do NOT replace a dress with jeans or pants).",
+      "- Do NOT omit any selected item - if 3 items are listed, all 3 must be visible in the output.",
+      "- Do NOT add any clothing items that were not provided in the reference images.",
+      ""
+    );
+
     // Add layering instructions if applicable
     if (hasDress && (hasTop || hasBottoms)) {
       promptParts.push(
@@ -399,14 +410,18 @@ export const generateTryOnImage = action({
       );
       if (hasDress && hasTop) {
         promptParts.push(
-          "- A DRESS and TOP are both selected: Layer the TOP OVER the DRESS.",
-          "- The dress should be VISIBLE underneath the top (showing at the neckline, sleeves, and/or hem).",
-          "- Style it naturally as someone would wear a sweater, jacket, or cardigan over a dress."
+          "- IMPORTANT: Both the DRESS and the TOP must be visible in the final image.",
+          "- Layer the TOP (turtleneck, sweater, cardigan, jacket, etc.) OVER the DRESS.",
+          "- The DRESS must be clearly visible underneath - show the dress skirt/hem below the top.",
+          "- For a turtleneck or sweater over a maxi dress: the dress hem should extend below the sweater.",
+          "- This is a common styling technique - do NOT replace the dress with pants or jeans.",
+          "- The model is wearing a DRESS underneath, NOT pants or jeans."
         );
       }
       if (hasDress && hasBottoms) {
         promptParts.push(
-          "- A DRESS and BOTTOMS are both selected: Layer the BOTTOMS OVER/WITH the DRESS.",
+          "- IMPORTANT: Both the DRESS and the BOTTOMS must be visible in the final image.",
+          "- Layer the BOTTOMS OVER/WITH the DRESS.",
           "- The dress should be visible but the bottoms (pants, jeans, skirt) should be worn together with it.",
           "- Style it as layering a dress over pants, or tucking a dress into a skirt."
         );
