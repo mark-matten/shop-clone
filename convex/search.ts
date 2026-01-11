@@ -326,6 +326,31 @@ function isProductSoldOut(product: any): boolean {
   return product.variants.every((v: any) => !v.available);
 }
 
+// Helper to check if a product matches a searched color
+function productMatchesColor(product: any, searchColor: string): boolean {
+  const searchColorLower = searchColor.toLowerCase();
+  const colorName = (product.colorName || "").toLowerCase();
+  const productName = (product.name || "").toLowerCase();
+  const productDescription = (product.description || "").toLowerCase();
+
+  // Check colorName field
+  if (colorName && (colorName.includes(searchColorLower) || searchColorLower.includes(colorName))) {
+    return true;
+  }
+
+  // Check if color is in product name (e.g., "Black Slim Jeans")
+  if (productName.includes(searchColorLower)) {
+    return true;
+  }
+
+  // Check description
+  if (productDescription.includes(searchColorLower)) {
+    return true;
+  }
+
+  return false;
+}
+
 // Group products by colorGroupId and pick the best representative
 function groupByColor(
   products: any[],
@@ -378,6 +403,11 @@ function groupByColor(
           return colorName.includes(searchColorLower) || searchColorLower.includes(colorName);
         });
       }
+
+      // If this color group has no matching color, skip it entirely
+      if (!representative) {
+        continue;
+      }
     }
 
     // If no color match or no search color, pick lowest price from in-stock products
@@ -385,18 +415,25 @@ function groupByColor(
       representative = candidateProducts.sort((a, b) => a.price - b.price)[0];
     }
 
-    // Add color variant count to the representative
+    // Add color variant count and soldOut status to the representative
     result.push({
       ...representative,
       colorVariantCount,
+      isSoldOut: isProductSoldOut(representative),
     });
   }
 
   // Add ungrouped products (they're their own color variant)
   for (const product of ungroupedProducts) {
+    // If color was searched, filter out ungrouped products that don't match
+    if (searchedColor && !productMatchesColor(product, searchedColor)) {
+      continue;
+    }
+
     result.push({
       ...product,
       colorVariantCount: 1,
+      isSoldOut: isProductSoldOut(product),
     });
   }
 

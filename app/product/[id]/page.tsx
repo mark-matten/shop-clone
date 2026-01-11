@@ -9,7 +9,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
 import { useRecentlyViewed } from "@/components/search/RecentlyViewed";
-import { ImageCarousel } from "@/components/ui/ImageCarousel";
+import { ImageCarouselWithThumbnails } from "@/components/ui/ImageCarousel";
 import { VariantSelector } from "@/components/ui/VariantSelector";
 import { PriceHistoryChart } from "@/components/product/PriceHistoryChart";
 
@@ -667,8 +667,8 @@ export default function ProductDetailPage() {
 
         <div className="mt-6 grid gap-8 lg:grid-cols-2">
           {/* Product Images Carousel */}
-          <div className="aspect-square overflow-hidden rounded-2xl bg-zinc-100 dark:bg-zinc-800">
-            <ImageCarousel
+          <div>
+            <ImageCarouselWithThumbnails
               images={product.imageUrls && product.imageUrls.length > 0
                 ? product.imageUrls
                 : product.imageUrl
@@ -821,7 +821,7 @@ export default function ProductDetailPage() {
                 View on {product.sourcePlatform}
               </a>
 
-              {/* Favorite */}
+              {/* Add to Wishlist */}
               <button
                 onClick={handleToggleFavorite}
                 className={`flex items-center gap-2 rounded-xl border px-4 py-3 font-medium transition-colors ${
@@ -829,7 +829,7 @@ export default function ProductDetailPage() {
                     ? "border-red-300 bg-red-50 text-red-600 hover:bg-red-100 dark:border-red-800 dark:bg-red-950 dark:text-red-400 dark:hover:bg-red-900"
                     : "border-zinc-300 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
                 }`}
-                title={isFavorited ? "Remove from favorites" : "Add to favorites"}
+                title={isFavorited ? "Remove from wishlist" : "Add to wishlist"}
               >
                 <svg
                   className="h-5 w-5"
@@ -844,7 +844,7 @@ export default function ProductDetailPage() {
                     d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                   />
                 </svg>
-                Favorite
+                {isFavorited ? "In Wishlist" : "Add to Wishlist"}
               </button>
 
               {/* I Own This */}

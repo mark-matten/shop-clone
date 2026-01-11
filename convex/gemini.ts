@@ -183,13 +183,21 @@ export const createGeneratedClosetItem = internalMutation({
   },
   handler: async (ctx, args) => {
     // Get or create user
-    const user = await ctx.db
+    let user = await ctx.db
       .query("users")
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
+    // Auto-create user if not found (handles webhook race conditions)
     if (!user) {
-      throw new Error("User not found");
+      const userId = await ctx.db.insert("users", {
+        clerkId: args.clerkId,
+        createdAt: Date.now(),
+      });
+      user = await ctx.db.get(userId);
+      if (!user) {
+        throw new Error("Failed to create user");
+      }
     }
 
     // Get next sort order

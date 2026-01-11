@@ -78,6 +78,7 @@ interface ProductListItemProps {
     colorGroupId?: string;
     colorName?: string;
     colorVariantCount?: number; // Number of color variants from backend grouping
+    isSoldOut?: boolean; // Pre-computed from backend
   };
   isFavorited?: boolean;
   onFavoriteClick?: () => void;
@@ -90,10 +91,12 @@ const genderLabels = {
 };
 
 export function ProductListItem({ product, isFavorited, onFavoriteClick }: ProductListItemProps) {
-  // Check if all variants are sold out
-  const isSoldOut = product.variants && product.variants.length > 0
-    ? product.variants.every(v => !v.available)
-    : false;
+  // Use pre-computed isSoldOut from backend, fall back to client-side calculation
+  const isSoldOut = product.isSoldOut !== undefined
+    ? product.isSoldOut
+    : (product.variants && product.variants.length > 0
+        ? product.variants.every(v => !v.available)
+        : false);
 
   // Count available sizes from options or variants
   const getSizeCount = (): number => {

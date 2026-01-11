@@ -24,24 +24,21 @@ export function Header() {
     setMounted(true);
   }, []);
 
-  // Track search context (search page with query or product page)
+  // Track search context (search page with query only - not product pages)
   useEffect(() => {
     if (typeof window === "undefined") return;
 
     const query = searchParams.get("q");
     const isSearchPage = pathname === "/" && query;
-    const isProductPage = pathname.startsWith("/product/");
     const isHomePage = pathname === "/" && !query;
 
-    if (isSearchPage || isProductPage) {
-      // Save current URL as search context
-      const currentUrl = isSearchPage
-        ? `/?q=${encodeURIComponent(query)}`
-        : pathname;
+    if (isSearchPage) {
+      // Save search URL as search context (only for search pages, not product pages)
+      const currentUrl = `/?q=${encodeURIComponent(query)}`;
       sessionStorage.setItem(SEARCH_CONTEXT_KEY, currentUrl);
     } else if (isHomePage) {
-      // Clear scroll position when on fresh home page (no search)
-      // but keep search context so user can get back to it
+      // Clear context when on fresh home page (no search)
+      sessionStorage.removeItem(SEARCH_CONTEXT_KEY);
       sessionStorage.removeItem(SCROLL_POSITION_KEY);
     }
   }, [pathname, searchParams]);
@@ -82,14 +79,13 @@ export function Header() {
     }
   }, [pathname, searchParams]);
 
-  // Handle search icon click - navigate to saved context only if on product page, otherwise go to homepage
+  // Handle search icon click - navigate to saved search context if available
   const handleSearchClick = useCallback((e: React.MouseEvent) => {
     if (typeof window === "undefined") return;
 
     const query = searchParams.get("q");
     const isSearchHomepage = pathname === "/" && !query;
     const isSearchPage = pathname === "/" && query;
-    const isProductPage = pathname.startsWith("/product/");
 
     // If we're on the search homepage (no query), just refresh the page
     if (isSearchHomepage) {
@@ -106,16 +102,13 @@ export function Header() {
       return;
     }
 
-    // If we're on any page other than search, try to restore saved search context
-    // This includes product pages, closet, profile, etc.
+    // If we're on any other page (product, closet, profile, etc.),
+    // try to restore saved search context (only search URLs, not product URLs)
     const savedContext = sessionStorage.getItem(SEARCH_CONTEXT_KEY);
-    if (savedContext && savedContext !== "/") {
-      // Restore if it's a search page (?q=) or a product page (/product/)
-      if (savedContext.includes("?q=") || savedContext.startsWith("/product/")) {
-        e.preventDefault();
-        router.push(savedContext);
-        return;
-      }
+    if (savedContext && savedContext.includes("?q=")) {
+      e.preventDefault();
+      router.push(savedContext);
+      return;
     }
 
     // No saved context, let the Link navigate to "/" normally (fresh homepage)

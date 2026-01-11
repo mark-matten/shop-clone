@@ -44,6 +44,7 @@ interface TryOnModalProps {
 }
 
 const CATEGORIES = [
+  { id: "all", label: "All" },
   { id: "tops", label: "Tops" },
   { id: "bottoms", label: "Bottoms" },
   { id: "dresses", label: "Dresses" },
@@ -128,7 +129,7 @@ type OwnershipFilter = "all" | "owned" | "wishlist";
 
 export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModalProps) {
   const [selectedByCategory, setSelectedByCategory] = useState<Map<string, string>>(new Map());
-  const [activeCategory, setActiveCategory] = useState("tops");
+  const [activeCategory, setActiveCategory] = useState("all");
   const [modelMode, setModelMode] = useState<ModelMode>("generic");
   const [selectedPhotoId, setSelectedPhotoId] = useState<Id<"user_photos"> | null>(null);
   const [selectedPhotoStorageId, setSelectedPhotoStorageId] = useState<Id<"_storage"> | null>(null);
@@ -293,7 +294,9 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
     return items;
   }, [selectedByCategory, itemsById]);
 
-  const currentCategoryItems = itemsByCategory[activeCategory] || [];
+  const currentCategoryItems = activeCategory === "all"
+    ? filteredClosetItems
+    : (itemsByCategory[activeCategory] || []);
 
   const toggleItemSelection = (item: ClosetItem) => {
     const categoryKey = getCategoryKey(item.displayCategory || "other");

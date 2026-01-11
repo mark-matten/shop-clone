@@ -42,6 +42,7 @@ interface Product {
   options?: ProductOption[];
   colorGroupId?: string;
   colorName?: string;
+  isSoldOut?: boolean; // Pre-computed from backend
 }
 
 interface ProductCardProps {
@@ -105,10 +106,12 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
     ? Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100)
     : null;
 
-  // Check if all variants are sold out
-  const isSoldOut = product.variants && product.variants.length > 0
-    ? product.variants.every(v => !v.available)
-    : false;
+  // Use pre-computed isSoldOut from backend, fall back to client-side calculation
+  const isSoldOut = product.isSoldOut !== undefined
+    ? product.isSoldOut
+    : (product.variants && product.variants.length > 0
+        ? product.variants.every(v => !v.available)
+        : false);
 
   // Count available (in-stock) sizes from variants
   const getSizeCount = (): number => {
