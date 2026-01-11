@@ -12,6 +12,7 @@ import { useRecentlyViewed } from "@/components/search/RecentlyViewed";
 import { ImageCarouselWithThumbnails } from "@/components/ui/ImageCarousel";
 import { VariantSelector } from "@/components/ui/VariantSelector";
 import { PriceHistoryChart } from "@/components/product/PriceHistoryChart";
+import { SignInPromptModal } from "@/components/ui/SignInPromptModal";
 
 // Helper to get price from product
 function getProductPrice(product: { price?: number }): number {
@@ -89,7 +90,8 @@ export default function ProductDetailPage() {
 
   const handleToggleFavorite = async () => {
     if (!clerkUser?.id) {
-      router.push("/sign-in");
+      setSignInAction("add to wishlist");
+      setShowSignInPrompt(true);
       return;
     }
 
@@ -146,7 +148,8 @@ export default function ProductDetailPage() {
 
   const handleToggleCloset = async () => {
     if (!clerkUser?.id) {
-      router.push("/sign-in");
+      setSignInAction("add to closet");
+      setShowSignInPrompt(true);
       return;
     }
 
@@ -227,6 +230,8 @@ export default function ProductDetailPage() {
   const [targetPrice, setTargetPrice] = useState("");
   const [showTrackingModal, setShowTrackingModal] = useState(false);
   const [showPriceHistoryModal, setShowPriceHistoryModal] = useState(false);
+  const [showSignInPrompt, setShowSignInPrompt] = useState(false);
+  const [signInAction, setSignInAction] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [hasInitializedPrice, setHasInitializedPrice] = useState(false);
   const [showCopied, setShowCopied] = useState(false);
@@ -528,7 +533,8 @@ export default function ProductDetailPage() {
 
   const handleTrack = async () => {
     if (!convexUser?._id) {
-      router.push("/sign-in");
+      setSignInAction("track prices");
+      setShowSignInPrompt(true);
       return;
     }
 
@@ -1045,7 +1051,10 @@ export default function ProductDetailPage() {
 
             {!clerkUser && (
               <button
-                onClick={() => router.push("/sign-in")}
+                onClick={() => {
+                  setSignInAction("track prices");
+                  setShowSignInPrompt(true);
+                }}
                 className="mt-4 w-full rounded-lg bg-moi-50 p-3 text-sm text-moi-700 hover:bg-moi-100 dark:bg-moi-900/30 dark:text-moi-200 dark:hover:bg-moi-900/50 transition-colors cursor-pointer text-left"
               >
                 Please sign in to track prices.
@@ -1172,6 +1181,13 @@ export default function ProductDetailPage() {
           </div>
         </div>
       )}
+
+      {/* Sign In Prompt Modal */}
+      <SignInPromptModal
+        isOpen={showSignInPrompt}
+        onClose={() => setShowSignInPrompt(false)}
+        action={signInAction}
+      />
     </div>
   );
 }
