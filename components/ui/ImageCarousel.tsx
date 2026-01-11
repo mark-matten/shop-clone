@@ -130,23 +130,6 @@ export function ImageCarousel({ images, alt }: ImageCarouselProps) {
           </div>
         )}
 
-        {/* Dot Indicators (mobile only) */}
-        {hasMultipleImages && (
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2 sm:hidden">
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToIndex(index)}
-                className={`h-2 w-2 rounded-full transition-all ${
-                  index === currentIndex
-                    ? "bg-white w-4 shadow-lg"
-                    : "bg-white/60 hover:bg-white/80"
-                }`}
-                aria-label={`Go to image ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );
@@ -165,12 +148,12 @@ export function ImageThumbnails({
   if (images.length <= 1) return null;
 
   return (
-    <div className="hidden sm:flex gap-2 mt-3 overflow-x-auto pb-1">
+    <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
       {images.map((image, index) => (
         <button
           key={index}
           onClick={() => onSelect(index)}
-          className={`flex-shrink-0 h-16 w-16 overflow-hidden rounded-lg border-2 transition-all ${
+          className={`flex-shrink-0 h-12 w-12 sm:h-16 sm:w-16 overflow-hidden rounded-lg border-2 transition-all ${
             index === currentIndex
               ? "border-zinc-900 dark:border-white shadow-lg"
               : "border-zinc-200 dark:border-zinc-700 opacity-60 hover:opacity-100"
@@ -308,34 +291,16 @@ export function ImageCarouselWithThumbnails({ images, alt }: ImageCarouselProps)
             {currentIndex + 1} / {images.length}
           </div>
         )}
-
-        {/* Dot Indicators (mobile only) */}
-        {hasMultipleImages && (
-          <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 gap-2 sm:hidden">
-            {images.map((_, index) => (
-              <button
-                key={index}
-                onClick={() => goToIndex(index)}
-                className={`h-2 w-2 rounded-full transition-all ${
-                  index === currentIndex
-                    ? "bg-white w-4 shadow-lg"
-                    : "bg-white/60 hover:bg-white/80"
-                }`}
-                aria-label={`Go to image ${index + 1}`}
-              />
-            ))}
-          </div>
-        )}
       </div>
 
       {/* Thumbnail Strip - Below main image */}
       {hasMultipleImages && (
-        <div className="hidden sm:flex gap-2 mt-3 overflow-x-auto pb-1">
+        <div className="flex gap-2 mt-3 overflow-x-auto pb-1">
           {images.map((image, index) => (
             <button
               key={index}
               onClick={() => goToIndex(index)}
-              className={`flex-shrink-0 h-16 w-16 overflow-hidden rounded-lg border-2 transition-all ${
+              className={`flex-shrink-0 h-12 w-12 sm:h-16 sm:w-16 overflow-hidden rounded-lg border-2 transition-all ${
                 index === currentIndex
                   ? "border-zinc-900 dark:border-white shadow-lg"
                   : "border-zinc-200 dark:border-zinc-700 opacity-60 hover:opacity-100"

@@ -134,6 +134,8 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
   const [selectedPhotoId, setSelectedPhotoId] = useState<Id<"user_photos"> | null>(null);
   const [selectedPhotoStorageId, setSelectedPhotoStorageId] = useState<Id<"_storage"> | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generationProgress, setGenerationProgress] = useState(0);
+  const [generationStatus, setGenerationStatus] = useState("");
   const [generatedOutfit, setGeneratedOutfit] = useState<string | null>(null);
   const [selectedOutfitId, setSelectedOutfitId] = useState<Id<"outfit_images"> | null>(null);
   const [showPhotoManager, setShowPhotoManager] = useState(false);
@@ -341,6 +343,26 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
     setIsGenerating(true);
     setGeneratedOutfit(null);
     setSelectedOutfitId(null);
+    setGenerationProgress(0);
+    setGenerationStatus("Preparing your items...");
+
+    // Simulate progress while waiting for the API
+    const progressStages = [
+      { progress: 15, status: "Analyzing clothing items...", delay: 800 },
+      { progress: 35, status: "Creating outfit composition...", delay: 1500 },
+      { progress: 55, status: "Generating virtual try-on...", delay: 2500 },
+      { progress: 75, status: "Applying finishing touches...", delay: 4000 },
+      { progress: 90, status: "Almost there...", delay: 6000 },
+    ];
+
+    const progressTimeouts: NodeJS.Timeout[] = [];
+    progressStages.forEach(({ progress, status, delay }) => {
+      const timeout = setTimeout(() => {
+        setGenerationProgress(progress);
+        setGenerationStatus(status);
+      }, delay);
+      progressTimeouts.push(timeout);
+    });
 
     try {
       // Store the actual closet_item._id or favorites._id for proper lookup later
@@ -361,6 +383,11 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
 
       // Increment usage counter after successful generation
       await incrementUsage({ clerkId, isCustomModel });
+
+      // Clear progress timeouts since generation succeeded
+      progressTimeouts.forEach(clearTimeout);
+      setGenerationProgress(100);
+      setGenerationStatus("Complete!");
 
       if (result.imageUrl) {
         setGeneratedOutfit(result.imageUrl);
@@ -386,6 +413,8 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
         });
       }
     } catch (error) {
+      // Clear progress timeouts on error
+      progressTimeouts.forEach(clearTimeout);
       console.error("Generation error:", error);
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       alert(`Failed to generate outfit: ${errorMessage}`);
@@ -433,6 +462,15 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
   // Actually save the outfit with name
   const handleConfirmSave = async () => {
     if (!generatedOutfit || isSaving) return;
+
+    // Validate: require a name or collection to save
+    const hasName = outfitName.trim().length > 0;
+    const willHaveCollection = selectedCollectionId !== null || (isCreatingCollection && newCollectionName.trim().length > 0);
+
+    if (!hasName && !willHaveCollection) {
+      alert("Please enter a name for your outfit or select a collection.");
+      return;
+    }
 
     setIsSaving(true);
     try {
@@ -654,11 +692,11 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 sm:p-4 pt-safe"
       onClick={handleClose}
     >
       <div
-        className="relative flex h-[92vh] sm:h-[85vh] w-full sm:max-w-5xl flex-col sm:flex-row overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900"
+        className="relative flex h-[calc(100dvh-env(safe-area-inset-top,0px)-1rem)] sm:h-[85vh] w-full sm:max-w-5xl flex-col sm:flex-row overflow-hidden rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900"
         onClick={(e) => e.stopPropagation()}
       >
         {/* ===== MOBILE LAYOUT ===== */}
@@ -839,12 +877,20 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
             {/* Selected Items Preview */}
             <div className="px-3 py-3">
               {isGenerating ? (
-                <div className="flex items-center justify-center py-6 gap-2">
-                  <svg className="h-8 w-8 animate-spin text-moi-400" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <span className="text-sm text-zinc-500">Generating...</span>
+                <div className="flex flex-col items-center justify-center py-6 gap-3">
+                  {/* Progress Bar */}
+                  <div className="w-full max-w-[200px]">
+                    <div className="h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-moi-400 to-moi-500 transition-all duration-500 ease-out"
+                        style={{ width: `${generationProgress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1">
+                      <span className="text-xs text-zinc-400">{generationProgress}%</span>
+                    </div>
+                  </div>
+                  <span className="text-sm text-zinc-500 dark:text-zinc-400 text-center">{generationStatus}</span>
                 </div>
               ) : generatedOutfit ? (
                 <div className="flex flex-col items-center gap-3">
@@ -1169,12 +1215,20 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
           <div className="flex-1 overflow-y-auto">
             <div className="p-6">
               {isGenerating ? (
-                <div className="flex flex-col items-center justify-center py-12 gap-4">
-                  <svg className="h-16 w-16 animate-spin text-moi-400" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                  </svg>
-                  <p className="text-sm text-zinc-500 dark:text-zinc-400">Generating your outfit...</p>
+                <div className="flex flex-col items-center justify-center py-12 gap-5">
+                  {/* Progress Bar */}
+                  <div className="w-full max-w-xs">
+                    <div className="h-3 w-full rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-moi-400 to-moi-500 transition-all duration-500 ease-out"
+                        style={{ width: `${generationProgress}%` }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-2">
+                      <span className="text-sm text-zinc-400">{generationProgress}%</span>
+                    </div>
+                  </div>
+                  <p className="text-base text-zinc-600 dark:text-zinc-400 text-center">{generationStatus}</p>
                 </div>
               ) : generatedOutfit ? (
                 <div className="flex flex-col items-center gap-4">
@@ -1778,23 +1832,26 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
       {/* Save Outfit Modal */}
       {showSaveModal && (
         <div
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 pt-safe"
           onClick={() => setShowSaveModal(false)}
         >
           <div
-            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-zinc-900 max-h-[85vh] overflow-y-auto"
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-zinc-900 max-h-[80vh] sm:max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
             <div className="sm:hidden flex justify-center pb-3 -mt-1">
               <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
             </div>
-            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 text-center">
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-2 text-center">
               Save Outfit
             </h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mb-4">
+              Enter a name or add to a collection to save
+            </p>
             <div className="mb-4">
               <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1 text-center">
-                Outfit Name (optional)
+                Outfit Name
               </label>
               <input
                 type="text"
@@ -1809,7 +1866,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
             {/* Collection Selection */}
             <div className="mb-4">
               <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1 text-center">
-                Add to Collection (optional)
+                Add to Collection
               </label>
               <div className="relative">
                 <input
@@ -1887,14 +1944,14 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
       {/* Item Details Modal */}
       {detailsItem && (
         <div
-          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 pt-safe"
           onClick={(e) => {
             e.stopPropagation();
             setDetailsItem(null);
           }}
         >
           <div
-            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[calc(100dvh-env(safe-area-inset-top,0px)-1rem)] sm:max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}

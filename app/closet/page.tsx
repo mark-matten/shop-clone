@@ -1770,20 +1770,9 @@ export default function ClosetPage() {
         {/* Following Section */}
         {user?.id && (
           <div className="mt-8 border-t border-zinc-200 pt-6 dark:border-zinc-800">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
-                Following
-              </h2>
-              <button
-                onClick={() => setShowFindFriendsModal(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-purple-600 px-3 py-1.5 text-sm font-medium text-white transition-colors hover:bg-purple-700"
-              >
-                <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
-                Find Friends
-              </button>
-            </div>
+            <h2 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4">
+              Following
+            </h2>
             <FollowingList
               clerkId={user.id}
               onFindFriends={() => setShowFindFriendsModal(true)}
@@ -2161,11 +2150,11 @@ export default function ClosetPage() {
       {/* Saved Outfits Modal */}
       {showSavedOutfitsModal && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 pt-safe"
           onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); }}
         >
           <div
-            className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl bg-white p-3 sm:p-4 sm:p-6 dark:bg-zinc-900 max-h-[96vh] sm:max-h-[85vh] overflow-hidden flex flex-col"
+            className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl bg-white p-3 sm:p-4 sm:p-6 dark:bg-zinc-900 max-h-[calc(100dvh-env(safe-area-inset-top,0px)-1rem)] sm:max-h-[85vh] overflow-hidden flex flex-col"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
@@ -2596,11 +2585,11 @@ export default function ClosetPage() {
       {/* Item Details Modal */}
       {detailsItem && (
         <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 pt-safe"
           onClick={() => setDetailsItem(null)}
         >
           <div
-            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[90vh] sm:max-h-[85vh] overflow-y-auto"
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white shadow-xl dark:bg-zinc-900 overflow-hidden max-h-[calc(100dvh-env(safe-area-inset-top,0px)-1rem)] sm:max-h-[85vh] overflow-y-auto"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Mobile drag handle */}
