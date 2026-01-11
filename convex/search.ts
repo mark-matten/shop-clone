@@ -459,12 +459,13 @@ export const searchProducts = action({
       searchText: args.searchText,
     }) as SearchFilter;
 
-    // Step 2: Query products with query text and gender filter
-    // Gender is passed to backend since it's essential for "women's" or "men's" searches
-    // Other filters applied client-side to allow filter removal
+    // Step 2: Query products with query text and essential filters
+    // Gender and condition are passed to backend since they significantly reduce result set
+    // Other filters (color, size, price) applied client-side to allow filter removal
     const products: any[] = await ctx.runQuery(internal.search.filterProductsInternal, {
       query: filter.query,
       gender: filter.gender,
+      condition: filter.condition,
       limit,
     });
 
