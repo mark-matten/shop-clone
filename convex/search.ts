@@ -586,6 +586,31 @@ const ALL_COLOR_WORDS = new Set([
   "purple", "violet", "lavender", "plum", "eggplant", "lilac",
 ]);
 
+// All material words for detection
+const ALL_MATERIAL_WORDS = new Set([
+  "leather", "suede", "canvas", "denim", "cotton", "wool", "cashmere",
+  "silk", "linen", "velvet", "satin", "nylon", "polyester", "fleece",
+  "tweed", "corduroy", "jersey", "chiffon", "mesh", "knit", "woven",
+  "faux leather", "vegan leather", "patent", "pebbled", "quilted",
+  "ribbed", "terry", "sherpa", "shearling", "fur", "faux fur",
+]);
+
+// Material synonyms for matching
+const MATERIAL_SYNONYMS: Record<string, string[]> = {
+  leather: ["leather", "genuine leather", "full grain", "top grain", "nappa"],
+  suede: ["suede", "nubuck"],
+  denim: ["denim", "jean", "chambray"],
+  cotton: ["cotton", "100% cotton", "organic cotton", "pima cotton"],
+  wool: ["wool", "merino", "lambswool", "virgin wool"],
+  cashmere: ["cashmere", "cashmere blend"],
+  silk: ["silk", "100% silk", "charmeuse", "crepe de chine"],
+  linen: ["linen", "100% linen", "linen blend"],
+  velvet: ["velvet", "velour"],
+  canvas: ["canvas", "duck canvas"],
+  fleece: ["fleece", "polar fleece", "micro fleece"],
+  faux: ["faux leather", "vegan leather", "faux fur", "synthetic"],
+};
+
 // Category groups - items in the same group are considered similar
 // Keywords here are used for DETECTION in the search query only
 const CATEGORY_GROUPS: Record<string, string[]> = {
@@ -872,6 +897,39 @@ function colorNameMatchesTargets(productColorName: string, targetColors: string[
   return false;
 }
 
+// Check if product material matches any of the target materials (with synonym support)
+// Checks material field, product name, and description
+function materialMatchesTargets(productMaterial: string, targetMaterials: string[], productName?: string, productDescription?: string): boolean {
+  const materialLower = productMaterial.toLowerCase();
+  const nameLower = (productName || "").toLowerCase();
+  const descLower = (productDescription || "").toLowerCase();
+
+  for (const targetMaterial of targetMaterials) {
+    // Check for the material word in the product's material field
+    if (materialLower.includes(targetMaterial)) {
+      return true;
+    }
+    // Check in product name (e.g., "Leather Crossbody Bag", "Cotton Tee")
+    if (nameLower.includes(targetMaterial)) {
+      return true;
+    }
+    // Check in description
+    if (descLower.includes(targetMaterial)) {
+      return true;
+    }
+    // Also check synonyms
+    const synonyms = MATERIAL_SYNONYMS[targetMaterial];
+    if (synonyms) {
+      for (const syn of synonyms) {
+        if (materialLower.includes(syn) || nameLower.includes(syn) || descLower.includes(syn)) {
+          return true;
+        }
+      }
+    }
+  }
+  return false;
+}
+
 function expandQueryWithSynonyms(query: string): string[] {
   const words = query.toLowerCase().split(/\s+/).filter(w => w.length > 2);
   const expanded = new Set<string>();
@@ -972,6 +1030,14 @@ export const searchWithScores = query({
       }
     }
 
+    // Detect material words in the query
+    const detectedMaterials: string[] = [];
+    for (const token of queryTokens) {
+      if (ALL_MATERIAL_WORDS.has(token)) {
+        detectedMaterials.push(token);
+      }
+    }
+
     // Detect category group in the query
     let detectedCategoryGroup: string | null = null;
     for (const token of queryTokens) {
@@ -996,6 +1062,14 @@ export const searchWithScores = query({
           }
         }
 
+        // STRICT MATERIAL MATCHING: If user searched for a material, product MUST match that material
+        if (detectedMaterials.length > 0) {
+          const productMaterial = product.material || "";
+          if (!materialMatchesTargets(productMaterial, detectedMaterials, product.name, product.description)) {
+            return null;
+          }
+        }
+
         // STRICT CATEGORY MATCHING: If user searched for a category, product MUST match that category group
         if (detectedCategoryGroup) {
           if (!productMatchesCategoryGroup(product.category, product.name, detectedCategoryGroup)) {
@@ -1009,6 +1083,11 @@ export const searchWithScores = query({
         // Score for color match
         if (detectedColors.length > 0 && product.colorName) {
           score += 25;
+        }
+
+        // Score for material match
+        if (detectedMaterials.length > 0) {
+          score += 20;
         }
 
         // Score for category match
@@ -1037,6 +1116,7 @@ export const searchWithScores = query({
     return {
       results: scoredProducts.slice(0, limit),
       detectedColors,
+      detectedMaterials,
       detectedCategoryGroup,
       totalMatches: scoredProducts.length,
     };
@@ -1165,11 +1245,12 @@ export const filterProductsInternal = internalQuery({
     // Brand keywords to exclude from text matching when brand filter is active
     const brandWords = Object.keys(BRAND_NAMES);
 
-    // Get query words for name matching (exclude gender, color, marketplace, and brand words)
+    // Get query words for name matching (exclude gender, color, material, marketplace, and brand words)
     // This allows product names like "The Glove Mule" to match when searching "glove mule"
     const nameMatchWords = queryTokens.filter(token =>
       !genderWords.includes(token) &&
       !ALL_COLOR_WORDS.has(token) &&
+      !ALL_MATERIAL_WORDS.has(token) &&
       !marketplaceWords.includes(token) &&
       !brandWords.includes(token)
     );
@@ -1179,6 +1260,14 @@ export const filterProductsInternal = internalQuery({
     for (const token of queryTokens) {
       if (ALL_COLOR_WORDS.has(token)) {
         detectedColors.push(token);
+      }
+    }
+
+    // Detect material words in the query
+    const detectedMaterials: string[] = [];
+    for (const token of queryTokens) {
+      if (ALL_MATERIAL_WORDS.has(token)) {
+        detectedMaterials.push(token);
       }
     }
 
@@ -1235,6 +1324,15 @@ export const filterProductsInternal = internalQuery({
           }
         }
 
+        // STRICT MATERIAL MATCHING: If user searched for a material, product MUST match that material
+        // Checks material field, product name, and description
+        if (detectedMaterials.length > 0 && !hasStrongNameMatch) {
+          const productMaterial = product.material || "";
+          if (!materialMatchesTargets(productMaterial, detectedMaterials, product.name, product.description)) {
+            return null;  // Product doesn't match the searched material - exclude it
+          }
+        }
+
         // STRICT CATEGORY MATCHING: If user searched for a category, product MUST match that category group
         // (unless we have a strong name match)
         if (detectedCategoryGroup && !hasStrongNameMatch) {
@@ -1285,6 +1383,13 @@ export const filterProductsInternal = internalQuery({
         if (detectedColors.length > 0) {
           if (colorNameMatchesTargets(product.colorName || "", detectedColors, product.name, product.description)) {
             score += 25;  // Bonus for matching color
+          }
+        }
+
+        // Score for material match
+        if (detectedMaterials.length > 0) {
+          if (materialMatchesTargets(product.material || "", detectedMaterials, product.name, product.description)) {
+            score += 20;  // Bonus for matching material
           }
         }
 
