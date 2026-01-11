@@ -232,16 +232,9 @@ export const toggleCloset = mutation({
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
-    // Auto-create user if not found (handles webhook race conditions)
+    // If user not found, throw error (user should be created via webhook)
     if (!user) {
-      const userId = await ctx.db.insert("users", {
-        clerkId: args.clerkId,
-        createdAt: Date.now(),
-      });
-      user = await ctx.db.get(userId);
-      if (!user) {
-        throw new Error("Failed to create user");
-      }
+      throw new Error("User not found. Please try again.");
     }
 
     const existing = await ctx.db
@@ -678,16 +671,9 @@ export const addFromUrl = mutation({
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .first();
 
-    // Auto-create user if not found (handles webhook race conditions)
+    // If user not found, throw error (user should be created via webhook)
     if (!user) {
-      const userId = await ctx.db.insert("users", {
-        clerkId: args.clerkId,
-        createdAt: Date.now(),
-      });
-      user = await ctx.db.get(userId);
-      if (!user) {
-        throw new Error("Failed to create user");
-      }
+      throw new Error("User not found. Please try again.");
     }
 
     // Check if a product already exists with this sourceUrl
