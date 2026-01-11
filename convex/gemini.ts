@@ -392,41 +392,57 @@ export const generateTryOnImage = action({
       ""
     );
 
-    // CRITICAL: All selected items must appear
+    // CRITICAL: All selected items must appear - and ONLY selected items
     promptParts.push(
       "",
-      "MANDATORY - ALL ITEMS MUST APPEAR:",
+      "MANDATORY - ONLY USE THE EXACT ITEMS PROVIDED:",
       "- You MUST include EVERY clothing item listed above in the final image.",
-      "- Do NOT substitute any item with a different item (e.g., do NOT replace a dress with jeans or pants).",
-      "- Do NOT omit any selected item - if 3 items are listed, all 3 must be visible in the output.",
-      "- Do NOT add any clothing items that were not provided in the reference images.",
+      "- You must ONLY use the clothing items listed above - NO EXCEPTIONS.",
+      "- Do NOT add ANY clothing items that were not provided (no extra pants, jeans, shirts, etc.).",
+      "- Do NOT substitute any item with a different item.",
+      "- If no bottoms/pants are listed above, do NOT add pants or jeans to the image.",
+      "- If a dress is provided without bottoms, show ONLY the dress (no pants underneath).",
       ""
     );
 
     // Add layering instructions if applicable
-    if (hasDress && (hasTop || hasBottoms)) {
+    if (hasDress && hasTop && !hasBottoms) {
+      // Dress + Top, NO bottoms - very explicit about not adding pants
       promptParts.push(
-        "LAYERING INSTRUCTIONS (dress with other items):"
+        "LAYERING INSTRUCTIONS (dress with top, NO bottoms):",
+        "- The model is wearing a DRESS with a TOP layered over it.",
+        "- NO PANTS OR JEANS - the model's legs should show the DRESS, not pants.",
+        "- Layer the TOP (sweater, cardigan, jacket, etc.) OVER the DRESS.",
+        "- The DRESS skirt/hem MUST be visible below the top - this is the bottom half of the outfit.",
+        "- Do NOT add jeans, pants, or any other bottoms - only the dress is worn on the lower body.",
+        "- The visible outfit should be: TOP on upper body, DRESS visible below the top.",
+        ""
       );
-      if (hasDress && hasTop) {
-        promptParts.push(
-          "- IMPORTANT: Both the DRESS and the TOP must be visible in the final image.",
-          "- Layer the TOP (turtleneck, sweater, cardigan, jacket, etc.) OVER the DRESS.",
-          "- The DRESS must be clearly visible underneath - show the dress skirt/hem below the top.",
-          "- For a turtleneck or sweater over a maxi dress: the dress hem should extend below the sweater.",
-          "- This is a common styling technique - do NOT replace the dress with pants or jeans.",
-          "- The model is wearing a DRESS underneath, NOT pants or jeans."
-        );
-      }
-      if (hasDress && hasBottoms) {
-        promptParts.push(
-          "- IMPORTANT: Both the DRESS and the BOTTOMS must be visible in the final image.",
-          "- Layer the BOTTOMS OVER/WITH the DRESS.",
-          "- The dress should be visible but the bottoms (pants, jeans, skirt) should be worn together with it.",
-          "- Style it as layering a dress over pants, or tucking a dress into a skirt."
-        );
-      }
-      promptParts.push("");
+    } else if (hasDress && hasTop && hasBottoms) {
+      // Dress + Top + Bottoms
+      promptParts.push(
+        "LAYERING INSTRUCTIONS (dress with top and bottoms):",
+        "- Layer the TOP over the DRESS, with BOTTOMS also visible.",
+        "- All three items (dress, top, bottoms) must be visible in the final image.",
+        ""
+      );
+    } else if (hasDress && !hasTop && hasBottoms) {
+      // Dress + Bottoms, no top
+      promptParts.push(
+        "LAYERING INSTRUCTIONS (dress with bottoms):",
+        "- The DRESS and BOTTOMS should both be visible.",
+        "- Style it as layering a dress over pants, or wearing pants under a dress.",
+        ""
+      );
+    } else if (hasDress && hasTop) {
+      // Fallback for dress + top
+      promptParts.push(
+        "LAYERING INSTRUCTIONS:",
+        "- Layer the TOP over the DRESS.",
+        "- The DRESS must be visible underneath - show the dress hem below the top.",
+        "- Do NOT add pants or jeans.",
+        ""
+      );
     }
 
     promptParts.push(
