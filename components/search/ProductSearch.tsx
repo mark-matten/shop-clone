@@ -520,7 +520,15 @@ export function ProductSearch() {
   const getFilteredAndSortedProducts = (): Product[] => {
     if (!searchResult) return [];
 
-    let products = searchResult.products;
+    // Deduplicate products by _id (same product might appear multiple times)
+    const seenIds = new Set<string>();
+    let products = searchResult.products.filter(product => {
+      if (seenIds.has(product._id)) {
+        return false;
+      }
+      seenIds.add(product._id);
+      return true;
+    });
 
     // Apply the active filter (parsed search filter with any removed filters)
     const filterToApply = activeFilter || searchResult.filter;
@@ -782,6 +790,11 @@ export function ProductSearch() {
               if (parsed.activeFilter) setActiveFilter(parsed.activeFilter);
               if (parsed.sidebarFilters) setSidebarFilters(parsed.sidebarFilters);
               if (parsed.displayCount) setDisplayCount(parsed.displayCount);
+              // Restore UI filter states
+              if (parsed.conditionFilter) setConditionFilter(parsed.conditionFilter);
+              if (parsed.sortBy) setSortBy(parsed.sortBy);
+              if (typeof parsed.showMySizesOnly === "boolean") setShowMySizesOnly(parsed.showMySizesOnly);
+              if (parsed.viewMode) setViewMode(parsed.viewMode);
 
               // Scroll after state is restored
               if (typeof parsed.scrollPosition === "number" && parsed.scrollPosition > 0) {
@@ -832,10 +845,15 @@ export function ProductSearch() {
         query: currentSearchQuery,
         displayCount,
         scrollPosition: window.scrollY,
+        // UI filter states
+        conditionFilter,
+        sortBy,
+        showMySizesOnly,
+        viewMode,
       };
       sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(stateToSave));
     }
-  }, [activeFilter, searchResult, sidebarFilters, currentSearchQuery, hasSearched, displayCount]);
+  }, [activeFilter, searchResult, sidebarFilters, currentSearchQuery, hasSearched, displayCount, conditionFilter, sortBy, showMySizesOnly, viewMode]);
 
   // Save scroll position on scroll (debounced) so it's captured before navigation
   useEffect(() => {
@@ -935,25 +953,25 @@ export function ProductSearch() {
           </div>
 
           {/* Line 2: My sizes only, Sort, View toggle */}
-          <div className="mb-3 flex items-center gap-3">
+          <div className="mb-3 flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 -mb-1">
             {clerkUser && convexUser?.preferences && (
-              <label className="flex items-center gap-2 text-sm">
+              <label className="flex items-center gap-1.5 sm:gap-2 text-sm whitespace-nowrap flex-shrink-0">
                 <input
                   type="checkbox"
                   checked={showMySizesOnly}
                   onChange={(e) => setShowMySizesOnly(e.target.checked)}
                   className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
                 />
-                <span className="text-zinc-600 dark:text-zinc-400">My sizes only</span>
+                <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">My sizes</span>
               </label>
             )}
 
             <select
               value={conditionFilter}
               onChange={(e) => setConditionFilter(e.target.value as typeof conditionFilter)}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+              className="flex-shrink-0 rounded-lg border border-zinc-200 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
             >
-              <option value="all">Condition: All</option>
+              <option value="all">Condition</option>
               <option value="new">New</option>
               <option value="used">Used</option>
             </select>
@@ -961,15 +979,17 @@ export function ProductSearch() {
             <select
               value={sortBy}
               onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+              className="flex-shrink-0 rounded-lg border border-zinc-200 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
             >
-              <option value="relevance">Sort: Relevance</option>
-              <option value="price_low">Price: Low to High</option>
-              <option value="price_high">Price: High to Low</option>
-              <option value="newest">Newest First</option>
+              <option value="relevance">Relevance</option>
+              <option value="price_low">Price ↑</option>
+              <option value="price_high">Price ↓</option>
+              <option value="newest">Newest</option>
             </select>
 
-            <ViewToggle view={viewMode} onViewChange={setViewMode} />
+            <div className="flex-shrink-0">
+              <ViewToggle view={viewMode} onViewChange={setViewMode} />
+            </div>
           </div>
 
           {/* Line 3: Active filters (horizontal scrollable) */}
