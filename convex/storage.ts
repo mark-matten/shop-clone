@@ -178,21 +178,8 @@ export const saveOutfitImage = mutation({
     if (args.existingOutfitId) {
       const existing = await ctx.db.get(args.existingOutfitId);
       if (existing && existing.clerkId === args.clerkId) {
-        // Generate default name if not provided
-        let outfitName = args.name;
-        if (!outfitName || outfitName.trim() === "") {
-          // Keep existing name if it exists, otherwise generate new one
-          if (existing.name && existing.name.trim() !== "") {
-            outfitName = existing.name;
-          } else {
-            const existingOutfits = await ctx.db
-              .query("outfit_images")
-              .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
-              .collect();
-            const outfitNumber = existingOutfits.length + 1;
-            outfitName = `Outfit #${outfitNumber}`;
-          }
-        }
+        // Use provided name, or keep existing name (no auto-generation)
+        const outfitName = args.name?.trim() || existing.name || undefined;
         await ctx.db.patch(args.existingOutfitId, {
           name: outfitName,
           collectionId: args.collectionId,
@@ -206,17 +193,8 @@ export const saveOutfitImage = mutation({
       throw new Error("storageId, itemIds, and prompt are required for new outfits");
     }
 
-    // Generate default name if not provided
-    let outfitName = args.name;
-    if (!outfitName || outfitName.trim() === "") {
-      // Count existing outfits to generate the next number
-      const existingOutfits = await ctx.db
-        .query("outfit_images")
-        .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
-        .collect();
-      const outfitNumber = existingOutfits.length + 1;
-      outfitName = `Outfit #${outfitNumber}`;
-    }
+    // Use provided name (no auto-generation - user must explicitly name outfits)
+    const outfitName = args.name?.trim() || undefined;
 
     const outfitId = await ctx.db.insert("outfit_images", {
       clerkId: args.clerkId,
@@ -229,11 +207,13 @@ export const saveOutfitImage = mutation({
       collectionId: args.collectionId,
     });
 
-    // Notify followers asynchronously
-    await ctx.scheduler.runAfter(0, internal.closet.notifyFollowersOfNewOutfit, {
-      clerkId: args.clerkId,
-      outfitName: outfitName,
-    });
+    // Notify followers asynchronously (only if outfit has a name)
+    if (outfitName) {
+      await ctx.scheduler.runAfter(0, internal.closet.notifyFollowersOfNewOutfit, {
+        clerkId: args.clerkId,
+        outfitName: outfitName,
+      });
+    }
 
     return outfitId;
   },
