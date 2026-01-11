@@ -336,25 +336,30 @@ export const generateTryOnImage = action({
 
     // START with the most critical instruction - especially for dress+top combos
     if (hasDress && hasTop && !hasBottoms) {
-      // ULTRA EXPLICIT for dress + top without bottoms - this is the most common failure case
+      // Find the dress and top items for specific descriptions
+      const dressItem = validItems.find(item => (item.category || "").toLowerCase().includes("dress"));
+      const topItem = validItems.find(item => {
+        const cat = (item.category || "").toLowerCase();
+        return cat.includes("top") || cat.includes("sweater") || cat.includes("shirt") || cat.includes("jacket");
+      });
+
       promptParts.push(
-        "⚠️ CRITICAL STYLING INSTRUCTION ⚠️",
-        "This outfit layers a TOP over a DRESS. BOTH items must be clearly visible.",
+        "CREATE A LAYERED DRESS OUTFIT:",
         "",
-        "REQUIRED VISUAL RESULT:",
-        "- The TOP (sweater/cardigan/jacket) covers the upper body",
-        "- The DRESS extends BELOW the top and is VISIBLE on the lower body",
-        "- The dress skirt/hem MUST be showing beneath the top",
-        "- The model's legs show the DRESS FABRIC, not bare legs or pants",
+        `This is a ${topItem?.name || "sweater"} worn OVER a ${dressItem?.name || "dress"}.`,
         "",
-        "Think of it like wearing a midi or maxi dress with a cropped sweater over it.",
-        "The dress should be clearly visible from roughly mid-thigh or knee down to the ankles.",
+        "EXACT VISUAL DESCRIPTION OF THE FINAL IMAGE:",
+        `- Upper body: Model wearing the ${topItem?.name || "top"} - it ends around the waist or hips`,
+        `- Lower body: The ${dressItem?.name || "dress"} fabric is VISIBLE below the top, flowing down and covering the legs`,
+        "- The dress extends from below the top all the way down to mid-calf or ankles",
+        "- You can see the dress material/fabric on the model's legs - NOT pants, NOT jeans, NOT bare skin",
         "",
-        `ITEMS TO SHOW (exactly ${validItems.length}):`,
+        "STYLE REFERENCE: Like a cozy fall outfit with a chunky sweater layered over a flowy maxi dress.",
+        "",
+        `ITEMS IN THIS OUTFIT (exactly ${validItems.length}):`,
         ...validItems.map(item => `  ✓ ${item.name} (${item.category})`),
         "",
-        "DO NOT ADD: Jeans, pants, trousers, or any other bottoms.",
-        "The DRESS is the bottom half of this outfit - show it!",
+        "⛔ DO NOT SHOW: pants, jeans, trousers, leggings, or bare legs. The DRESS covers the legs.",
         ""
       );
     } else {
@@ -438,14 +443,13 @@ export const generateTryOnImage = action({
 
     // Add layering instructions if applicable
     if (hasDress && hasTop && !hasBottoms) {
-      // Dress + Top, NO bottoms - emphasize dress visibility
+      // Dress + Top - reinforce the layered look
       promptParts.push(
-        "LAYERING INSTRUCTIONS (sweater/top over dress):",
-        "- Layer the TOP over the DRESS like a cropped sweater over a maxi dress.",
-        "- The DRESS MUST be clearly visible below the sweater/top.",
-        "- Show the dress fabric covering the legs from mid-thigh/knee to ankles.",
-        "- The top ends at the waist/hip area, dress continues below.",
-        "- BOTH garments must be recognizable in the final image.",
+        "LAYERING DETAILS:",
+        "- The sweater/top is worn ON TOP of the dress (dress underneath)",
+        "- From waist/hip down, only the DRESS is visible - no other clothing",
+        "- The dress fabric flows down covering the entire lower body",
+        "- This is a DRESS outfit, not a pants outfit",
         ""
       );
     } else if (hasDress && hasTop && hasBottoms) {
@@ -500,7 +504,7 @@ export const generateTryOnImage = action({
     if (hasDress && hasTop && !hasBottoms) {
       promptParts.push(
         "",
-        "🚨 FINAL REMINDER: Show BOTH the sweater/top AND the dress. The dress MUST be visible below the top, covering the legs. No pants - the dress IS the bottom half."
+        "🚨 REMINDER: This is a LAYERED DRESS look. The model's legs are covered by DRESS FABRIC (not pants). Show the dress flowing from under the sweater/top down to the ankles."
       );
     }
 

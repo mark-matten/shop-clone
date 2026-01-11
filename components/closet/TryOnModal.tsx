@@ -1839,7 +1839,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               Save Outfit
             </h3>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center mb-4">
-              Enter a name or add to a collection to save
+              Name is optional - we'll auto-generate one if left blank
             </p>
             <div className="mb-4">
               <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1 text-center">
