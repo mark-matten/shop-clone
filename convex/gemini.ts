@@ -338,22 +338,23 @@ export const generateTryOnImage = action({
     if (hasDress && hasTop && !hasBottoms) {
       // ULTRA EXPLICIT for dress + top without bottoms - this is the most common failure case
       promptParts.push(
-        "⚠️ CRITICAL WARNING - READ FIRST ⚠️",
-        "This is a DRESS + TOP outfit with NO PANTS.",
-        "The model's legs should be BARE or showing the DRESS FABRIC - NOT wearing jeans or pants.",
-        "DO NOT ADD JEANS. DO NOT ADD PANTS. DO NOT ADD TROUSERS.",
-        "The dress IS the bottom half of this outfit.",
+        "⚠️ CRITICAL STYLING INSTRUCTION ⚠️",
+        "This outfit layers a TOP over a DRESS. BOTH items must be clearly visible.",
+        "",
+        "REQUIRED VISUAL RESULT:",
+        "- The TOP (sweater/cardigan/jacket) covers the upper body",
+        "- The DRESS extends BELOW the top and is VISIBLE on the lower body",
+        "- The dress skirt/hem MUST be showing beneath the top",
+        "- The model's legs show the DRESS FABRIC, not bare legs or pants",
+        "",
+        "Think of it like wearing a midi or maxi dress with a cropped sweater over it.",
+        "The dress should be clearly visible from roughly mid-thigh or knee down to the ankles.",
         "",
         `ITEMS TO SHOW (exactly ${validItems.length}):`,
         ...validItems.map(item => `  ✓ ${item.name} (${item.category})`),
         "",
-        "ITEMS THAT MUST NOT APPEAR:",
-        "  ✗ Jeans",
-        "  ✗ Pants",
-        "  ✗ Trousers",
-        "  ✗ Any bottoms not in the list above",
-        "",
-        "VISUAL RESULT: Model wearing TOP layered over DRESS. Below the top, you should see DRESS FABRIC on the legs, NOT denim or pants material.",
+        "DO NOT ADD: Jeans, pants, trousers, or any other bottoms.",
+        "The DRESS is the bottom half of this outfit - show it!",
         ""
       );
     } else {
@@ -437,15 +438,14 @@ export const generateTryOnImage = action({
 
     // Add layering instructions if applicable
     if (hasDress && hasTop && !hasBottoms) {
-      // Dress + Top, NO bottoms - very explicit about not adding pants
+      // Dress + Top, NO bottoms - emphasize dress visibility
       promptParts.push(
-        "LAYERING INSTRUCTIONS (dress with top, NO bottoms):",
-        "- The model is wearing a DRESS with a TOP layered over it.",
-        "- NO PANTS OR JEANS - the model's legs should show the DRESS, not pants.",
-        "- Layer the TOP (sweater, cardigan, jacket, etc.) OVER the DRESS.",
-        "- The DRESS skirt/hem MUST be visible below the top - this is the bottom half of the outfit.",
-        "- Do NOT add jeans, pants, or any other bottoms - only the dress is worn on the lower body.",
-        "- The visible outfit should be: TOP on upper body, DRESS visible below the top.",
+        "LAYERING INSTRUCTIONS (sweater/top over dress):",
+        "- Layer the TOP over the DRESS like a cropped sweater over a maxi dress.",
+        "- The DRESS MUST be clearly visible below the sweater/top.",
+        "- Show the dress fabric covering the legs from mid-thigh/knee to ankles.",
+        "- The top ends at the waist/hip area, dress continues below.",
+        "- BOTH garments must be recognizable in the final image.",
         ""
       );
     } else if (hasDress && hasTop && hasBottoms) {
@@ -500,7 +500,7 @@ export const generateTryOnImage = action({
     if (hasDress && hasTop && !hasBottoms) {
       promptParts.push(
         "",
-        "🚨 FINAL REMINDER: NO JEANS OR PANTS IN THIS IMAGE. The model wears ONLY the dress and top listed. Legs show DRESS FABRIC, not denim."
+        "🚨 FINAL REMINDER: Show BOTH the sweater/top AND the dress. The dress MUST be visible below the top, covering the legs. No pants - the dress IS the bottom half."
       );
     }
 

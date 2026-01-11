@@ -463,15 +463,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
   const handleConfirmSave = async () => {
     if (!generatedOutfit || isSaving) return;
 
-    // Validate: require a name or collection to save
-    const hasName = outfitName.trim().length > 0;
-    const willHaveCollection = selectedCollectionId !== null || (isCreatingCollection && newCollectionName.trim().length > 0);
-
-    if (!hasName && !willHaveCollection) {
-      alert("Please enter a name for your outfit or select a collection.");
-      return;
-    }
-
+    // No validation required - if name is empty, storage.ts will auto-generate "Outfit #XX"
     setIsSaving(true);
     try {
       // Create new collection if requested

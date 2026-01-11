@@ -174,12 +174,24 @@ export const saveOutfitImage = mutation({
     existingOutfitId: v.optional(v.id("outfit_images")), // If provided, update instead of insert
   },
   handler: async (ctx, args) => {
-    // If updating an existing outfit
+    // If updating an existing outfit (explicit save from modal)
     if (args.existingOutfitId) {
       const existing = await ctx.db.get(args.existingOutfitId);
       if (existing && existing.clerkId === args.clerkId) {
-        // Use provided name, or keep existing name (no auto-generation)
-        const outfitName = args.name?.trim() || existing.name || undefined;
+        // Use provided name, keep existing name, or auto-generate "Outfit #XX"
+        let outfitName = args.name?.trim() || existing.name || undefined;
+
+        // If still no name, auto-generate one (user is explicitly saving)
+        if (!outfitName) {
+          const existingOutfits = await ctx.db
+            .query("outfit_images")
+            .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+            .filter((q) => q.neq(q.field("name"), undefined))
+            .collect();
+          const outfitNumber = existingOutfits.length + 1;
+          outfitName = `Outfit #${outfitNumber}`;
+        }
+
         await ctx.db.patch(args.existingOutfitId, {
           name: outfitName,
           collectionId: args.collectionId,
@@ -193,8 +205,8 @@ export const saveOutfitImage = mutation({
       throw new Error("storageId, itemIds, and prompt are required for new outfits");
     }
 
-    // Use provided name (no auto-generation - user must explicitly name outfits)
-    const outfitName = args.name?.trim() || undefined;
+    // Use provided name or keep undefined for auto-save (Recent Outfits)
+    let outfitName = args.name?.trim() || undefined;
 
     const outfitId = await ctx.db.insert("outfit_images", {
       clerkId: args.clerkId,
