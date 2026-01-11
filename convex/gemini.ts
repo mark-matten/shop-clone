@@ -361,12 +361,18 @@ export const generateTryOnImage = action({
       "Outfit items (reference images provided below - MATCH EXACTLY):"
     );
 
+    // Categorize items for layering logic
+    const categories = validItems.map(item => (item.category || "").toLowerCase());
+    const hasDress = categories.some(c => c.includes("dress"));
+    const hasTop = categories.some(c => c.includes("top") || c.includes("shirt") || c.includes("blouse") || c.includes("sweater") || c.includes("jacket") || c.includes("coat"));
+    const hasBottoms = categories.some(c => c.includes("bottom") || c.includes("pant") || c.includes("jean") || c.includes("short") || c.includes("skirt"));
+
     for (const item of validItems) {
       const desc = [item.name];
       if (item.brand) desc.push(`by ${item.brand}`);
       if (item.color) desc.push(`in ${item.color}`);
       if (item.material) desc.push(`made of ${item.material}`);
-      promptParts.push(`- ${desc.join(" ")}`);
+      promptParts.push(`- ${desc.join(" ")} [Category: ${item.category || "clothing"}]`);
     }
 
     // Add other details if specified (e.g., "cuffed pants, shirt tucked in")
@@ -376,6 +382,39 @@ export const generateTryOnImage = action({
 
     promptParts.push(
       "",
+      "CRITICAL - Reference Image Extraction Rules:",
+      "- IMPORTANT: Each reference image may show a model wearing MULTIPLE clothing items.",
+      "- You MUST ONLY use the specific item that matches the stated category for that reference.",
+      "- IGNORE all other clothing items visible in the reference image.",
+      "- Example: If reference image for 'bottoms' shows model wearing pants, jacket, and shirt - ONLY extract and use the PANTS. Ignore the jacket and shirt completely.",
+      "- Example: If reference image for 'tops' shows model wearing a blouse with jeans - ONLY extract and use the BLOUSE. Ignore the jeans.",
+      "- Focus on the exact design, color, texture, and fit of ONLY the specified category item.",
+      ""
+    );
+
+    // Add layering instructions if applicable
+    if (hasDress && (hasTop || hasBottoms)) {
+      promptParts.push(
+        "LAYERING INSTRUCTIONS (dress with other items):"
+      );
+      if (hasDress && hasTop) {
+        promptParts.push(
+          "- A DRESS and TOP are both selected: Layer the TOP OVER the DRESS.",
+          "- The dress should be VISIBLE underneath the top (showing at the neckline, sleeves, and/or hem).",
+          "- Style it naturally as someone would wear a sweater, jacket, or cardigan over a dress."
+        );
+      }
+      if (hasDress && hasBottoms) {
+        promptParts.push(
+          "- A DRESS and BOTTOMS are both selected: Layer the BOTTOMS OVER/WITH the DRESS.",
+          "- The dress should be visible but the bottoms (pants, jeans, skirt) should be worn together with it.",
+          "- Style it as layering a dress over pants, or tucking a dress into a skirt."
+        );
+      }
+      promptParts.push("");
+    }
+
+    promptParts.push(
       "CRITICAL - Clothing Accuracy Requirements:",
       "- MATCH EXACT COLOR of each item from reference images (no color substitutions)",
       "- MATCH EXACT FIT AND SILHOUETTE (slim, relaxed, oversized, cropped, etc.)",
@@ -385,7 +424,9 @@ export const generateTryOnImage = action({
       "- Each clothing item must be RECOGNIZABLE as the specific item from the reference",
       "",
       "Photo Style Requirements:",
-      "- FULL BODY shot showing head to toe, model standing upright",
+      "- FULL BODY shot showing ENTIRE person from head to toe - this is MANDATORY",
+      "- Model must be standing upright with feet visible at bottom of frame",
+      "- Include appropriate footwear (shoes, boots, heels, or sandals that complement the outfit)",
       "- Relaxed, natural standing pose with slight weight shift",
       "- Friendly, moderate smile on face",
       "- Neutral, clean background (solid light gray or white studio backdrop)",
@@ -440,8 +481,9 @@ export const generateTryOnImage = action({
           const itemDesc = [item.name];
           if (item.color) itemDesc.push(`in ${item.color}`);
           if (item.material) itemDesc.push(`made of ${item.material}`);
+          const categoryUpper = (item.category || "clothing item").toUpperCase();
           contentParts.push({
-            text: `(REFERENCE IMAGE for ${item.category || "clothing item"}: ${itemDesc.join(" ")} - MATCH THIS EXACT ITEM: color, fit, texture, design, and all details)`,
+            text: `(REFERENCE IMAGE for ${categoryUpper}: ${itemDesc.join(" ")} - ONLY extract the ${categoryUpper} from this image. IGNORE any other clothing items worn by the model. MATCH THIS EXACT ${categoryUpper}: color, fit, texture, design, and all details)`,
           });
         }
       } else if (itemWithImage.imageUrl) {
@@ -462,8 +504,9 @@ export const generateTryOnImage = action({
             const itemDesc = [item.name];
             if (item.color) itemDesc.push(`in ${item.color}`);
             if (item.material) itemDesc.push(`made of ${item.material}`);
+            const categoryUpper = (item.category || "clothing item").toUpperCase();
             contentParts.push({
-              text: `(REFERENCE IMAGE for ${item.category || "clothing item"}: ${itemDesc.join(" ")} - MATCH THIS EXACT ITEM: color, fit, texture, design, and all details)`,
+              text: `(REFERENCE IMAGE for ${categoryUpper}: ${itemDesc.join(" ")} - ONLY extract the ${categoryUpper} from this image. IGNORE any other clothing items worn by the model. MATCH THIS EXACT ${categoryUpper}: color, fit, texture, design, and all details)`,
             });
           }
         } catch (e) {
