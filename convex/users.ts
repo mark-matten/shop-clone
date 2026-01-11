@@ -315,3 +315,24 @@ export const incrementTryOnUsage = mutation({
     }
   },
 });
+
+// Admin function to reset try-on usage for a user (for testing/support)
+export const resetTryOnUsage = mutation({
+  args: { clerkId: v.string() },
+  handler: async (ctx, args) => {
+    const today = new Date().toISOString().split("T")[0];
+
+    // Find and delete today's usage record
+    const existing = await ctx.db
+      .query("try_on_usage")
+      .withIndex("by_clerkId_date", (q) => q.eq("clerkId", args.clerkId).eq("date", today))
+      .first();
+
+    if (existing) {
+      await ctx.db.delete(existing._id);
+      return { success: true, message: "Usage reset for today" };
+    }
+
+    return { success: true, message: "No usage found for today" };
+  },
+});
