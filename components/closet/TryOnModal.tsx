@@ -463,9 +463,16 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
   const handleConfirmSave = async () => {
     if (!generatedOutfit || isSaving) return;
 
-    // No validation required - if name is empty, storage.ts will auto-generate "Outfit #XX"
     setIsSaving(true);
     try {
+      // Generate name if not provided
+      let finalName = outfitName.trim();
+      if (!finalName) {
+        // Count existing saved outfits to generate next number
+        const savedCount = outfitHistory?.filter(o => o.name)?.length || 0;
+        finalName = `Outfit #${savedCount + 1}`;
+      }
+
       // Create new collection if requested
       let collectionId = selectedCollectionId;
       if (isCreatingCollection && newCollectionName.trim()) {
@@ -480,7 +487,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
       if (existingId) {
         const outfitId = await saveOutfitImage({
           clerkId,
-          name: outfitName.trim() || undefined,
+          name: finalName,
           collectionId: collectionId ?? undefined,
           existingOutfitId: existingId,
         });
@@ -498,7 +505,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
           itemIds: pendingOutfitData.itemIds,
           userPhotoId: pendingOutfitData.userPhotoId,
           prompt: pendingOutfitData.prompt,
-          name: outfitName.trim() || undefined,
+          name: finalName,
           collectionId: collectionId ?? undefined,
         });
         setSavedOutfitId(outfitId);
@@ -529,7 +536,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
         itemIds,
         userPhotoId: modelMode === "user" ? selectedPhotoId ?? undefined : undefined,
         prompt: `Virtual try-on: ${selectedItems.map(i => i.displayName).join(", ")}`,
-        name: outfitName.trim() || undefined,
+        name: finalName,
         collectionId: collectionId ?? undefined,
       });
 
