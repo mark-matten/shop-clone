@@ -457,11 +457,19 @@ export const getOutfitHistory = query({
           }
         }
 
+        // Get collection name if outfit has a collection
+        let collectionName = null;
+        if (outfit.collectionId) {
+          const collection = await ctx.db.get(outfit.collectionId);
+          collectionName = collection?.name || null;
+        }
+
         return {
           ...outfit,
           url,
           items: items.filter(Boolean),
           userPhoto,
+          collectionName,
         };
       })
     );

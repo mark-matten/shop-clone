@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
@@ -29,6 +29,8 @@ interface OutfitHistoryItem {
   _id: Id<"outfit_images">;
   url: string | null;
   name?: string;
+  collectionId?: Id<"collections">;
+  collectionName?: string | null;
   items?: Array<{
     _id: string;
     name?: string;
@@ -128,6 +130,9 @@ function getCategoryKey(category: string): string {
 type OwnershipFilter = "all" | "owned" | "wishlist";
 
 export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModalProps) {
+  // Ref for scrolling to Virtual Try-On section on mobile
+  const mobileVirtualTryOnRef = useRef<HTMLDivElement>(null);
+
   const [selectedByCategory, setSelectedByCategory] = useState<Map<string, string>>(new Map());
   const [activeCategory, setActiveCategory] = useState("all");
   const [modelMode, setModelMode] = useState<ModelMode>("generic");
@@ -152,6 +157,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
   const [showOutfitHistory, setShowOutfitHistory] = useState(false);
   const [isClearingRecent, setIsClearingRecent] = useState(false);
   const [showSaveModal, setShowSaveModal] = useState(false);
+  const [historyCollectionFilter, setHistoryCollectionFilter] = useState<Id<"collections"> | null>(null);
   const [outfitName, setOutfitName] = useState("");
   const [selectedCollectionId, setSelectedCollectionId] = useState<Id<"collections"> | null>(null);
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
@@ -296,6 +302,22 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
     return items;
   }, [selectedByCategory, itemsById]);
 
+  // Filter outfit history by collection
+  const filteredOutfitHistory = useMemo(() => {
+    if (!outfitHistory) return [];
+    if (!historyCollectionFilter) return outfitHistory as OutfitHistoryItem[];
+    return (outfitHistory as OutfitHistoryItem[]).filter(
+      outfit => outfit.collectionId === historyCollectionFilter
+    );
+  }, [outfitHistory, historyCollectionFilter]);
+
+  // Get the name of the currently filtered collection
+  const historyCollectionFilterName = useMemo(() => {
+    if (!historyCollectionFilter || !collections) return null;
+    const collection = collections.find(c => c._id === historyCollectionFilter);
+    return collection?.name || null;
+  }, [historyCollectionFilter, collections]);
+
   const currentCategoryItems = activeCategory === "all"
     ? filteredClosetItems
     : (itemsByCategory[activeCategory] || []);
@@ -345,6 +367,11 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
     setSelectedOutfitId(null);
     setGenerationProgress(0);
     setGenerationStatus("Preparing your items...");
+
+    // Scroll to Virtual Try-On section on mobile
+    if (mobileVirtualTryOnRef.current) {
+      mobileVirtualTryOnRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
 
     // Simulate progress while waiting for the API
     const progressStages = [
@@ -867,7 +894,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
           </div>
 
           {/* Mobile Preview Section (Bottom) - Virtual Try-On */}
-          <div className="flex-1 bg-zinc-50 dark:bg-zinc-800/50 overflow-y-auto pb-safe">
+          <div ref={mobileVirtualTryOnRef} className="flex-1 bg-zinc-50 dark:bg-zinc-800/50 overflow-y-auto pb-safe">
             {/* Virtual Try-On Header */}
             <div className="px-3 py-2 border-b border-zinc-200 dark:border-zinc-700">
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Virtual Try-On</h3>
@@ -1147,7 +1174,13 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   onClick={() => setShowOutfitHistory(!showOutfitHistory)}
                   className="flex items-center justify-between w-full text-sm font-medium text-zinc-700 dark:text-zinc-300"
                 >
-                  <span>Recent Outfits ({outfitHistory.length})</span>
+                  <span>
+                    {historyCollectionFilterName ? (
+                      <span className="text-moi-500">{historyCollectionFilterName}</span>
+                    ) : (
+                      <>Recent Outfits ({outfitHistory.length})</>
+                    )}
+                  </span>
                   <svg
                     className={`h-4 w-4 transition-transform ${showOutfitHistory ? "rotate-180" : ""}`}
                     fill="none"
@@ -1157,9 +1190,20 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                   </svg>
                 </button>
+                {showOutfitHistory && historyCollectionFilter && (
+                  <button
+                    onClick={() => setHistoryCollectionFilter(null)}
+                    className="flex items-center gap-1 text-xs text-moi-500 hover:text-moi-600 mt-1"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to all outfits
+                  </button>
+                )}
                 {showOutfitHistory && (
                   <div className="flex gap-3 overflow-x-auto py-3 mt-2">
-                    {(outfitHistory as OutfitHistoryItem[]).map((outfit) => (
+                    {filteredOutfitHistory.map((outfit) => (
                       <div
                         key={outfit._id}
                         onClick={() => {
@@ -1178,6 +1222,21 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                               alt={outfit.name || "Saved outfit"}
                               className={`h-24 w-24 rounded-xl object-cover ${selectedOutfitId === outfit._id ? "ring-2 ring-moi-400" : ""}`}
                             />
+                            {outfit.collectionName && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (outfit.collectionId) {
+                                    setHistoryCollectionFilter(outfit.collectionId);
+                                  }
+                                }}
+                                className="absolute -top-1 left-0 right-0 text-center"
+                              >
+                                <span className="inline-block max-w-[96px] truncate rounded bg-moi-500 px-1.5 py-0.5 text-[10px] text-white hover:bg-moi-600">
+                                  {outfit.collectionName}
+                                </span>
+                              </button>
+                            )}
                             {outfit.name && (
                               <div className="absolute -bottom-1 left-0 right-0 text-center">
                                 <span className="inline-block max-w-[96px] truncate rounded bg-black/60 px-1.5 py-0.5 text-[10px] text-white">
@@ -1714,7 +1773,13 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   onClick={() => setShowOutfitHistory(!showOutfitHistory)}
                   className="flex items-center gap-2 text-sm font-medium text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white"
                 >
-                  <span>Recent Outfits ({outfitHistory.length})</span>
+                  <span>
+                    {historyCollectionFilterName ? (
+                      <span className="text-moi-500">{historyCollectionFilterName}</span>
+                    ) : (
+                      <>Recent Outfits ({outfitHistory.length})</>
+                    )}
+                  </span>
                   <svg
                     className={`h-4 w-4 transition-transform ${showOutfitHistory ? "rotate-180" : ""}`}
                     fill="none"
@@ -1734,9 +1799,20 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   </button>
                 )}
               </div>
+              {showOutfitHistory && historyCollectionFilter && (
+                <button
+                  onClick={() => setHistoryCollectionFilter(null)}
+                  className="flex items-center gap-1 text-xs text-moi-500 hover:text-moi-600 mt-1"
+                >
+                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                  </svg>
+                  Back to all outfits
+                </button>
+              )}
               {showOutfitHistory && (
                 <div className="flex gap-3 overflow-x-auto py-2 mt-2">
-                  {(outfitHistory as OutfitHistoryItem[]).map((outfit) => {
+                  {filteredOutfitHistory.map((outfit) => {
                     const isSelected = selectedOutfitId === outfit._id;
                     return (
                       <div
@@ -1769,6 +1845,21 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                           {outfit.url ? (
                             <div className="relative">
                               <img src={outfit.url} alt={outfit.name || "Saved outfit"} className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-moi-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-moi-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
+                              {outfit.collectionName && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (outfit.collectionId) {
+                                      setHistoryCollectionFilter(outfit.collectionId);
+                                    }
+                                  }}
+                                  className="absolute -top-1 left-0 right-0 text-center"
+                                >
+                                  <span className="inline-block max-w-[56px] truncate rounded bg-moi-500 px-1 text-[7px] text-white hover:bg-moi-600">
+                                    {outfit.collectionName}
+                                  </span>
+                                </button>
+                              )}
                               {outfit.name && (
                                 <div className="absolute -bottom-1 left-0 right-0 text-center">
                                   <span className="inline-block max-w-[56px] truncate rounded bg-black/60 px-1 text-[8px] text-white">
@@ -1857,7 +1948,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                 value={outfitName}
                 onChange={(e) => setOutfitName(e.target.value)}
                 placeholder="e.g., Date night look"
-                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-center text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                 autoFocus
               />
             </div>
@@ -1882,7 +1973,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     }
                   }}
                   placeholder="Type to create new or select below"
-                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                  className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-center text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
                 />
                 {newCollectionName.trim() && (
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-moi-500">
