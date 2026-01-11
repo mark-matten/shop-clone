@@ -173,6 +173,16 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
   // State for upgrade modal (when limit reached)
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
+  // State for outfit editing
+  const [editingOutfitId, setEditingOutfitId] = useState<Id<"outfit_images"> | null>(null);
+  const [editingOutfitName, setEditingOutfitName] = useState("");
+  const [editingOutfitCollectionId, setEditingOutfitCollectionId] = useState<Id<"collections"> | null>(null);
+
+  // State for collection management
+  const [showCollectionManager, setShowCollectionManager] = useState(false);
+  const [editingCollectionId, setEditingCollectionId] = useState<Id<"collections"> | null>(null);
+  const [editingCollectionName, setEditingCollectionName] = useState("");
+
   // Generic model customization
   const [modelHeight, setModelHeight] = useState(67); // inches (5'7")
   const [modelWeight, setModelWeight] = useState(140); // lbs
@@ -203,6 +213,9 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
   const hideOrDeleteOutfit = useMutation(api.storage.hideOrDeleteOutfit);
   const clearRecentOutfits = useMutation(api.storage.clearRecentOutfits);
   const createCollection = useMutation(api.collections.createCollectionByClerkId);
+  const updateOutfitImage = useMutation(api.storage.updateOutfitImage);
+  const updateCollection = useMutation(api.collections.updateCollectionByClerkId);
+  const deleteCollection = useMutation(api.collections.deleteCollectionByClerkId);
 
   // Load saved model preferences
   const savedModelHeight = user?.preferences?.modelHeight;
@@ -1191,15 +1204,27 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   </svg>
                 </button>
                 {showOutfitHistory && historyCollectionFilter && (
-                  <button
-                    onClick={() => setHistoryCollectionFilter(null)}
-                    className="flex items-center gap-1 text-xs text-moi-500 hover:text-moi-600 mt-1"
-                  >
-                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                    </svg>
-                    Back to all outfits
-                  </button>
+                  <div className="flex items-center gap-2 mt-1">
+                    <button
+                      onClick={() => setHistoryCollectionFilter(null)}
+                      className="flex items-center gap-1 text-xs text-moi-500 hover:text-moi-600"
+                    >
+                      <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                      </svg>
+                      Back to all outfits
+                    </button>
+                    <button
+                      onClick={() => setShowCollectionManager(true)}
+                      className="p-1 rounded text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                      title="Manage Collections"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </button>
+                  </div>
                 )}
                 {showOutfitHistory && (
                   <div className="flex gap-3 overflow-x-auto py-3 mt-2">
@@ -1213,7 +1238,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                             setSavedOutfitId(outfit.name ? outfit._id : null);
                           }
                         }}
-                        className="relative flex-shrink-0 cursor-pointer"
+                        className="relative flex-shrink-0 cursor-pointer group"
                       >
                         {outfit.url ? (
                           <div className="relative">
@@ -1244,6 +1269,20 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                                 </span>
                               </div>
                             )}
+                            {/* Edit button - mobile */}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingOutfitId(outfit._id);
+                                setEditingOutfitName(outfit.name || "");
+                                setEditingOutfitCollectionId(outfit.collectionId || null);
+                              }}
+                              className="absolute -right-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-moi-500 text-white shadow-lg"
+                            >
+                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                              </svg>
+                            </button>
                           </div>
                         ) : (
                           <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-zinc-200 dark:bg-zinc-700">
@@ -1800,15 +1839,27 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                 )}
               </div>
               {showOutfitHistory && historyCollectionFilter && (
-                <button
-                  onClick={() => setHistoryCollectionFilter(null)}
-                  className="flex items-center gap-1 text-xs text-moi-500 hover:text-moi-600 mt-1"
-                >
-                  <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                  </svg>
-                  Back to all outfits
-                </button>
+                <div className="flex items-center gap-2 mt-1">
+                  <button
+                    onClick={() => setHistoryCollectionFilter(null)}
+                    className="flex items-center gap-1 text-xs text-moi-500 hover:text-moi-600"
+                  >
+                    <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                    </svg>
+                    Back to all outfits
+                  </button>
+                  <button
+                    onClick={() => setShowCollectionManager(true)}
+                    className="p-1 rounded text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                    title="Manage Collections"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                  </button>
+                </div>
               )}
               {showOutfitHistory && (
                 <div className="flex gap-3 overflow-x-auto py-2 mt-2">
@@ -1876,6 +1927,21 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                             </div>
                           )}
                         </div>
+                        {/* Edit button */}
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingOutfitId(outfit._id);
+                            setEditingOutfitName(outfit.name || "");
+                            setEditingOutfitCollectionId(outfit.collectionId || null);
+                          }}
+                          className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-moi-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-moi-600"
+                          title="Edit"
+                        >
+                          <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
                         {/* X button to remove individual outfit */}
                         <button
                           onClick={(e) => handleRemoveFromHistory(e, outfit._id)}
@@ -2027,6 +2093,239 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                 {isSaving ? "Saving..." : "Save"}
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Outfit Edit Modal */}
+      {editingOutfitId && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 pt-safe"
+          onClick={() => setEditingOutfitId(null)}
+        >
+          <div
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-zinc-900 max-h-[80vh] sm:max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center pb-3 -mt-1">
+              <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 text-center">
+              Edit Outfit
+            </h3>
+            <div className="mb-4">
+              <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1 text-center">
+                Outfit Name
+              </label>
+              <input
+                type="text"
+                value={editingOutfitName}
+                onChange={(e) => setEditingOutfitName(e.target.value)}
+                placeholder="e.g., Date night look"
+                className="w-full rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm text-center text-zinc-900 placeholder-zinc-400 focus:border-moi-400 focus:outline-none focus:ring-1 focus:ring-moi-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white dark:placeholder-zinc-500"
+                autoFocus
+              />
+            </div>
+
+            {/* Collection Selection */}
+            <div className="mb-4">
+              <label className="block text-sm text-zinc-600 dark:text-zinc-400 mb-1 text-center">
+                Collection
+              </label>
+              <div className="flex flex-wrap gap-1.5 justify-center">
+                <button
+                  type="button"
+                  onClick={() => setEditingOutfitCollectionId(null)}
+                  className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                    editingOutfitCollectionId === null
+                      ? "bg-moi-400 text-white"
+                      : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                  }`}
+                >
+                  None
+                </button>
+                {collections?.map((collection) => (
+                  <button
+                    key={collection._id}
+                    type="button"
+                    onClick={() => setEditingOutfitCollectionId(collection._id)}
+                    className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors ${
+                      editingOutfitCollectionId === collection._id
+                        ? "bg-moi-400 text-white"
+                        : "bg-zinc-100 text-zinc-600 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                    }`}
+                  >
+                    {collection.name}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setEditingOutfitId(null)}
+                className="flex-1 rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={async () => {
+                  if (!editingOutfitId) return;
+                  try {
+                    await updateOutfitImage({
+                      clerkId,
+                      outfitId: editingOutfitId,
+                      name: editingOutfitName.trim() || undefined,
+                      collectionId: editingOutfitCollectionId ?? undefined,
+                    });
+                    setEditingOutfitId(null);
+                  } catch (error) {
+                    console.error("Failed to update outfit:", error);
+                    alert("Failed to update outfit.");
+                  }
+                }}
+                className="flex-1 rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500"
+              >
+                Save
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Collection Manager Modal */}
+      {showCollectionManager && (
+        <div
+          className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 pt-safe"
+          onClick={() => {
+            setShowCollectionManager(false);
+            setEditingCollectionId(null);
+          }}
+        >
+          <div
+            className="w-full sm:max-w-sm rounded-t-2xl sm:rounded-2xl bg-white p-4 sm:p-6 shadow-xl dark:bg-zinc-900 max-h-[80vh] sm:max-h-[85vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Mobile drag handle */}
+            <div className="sm:hidden flex justify-center pb-3 -mt-1">
+              <div className="w-10 h-1 rounded-full bg-zinc-300 dark:bg-zinc-600" />
+            </div>
+            <h3 className="text-lg font-semibold text-zinc-900 dark:text-white mb-4 text-center">
+              Manage Collections
+            </h3>
+
+            {collections && collections.length > 0 ? (
+              <div className="space-y-2">
+                {collections.map((collection) => (
+                  <div
+                    key={collection._id}
+                    className="flex items-center gap-2 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800"
+                  >
+                    {editingCollectionId === collection._id ? (
+                      <>
+                        <input
+                          type="text"
+                          value={editingCollectionName}
+                          onChange={(e) => setEditingCollectionName(e.target.value)}
+                          className="flex-1 rounded-lg border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 focus:border-moi-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-900 dark:text-white"
+                          autoFocus
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              updateCollection({
+                                clerkId,
+                                collectionId: collection._id,
+                                name: editingCollectionName.trim(),
+                              }).then(() => {
+                                setEditingCollectionId(null);
+                              });
+                            } else if (e.key === "Escape") {
+                              setEditingCollectionId(null);
+                            }
+                          }}
+                        />
+                        <button
+                          onClick={() => {
+                            updateCollection({
+                              clerkId,
+                              collectionId: collection._id,
+                              name: editingCollectionName.trim(),
+                            }).then(() => {
+                              setEditingCollectionId(null);
+                            });
+                          }}
+                          className="p-1 rounded text-green-600 hover:bg-green-100 dark:hover:bg-green-900/30"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => setEditingCollectionId(null)}
+                          className="p-1 rounded text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                          </svg>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-sm text-zinc-900 dark:text-white">
+                          {collection.name}
+                        </span>
+                        <button
+                          onClick={() => {
+                            setEditingCollectionId(collection._id);
+                            setEditingCollectionName(collection.name);
+                          }}
+                          className="p-1 rounded text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700"
+                          title="Rename"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                          </svg>
+                        </button>
+                        <button
+                          onClick={() => {
+                            if (confirm(`Delete "${collection.name}"? Outfits in this collection will be kept but removed from the collection.`)) {
+                              deleteCollection({
+                                clerkId,
+                                collectionId: collection._id,
+                              }).then(() => {
+                                if (historyCollectionFilter === collection._id) {
+                                  setHistoryCollectionFilter(null);
+                                }
+                              });
+                            }
+                          }}
+                          className="p-1 rounded text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30"
+                          title="Delete"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
+                No collections yet. Create one when saving an outfit.
+              </p>
+            )}
+
+            <button
+              onClick={() => {
+                setShowCollectionManager(false);
+                setEditingCollectionId(null);
+              }}
+              className="mt-4 w-full rounded-lg border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Done
+            </button>
           </div>
         </div>
       )}

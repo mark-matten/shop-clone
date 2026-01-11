@@ -239,6 +239,82 @@ export const removeFromCollection = mutation({
   },
 });
 
+// Update a collection by clerkId
+export const updateCollectionByClerkId = mutation({
+  args: {
+    clerkId: v.string(),
+    collectionId: v.id("collections"),
+    name: v.optional(v.string()),
+    description: v.optional(v.string()),
+    color: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection || collection.userId !== user._id) {
+      throw new Error("Collection not found or access denied");
+    }
+
+    const updates: Partial<typeof collection> = { updatedAt: Date.now() };
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.description !== undefined) updates.description = args.description;
+    if (args.color !== undefined) updates.color = args.color;
+
+    await ctx.db.patch(args.collectionId, updates);
+    return { success: true };
+  },
+});
+
+// Delete a collection by clerkId
+export const deleteCollectionByClerkId = mutation({
+  args: {
+    clerkId: v.string(),
+    collectionId: v.id("collections"),
+  },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("users")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .first();
+
+    if (!user) throw new Error("User not found");
+
+    const collection = await ctx.db.get(args.collectionId);
+    if (!collection || collection.userId !== user._id) {
+      throw new Error("Collection not found or access denied");
+    }
+
+    // Delete all items in the collection
+    const items = await ctx.db
+      .query("collection_items")
+      .withIndex("by_collectionId", (q) => q.eq("collectionId", args.collectionId))
+      .collect();
+
+    for (const item of items) {
+      await ctx.db.delete(item._id);
+    }
+
+    // Clear collectionId from any outfits in this collection
+    const outfits = await ctx.db
+      .query("outfit_images")
+      .filter((q) => q.eq(q.field("collectionId"), args.collectionId))
+      .collect();
+
+    for (const outfit of outfits) {
+      await ctx.db.patch(outfit._id, { collectionId: undefined });
+    }
+
+    await ctx.db.delete(args.collectionId);
+    return { success: true };
+  },
+});
+
 // Get collections containing a specific product
 export const getProductCollections = query({
   args: {
