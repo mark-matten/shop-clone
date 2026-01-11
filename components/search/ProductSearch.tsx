@@ -645,7 +645,13 @@ export function ProductSearch() {
     }
 
     try {
+      console.log("[Search] Calling searchProducts with:", query);
       const result = await searchProducts({ searchText: query });
+      console.log("[Search] Result received:", {
+        productCount: result.products?.length,
+        filter: result.filter,
+        totalResults: result.totalResults
+      });
       const products = result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[];
 
       setSearchResult({
@@ -654,6 +660,7 @@ export function ProductSearch() {
         totalResults: result.totalResults,
         partialMatches: result.partialMatches?.map((p) => ({ ...p, _id: p._id.toString() })) as Product[] | undefined,
       });
+      console.log("[Search] SearchResult set with", products.length, "products");
 
       // Refresh products in the background to get fresh availability data
       // Only refresh the first batch (initial display)
@@ -669,7 +676,8 @@ export function ProductSearch() {
         });
       }
     } catch (err) {
-      console.error("Search error:", err);
+      console.error("[Search] Error during search:", err);
+      console.error("[Search] Error details:", JSON.stringify(err, Object.getOwnPropertyNames(err)));
       setError("Failed to search products. Please try again.");
     } finally {
       setIsLoading(false);
