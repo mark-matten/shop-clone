@@ -247,12 +247,13 @@ export const getSavedOutfits = query({
       .collect();
 
     // Filter to only saved outfits (have name or collectionId) and sort by sortOrder
+    // Sort descending so newest outfits appear first (left in horizontal list)
     const savedOutfits = allOutfits
       .filter((outfit) => outfit.name || outfit.collectionId)
       .sort((a, b) => {
         const orderA = a.sortOrder ?? a.generatedAt;
         const orderB = b.sortOrder ?? b.generatedAt;
-        return orderA - orderB;
+        return orderB - orderA;
       })
       .slice(0, limit);
 
@@ -350,12 +351,13 @@ export const getOutfitHistory = query({
       .collect();
 
     // Filter out hidden outfits, sort by sortOrder, and limit
+    // Sort descending so newest outfits appear first (left in horizontal list)
     const outfits = allOutfits
       .filter((o) => !o.hiddenFromRecent)
       .sort((a, b) => {
         const orderA = a.sortOrder ?? a.generatedAt;
         const orderB = b.sortOrder ?? b.generatedAt;
-        return orderA - orderB;
+        return orderB - orderA;
       })
       .slice(0, limit);
 
@@ -608,13 +610,13 @@ export const reorderOutfit = mutation({
       .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
       .collect();
 
-    // Filter to visible outfits only and sort by sortOrder (or generatedAt desc)
+    // Filter to visible outfits only and sort by sortOrder (descending - newest first)
     const visibleOutfits = outfits
       .filter(o => !o.hiddenFromRecent)
       .sort((a, b) => {
         const orderA = a.sortOrder ?? a.generatedAt;
         const orderB = b.sortOrder ?? b.generatedAt;
-        return orderA - orderB;
+        return orderB - orderA;
       });
 
     // Find current outfit's index

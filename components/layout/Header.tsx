@@ -159,7 +159,7 @@ export function Header() {
             }`}
             title="My Closet"
           >
-            <svg className="h-6 w-6 mt-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8a2 2 0 100-4 2 2 0 000 4zM12 8v2m0 0l-8 6h16l-8-6z" />
             </svg>
           </Link>

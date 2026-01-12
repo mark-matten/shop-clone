@@ -440,11 +440,20 @@ function groupByColor(
   return result;
 }
 
+// Sort options for search results
+export type SortOption = "relevance" | "price_low" | "price_high" | "newest";
+
 // Main search action combining LLM parsing + database filtering
 export const searchProducts = action({
   args: {
     searchText: v.string(),
     limit: v.optional(v.number()),
+    sortBy: v.optional(v.union(
+      v.literal("relevance"),
+      v.literal("price_low"),
+      v.literal("price_high"),
+      v.literal("newest")
+    )),
   },
   handler: async (ctx, args): Promise<{
     products: any[];
@@ -453,6 +462,7 @@ export const searchProducts = action({
     partialMatches?: any[];
   }> => {
     const requestedLimit = args.limit ?? 500;
+    const sortBy = args.sortBy ?? "relevance";
     // Fetch many more products before grouping to ensure we get a mix of new and used items
     // (used items may be stored later in the database, so a small limit would miss them)
     const fetchLimit = Math.max(requestedLimit * 3, 1500);
@@ -469,6 +479,7 @@ export const searchProducts = action({
       query: filter.query,
       gender: filter.gender,
       condition: filter.condition,
+      sortBy,
       limit: fetchLimit,
     });
 
@@ -1257,9 +1268,16 @@ export const filterProductsInternal = internalQuery({
     maxPrice: v.optional(v.number()),
     limit: v.optional(v.number()),
     includeScores: v.optional(v.boolean()),
+    sortBy: v.optional(v.union(
+      v.literal("relevance"),
+      v.literal("price_low"),
+      v.literal("price_high"),
+      v.literal("newest")
+    )),
   },
   handler: async (ctx, args) => {
     const limit = args.limit ?? 20;
+    const sortBy = args.sortBy ?? "relevance";
 
     let products = await ctx.db.query("products").collect();
 
@@ -1513,21 +1531,40 @@ export const filterProductsInternal = internalQuery({
       scoredProducts.push({ product, score, soldOut });
     }
 
-    // Sort by: in-stock first, then by relevance score, then by price (ascending)
-    // The price sort helps mix new and used products when scores are equal
+    // Sort based on sortBy option
     scoredProducts.sort((a, b) => {
-      // Sold out items go to the end
+      // Sold out items always go to the end, regardless of sort option
       if (a.soldOut !== b.soldOut) {
         return a.soldOut ? 1 : -1;
       }
-      // Within same availability, sort by score (higher first)
-      if (b.score !== a.score) {
-        return b.score - a.score;
-      }
-      // Tiebreaker: sort by price (lower first) to mix new and used products
+
       const priceA = a.product.colorVariants?.[0]?.price ?? a.product.price ?? 999999;
       const priceB = b.product.colorVariants?.[0]?.price ?? b.product.price ?? 999999;
-      return priceA - priceB;
+      const createdAtA = a.product._creationTime ?? 0;
+      const createdAtB = b.product._creationTime ?? 0;
+
+      switch (sortBy) {
+        case "price_low":
+          // Price ascending, then by score
+          if (priceA !== priceB) return priceA - priceB;
+          return b.score - a.score;
+
+        case "price_high":
+          // Price descending, then by score
+          if (priceA !== priceB) return priceB - priceA;
+          return b.score - a.score;
+
+        case "newest":
+          // Creation time descending, then by score
+          if (createdAtA !== createdAtB) return createdAtB - createdAtA;
+          return b.score - a.score;
+
+        case "relevance":
+        default:
+          // Score descending, then price ascending as tiebreaker
+          if (b.score !== a.score) return b.score - a.score;
+          return priceA - priceB;
+      }
     });
 
     // Return with or without scores based on flag

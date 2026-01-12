@@ -640,7 +640,7 @@ export function ProductSearch() {
     }
 
     try {
-      const result = await searchProducts({ searchText: query });
+      const result = await searchProducts({ searchText: query, sortBy });
       const products = result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[];
 
       setSearchResult({
@@ -671,7 +671,7 @@ export function ProductSearch() {
       // Always reset this flag after search completes so saving can happen
       isRestoringFromUrl.current = false;
     }
-  }, [searchParams, router, searchProducts, clerkUser?.id, saveSearch]);
+  }, [searchParams, router, searchProducts, clerkUser?.id, saveSearch, sortBy]);
 
   // Handle removing a filter from the parsed search results
   const handleRemoveFilter = useCallback(async (key: keyof SearchFilter) => {
@@ -699,7 +699,7 @@ export function ProductSearch() {
       router.replace(`/?${params.toString()}`, { scroll: false });
 
       try {
-        const result = await searchProducts({ searchText: newQuery });
+        const result = await searchProducts({ searchText: newQuery, sortBy });
         setSearchResult({
           products: result.products.map((p) => ({ ...p, _id: p._id.toString() })) as Product[],
           filter: result.filter as SearchFilter,
@@ -727,7 +727,7 @@ export function ProductSearch() {
       params.delete("q");
       router.replace(`/?${params.toString()}`, { scroll: false });
     }
-  }, [activeFilter, searchResult?.filter, currentSearchQuery, searchParams, router, searchProducts]);
+  }, [activeFilter, searchResult?.filter, currentSearchQuery, searchParams, router, searchProducts, sortBy]);
 
   // Handle back navigation via pageshow event (fires when page is restored from bfcache)
   useEffect(() => {
