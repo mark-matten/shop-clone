@@ -293,7 +293,6 @@ export function ProductSearch() {
   const [sidebarFilters, setSidebarFilters] = useState<FilterState | null>(null);
   const [showMySizesOnly, setShowMySizesOnly] = useState(false);
   const [sortBy, setSortBy] = useState<"relevance" | "price_low" | "price_high" | "newest">("relevance");
-  const [conditionFilter, setConditionFilter] = useState<"all" | "new" | "used">("all");
   const [displayCount, setDisplayCount] = useState(20);
   const [showSaveSearchModal, setShowSaveSearchModal] = useState(false);
   const [saveSearchName, setSaveSearchName] = useState("");
@@ -378,17 +377,8 @@ export function ProductSearch() {
         if (filters.priceMin && product.price < parseFloat(filters.priceMin)) return false;
         if (filters.priceMax && product.price > parseFloat(filters.priceMax)) return false;
 
-        // Brand filter
-        if (filters.brands.length > 0 && !filters.brands.includes(product.brand)) return false;
-
         // Condition filter
         if (filters.conditions.length > 0 && !filters.conditions.includes(product.condition)) return false;
-
-        // Size filter
-        if (filters.sizes.length > 0 && product.size && !filters.sizes.includes(product.size)) return false;
-
-        // Platform filter
-        if (filters.platforms.length > 0 && !filters.platforms.includes(product.sourcePlatform)) return false;
 
         // In Stock Only filter - exclude products where all variants are sold out
         if (filters.inStockOnly) {
@@ -551,12 +541,6 @@ export function ProductSearch() {
       // Condition filter from search parsing
       if (filterToApply.condition && product.condition !== filterToApply.condition) return false;
 
-      // Condition filter from UI dropdown
-      if (conditionFilter !== "all") {
-        if (conditionFilter === "new" && product.condition !== "new") return false;
-        if (conditionFilter === "used" && product.condition !== "used" && product.condition !== "like_new") return false;
-      }
-
       // Category filter with synonym expansion (also checks product name for specific types)
       if (filterToApply.category && !categoryMatches(product.category, filterToApply.category, product.name)) return false;
 
@@ -612,12 +596,9 @@ export function ProductSearch() {
     // Apply the saved filters if any
     if (search.filters) {
       setSidebarFilters({
-        brands: search.filters.brands || [],
         conditions: search.filters.conditions || [],
         priceMin: search.filters.priceMin || "",
         priceMax: search.filters.priceMax || "",
-        sizes: search.filters.sizes || [],
-        platforms: search.filters.platforms || [],
         inStockOnly: search.filters.inStockOnly || false,
       });
     }
@@ -797,7 +778,6 @@ export function ProductSearch() {
               if (parsed.sidebarFilters) setSidebarFilters(parsed.sidebarFilters);
               if (parsed.displayCount) setDisplayCount(parsed.displayCount);
               // Restore UI filter states
-              if (parsed.conditionFilter) setConditionFilter(parsed.conditionFilter);
               if (parsed.sortBy) setSortBy(parsed.sortBy);
               if (typeof parsed.showMySizesOnly === "boolean") setShowMySizesOnly(parsed.showMySizesOnly);
               if (parsed.viewMode) setViewMode(parsed.viewMode);
@@ -852,14 +832,13 @@ export function ProductSearch() {
         displayCount,
         scrollPosition: window.scrollY,
         // UI filter states
-        conditionFilter,
         sortBy,
         showMySizesOnly,
         viewMode,
       };
       sessionStorage.setItem(SEARCH_STATE_KEY, JSON.stringify(stateToSave));
     }
-  }, [activeFilter, searchResult, sidebarFilters, currentSearchQuery, hasSearched, displayCount, conditionFilter, sortBy, showMySizesOnly, viewMode]);
+  }, [activeFilter, searchResult, sidebarFilters, currentSearchQuery, hasSearched, displayCount, sortBy, showMySizesOnly, viewMode]);
 
   // Save scroll position on scroll (debounced) so it's captured before navigation
   useEffect(() => {
@@ -960,27 +939,29 @@ export function ProductSearch() {
 
           {/* Line 2: My sizes only, Sort, View toggle */}
           <div className="mb-3 flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 -mb-1">
-            {clerkUser && convexUser?.preferences && (
-              <label className="flex items-center gap-1.5 sm:gap-2 text-sm whitespace-nowrap flex-shrink-0">
+            {clerkUser && (
+              <label className={`flex items-center gap-1.5 sm:gap-2 text-sm whitespace-nowrap flex-shrink-0 ${!convexUser?.preferences ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
                 <input
                   type="checkbox"
                   checked={showMySizesOnly}
                   onChange={(e) => setShowMySizesOnly(e.target.checked)}
-                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                  disabled={!convexUser?.preferences}
+                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 disabled:opacity-50"
                 />
-                <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">My sizes</span>
+                <span className="text-zinc-600 dark:text-zinc-400 text-xs sm:text-sm">My sizes only</span>
               </label>
             )}
 
-            <select
-              value={conditionFilter}
-              onChange={(e) => setConditionFilter(e.target.value as typeof conditionFilter)}
-              className="flex-shrink-0 rounded-lg border border-zinc-200 bg-white px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm text-zinc-700 focus:border-zinc-400 focus:outline-none dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300"
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`flex-shrink-0 rounded-lg border px-2 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${
+                showFilters || sidebarFilters
+                  ? "border-zinc-900 bg-zinc-900 text-white dark:border-white dark:bg-white dark:text-zinc-900"
+                  : "border-zinc-200 bg-white text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+              }`}
             >
-              <option value="all">Condition</option>
-              <option value="new">New</option>
-              <option value="used">Used</option>
-            </select>
+              Filters{sidebarFilters ? " ●" : ""}
+            </button>
 
             <select
               value={sortBy}
