@@ -24,6 +24,7 @@ const colorVariantSchema = v.object({
 });
 
 // Add a new product with colorVariants structure
+// Deduplicates by sourceUrl - if a product with any of the sourceUrls already exists, returns existing ID
 export const addProduct = mutation({
   args: {
     name: v.string(),
@@ -37,6 +38,33 @@ export const addProduct = mutation({
     colorVariants: v.array(colorVariantSchema),
   },
   handler: async (ctx, args) => {
+    // Check if any of the colorVariant sourceUrls already exist
+    if (args.colorVariants.length > 0) {
+      const firstUrl = args.colorVariants[0].sourceUrl;
+
+      // Check legacy sourceUrl index first
+      const legacyMatch = await ctx.db
+        .query("products")
+        .withIndex("by_sourceUrl", (q) => q.eq("sourceUrl", firstUrl))
+        .first();
+
+      if (legacyMatch) {
+        return legacyMatch._id;
+      }
+
+      // Check all products for matching colorVariant sourceUrls
+      const products = await ctx.db.query("products").collect();
+      const existingMatch = products.find(p =>
+        p.colorVariants?.some(cv =>
+          args.colorVariants.some(newCv => newCv.sourceUrl === cv.sourceUrl)
+        )
+      );
+
+      if (existingMatch) {
+        return existingMatch._id;
+      }
+    }
+
     const productKey = generateProductKey(args.brand, args.name, args.sourcePlatform);
     return await ctx.db.insert("products", {
       ...args,
@@ -196,6 +224,7 @@ export const updatePrice = mutation({
 });
 
 // Bulk add products (for importing from scrapers)
+// Deduplicates by sourceUrl - skips products that already exist
 export const bulkAddProducts = mutation({
   args: {
     products: v.array(
@@ -219,12 +248,24 @@ export const bulkAddProducts = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const ids = [];
+    const results: { id: string; action: "inserted" | "skipped" }[] = [];
+
     for (const product of args.products) {
-      const id = await ctx.db.insert("products", product);
-      ids.push(id);
+      // Check if product already exists by sourceUrl
+      const existing = await ctx.db
+        .query("products")
+        .withIndex("by_sourceUrl", (q) => q.eq("sourceUrl", product.sourceUrl))
+        .first();
+
+      if (existing) {
+        results.push({ id: existing._id, action: "skipped" });
+      } else {
+        const id = await ctx.db.insert("products", product);
+        results.push({ id, action: "inserted" });
+      }
     }
-    return ids;
+
+    return results;
   },
 });
 
@@ -412,6 +453,142 @@ export const upsertProduct = mutation({
       });
       return { id, action: "inserted" as const };
     }
+  },
+});
+
+// Find duplicate products by sourceUrl
+export const findDuplicates = query({
+  args: {},
+  handler: async (ctx) => {
+    const products = await ctx.db.query("products").collect();
+
+    // Group by sourceUrl
+    const urlGroups = new Map<string, typeof products>();
+
+    for (const product of products) {
+      const url = product.sourceUrl;
+      if (!url) continue;
+
+      const existing = urlGroups.get(url);
+      if (existing) {
+        existing.push(product);
+      } else {
+        urlGroups.set(url, [product]);
+      }
+    }
+
+    // Find groups with duplicates
+    const duplicates: { sourceUrl: string; count: number; ids: string[] }[] = [];
+
+    for (const [url, group] of urlGroups) {
+      if (group.length > 1) {
+        duplicates.push({
+          sourceUrl: url,
+          count: group.length,
+          ids: group.map(p => p._id),
+        });
+      }
+    }
+
+    return {
+      totalProducts: products.length,
+      duplicateGroups: duplicates.length,
+      totalDuplicates: duplicates.reduce((sum, d) => sum + d.count - 1, 0),
+      duplicates,
+    };
+  },
+});
+
+// Remove duplicate products by ID list - pass in the IDs to delete
+export const removeDuplicatesById = mutation({
+  args: {
+    idsToDelete: v.array(v.string()),
+  },
+  handler: async (ctx, args) => {
+    let deletedCount = 0;
+
+    for (const idStr of args.idsToDelete) {
+      try {
+        // Cast string to Id type
+        const id = idStr as unknown as typeof args.idsToDelete[0];
+        await ctx.db.delete(id as any);
+        deletedCount++;
+      } catch (e) {
+        // Skip if already deleted or invalid
+      }
+    }
+
+    return {
+      deletedCount,
+      message: `Deleted ${deletedCount} products`,
+    };
+  },
+});
+
+// Remove duplicate products - keeps the oldest one (first by _creationTime)
+// Batched version to avoid hitting limits - uses index for pagination
+export const removeDuplicates = mutation({
+  args: {
+    batchSize: v.optional(v.number()),
+    platform: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const batchSize = args.batchSize ?? 100;
+
+    // Get products by platform to avoid loading everything
+    let products;
+    if (args.platform) {
+      products = await ctx.db
+        .query("products")
+        .withIndex("by_sourcePlatform", (q) => q.eq("sourcePlatform", args.platform!))
+        .collect();
+    } else {
+      // Get a sample of products
+      products = await ctx.db.query("products").take(5000);
+    }
+
+    // Group by sourceUrl
+    const urlGroups = new Map<string, typeof products>();
+
+    for (const product of products) {
+      const url = product.sourceUrl;
+      if (!url) continue;
+
+      const existing = urlGroups.get(url);
+      if (existing) {
+        existing.push(product);
+      } else {
+        urlGroups.set(url, [product]);
+      }
+    }
+
+    let deletedCount = 0;
+    let processedGroups = 0;
+
+    // Process each group with duplicates (limited by batchSize)
+    for (const [url, group] of urlGroups) {
+      if (group.length > 1 && deletedCount < batchSize) {
+        processedGroups++;
+
+        // Sort by creation time (oldest first)
+        group.sort((a, b) => a._creationTime - b._creationTime);
+
+        // Keep the first (oldest), delete the rest
+        for (let i = 1; i < group.length && deletedCount < batchSize; i++) {
+          await ctx.db.delete(group[i]._id);
+          deletedCount++;
+        }
+      }
+    }
+
+    // Count remaining duplicates
+    const remainingDuplicates = Array.from(urlGroups.values()).filter(g => g.length > 1).length - processedGroups;
+
+    return {
+      deletedCount,
+      remainingDuplicateGroups: Math.max(0, remainingDuplicates),
+      message: `Deleted ${deletedCount} duplicate products. ${remainingDuplicates > 0 ? `Run again to process more.` : "All duplicates removed."}`,
+    };
   },
 });
 
