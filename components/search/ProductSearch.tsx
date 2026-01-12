@@ -555,11 +555,8 @@ export function ProductSearch() {
       // Brand filter
       if (filterToApply.brand && !product.brand.toLowerCase().includes(filterToApply.brand.toLowerCase())) return false;
 
-      // Material filter - exclude products without material when filtering by material
-      if (filterToApply.material) {
-        if (!product.material) return false;
-        if (!product.material.toLowerCase().includes(filterToApply.material.toLowerCase())) return false;
-      }
+      // Material filter - backend already handles material matching (checks name, description, and material field)
+      // Don't re-filter here as used products may have material in name but no material field
 
       // Size filter
       if (filterToApply.size && product.size && !product.size.toLowerCase().includes(filterToApply.size.toLowerCase())) return false;
