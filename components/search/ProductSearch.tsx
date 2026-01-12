@@ -938,7 +938,7 @@ export function ProductSearch() {
           </div>
 
           {/* Line 2: My sizes only, Sort, View toggle */}
-          <div className="mb-3 flex items-center gap-2 sm:gap-3 overflow-x-auto pb-1 -mb-1">
+          <div className="mb-3 flex items-center gap-2 sm:gap-3 overflow-x-auto scrollbar-hide">
             {clerkUser && (
               <label className={`flex items-center gap-1.5 sm:gap-2 text-sm whitespace-nowrap flex-shrink-0 ${!convexUser?.preferences ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}>
                 <input

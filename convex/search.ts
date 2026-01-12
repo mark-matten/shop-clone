@@ -124,8 +124,10 @@ Return ONLY valid JSON, no explanation or markdown.`;
 
 // Basic fallback parser (no LLM)
 function parseBasic(searchText: string): SearchFilter {
-  const query = searchText.toLowerCase();
-  const filter: SearchFilter = { query: searchText };
+  // Apply typo corrections first
+  const correctedText = correctTypos(searchText);
+  const query = correctedText.toLowerCase();
+  const filter: SearchFilter = { query: correctedText };
 
   // Gender detection - only trigger if gender word is at the START of the query
   // This prevents product names like "Everlane Men's Chino" from triggering gender filtering
@@ -242,6 +244,99 @@ function parseBasic(searchText: string): SearchFilter {
   }
 
   return filter;
+}
+
+// Levenshtein distance for fuzzy matching (typo tolerance)
+function levenshteinDistance(a: string, b: string): number {
+  const matrix: number[][] = [];
+
+  for (let i = 0; i <= b.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= a.length; j++) {
+    matrix[0][j] = j;
+  }
+
+  for (let i = 1; i <= b.length; i++) {
+    for (let j = 1; j <= a.length; j++) {
+      if (b.charAt(i - 1) === a.charAt(j - 1)) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1, // substitution
+          matrix[i][j - 1] + 1,     // insertion
+          matrix[i - 1][j] + 1      // deletion
+        );
+      }
+    }
+  }
+
+  return matrix[b.length][a.length];
+}
+
+// Check if word fuzzy matches target (within 1-2 character distance based on length)
+function fuzzyMatch(query: string, target: string): boolean {
+  const queryLower = query.toLowerCase();
+  const targetLower = target.toLowerCase();
+
+  // Exact match
+  if (queryLower === targetLower) return true;
+
+  // For short words (< 4 chars), require exact match
+  if (queryLower.length < 4) return false;
+
+  // For medium words (4-6 chars), allow 1 typo
+  // For longer words (7+ chars), allow 2 typos
+  const maxDistance = queryLower.length <= 6 ? 1 : 2;
+  const distance = levenshteinDistance(queryLower, targetLower);
+
+  return distance <= maxDistance;
+}
+
+// Common typo corrections for fashion/clothing terms
+const TYPO_CORRECTIONS: Record<string, string> = {
+  // Common misspellings
+  "sweter": "sweater",
+  "sweather": "sweater",
+  "sweatshrit": "sweatshirt",
+  "jeens": "jeans",
+  "jaket": "jacket",
+  "jacekt": "jacket",
+  "dreses": "dresses",
+  "dreess": "dress",
+  "botos": "boots",
+  "botts": "boots",
+  "snekers": "sneakers",
+  "sneekers": "sneakers",
+  "sandels": "sandals",
+  "sandlas": "sandals",
+  "cashmeer": "cashmere",
+  "cashemere": "cashmere",
+  "leahter": "leather",
+  "lether": "leather",
+  "letaher": "leather",
+  "cottn": "cotton",
+  "cotten": "cotton",
+  "denmin": "denim",
+  "blak": "black",
+  "whit": "white",
+  "wite": "white",
+  "bleu": "blue",
+  "gree": "green",
+  "brwon": "brown",
+  "borwn": "brown",
+  "womens": "women's",
+  "womans": "women's",
+  "mens": "men's",
+  "everlain": "everlane",
+  "everlan": "everlane",
+};
+
+// Correct common typos in search query
+function correctTypos(query: string): string {
+  const words = query.toLowerCase().split(/\s+/);
+  const corrected = words.map(word => TYPO_CORRECTIONS[word] || word);
+  return corrected.join(" ");
 }
 
 // Query to search products with filters (no vector search)
@@ -1230,19 +1325,27 @@ function calculateNameMatchScore(productName: string, queryWords: string[]): num
   let matchedWords = 0;
 
   for (const queryWord of queryWords) {
+    // Apply typo correction to query word
+    const correctedWord = TYPO_CORRECTIONS[queryWord] || queryWord;
+
     // Exact word match in name (highest priority)
-    if (nameWords.includes(queryWord)) {
+    if (nameWords.includes(correctedWord)) {
       score += 50;
       matchedWords++;
     }
     // Partial match (word contains query or query contains word)
-    else if (nameLower.includes(queryWord)) {
+    else if (nameLower.includes(correctedWord)) {
       score += 30;
       matchedWords++;
     }
     // Check if any name word starts with the query word
-    else if (nameWords.some(nw => nw.startsWith(queryWord) || queryWord.startsWith(nw))) {
+    else if (nameWords.some(nw => nw.startsWith(correctedWord) || correctedWord.startsWith(nw))) {
       score += 20;
+      matchedWords++;
+    }
+    // Fuzzy match - check if any name word is within edit distance
+    else if (nameWords.some(nw => fuzzyMatch(correctedWord, nw))) {
+      score += 15;
       matchedWords++;
     }
   }

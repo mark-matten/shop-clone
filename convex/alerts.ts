@@ -77,10 +77,32 @@ export const createAlert = internalMutation({
     alertType: v.union(v.literal("target_reached"), v.literal("price_drop")),
   },
   handler: async (ctx, args) => {
-    return await ctx.db.insert("price_alerts", {
+    // Create the price alert record
+    const alertId = await ctx.db.insert("price_alerts", {
       ...args,
       createdAt: Date.now(),
     });
+
+    // Get product details for notification message
+    const product = await ctx.db.get(args.productId);
+    const productName = product?.name || "Product";
+    const savings = (args.previousPrice - args.newPrice).toFixed(2);
+
+    // Create a notification so it shows in the notification panel
+    const message = args.alertType === "target_reached"
+      ? `${productName} hit your target price! Now $${args.newPrice} (was $${args.previousPrice}). Save $${savings}!`
+      : `Price drop on ${productName}! Now $${args.newPrice} (was $${args.previousPrice}). Save $${savings}!`;
+
+    await ctx.db.insert("notifications", {
+      userId: args.userId,
+      type: args.alertType,
+      message,
+      relatedId: args.productId.toString(),
+      read: false,
+      createdAt: Date.now(),
+    });
+
+    return alertId;
   },
 });
 
