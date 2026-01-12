@@ -238,6 +238,8 @@ export default defineSchema({
     collectionId: v.optional(v.id("collections")),
     // Hidden from Recent Outfits view (but not deleted)
     hiddenFromRecent: v.optional(v.boolean()),
+    // Custom sort order (lower numbers appear first)
+    sortOrder: v.optional(v.number()),
   })
     .index("by_clerkId", ["clerkId"])
     .index("by_clerkId_generatedAt", ["clerkId", "generatedAt"])

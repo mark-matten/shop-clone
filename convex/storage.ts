@@ -246,9 +246,14 @@ export const getSavedOutfits = query({
       .order("desc")
       .collect();
 
-    // Filter to only saved outfits (have name or collectionId)
+    // Filter to only saved outfits (have name or collectionId) and sort by sortOrder
     const savedOutfits = allOutfits
       .filter((outfit) => outfit.name || outfit.collectionId)
+      .sort((a, b) => {
+        const orderA = a.sortOrder ?? a.generatedAt;
+        const orderB = b.sortOrder ?? b.generatedAt;
+        return orderA - orderB;
+      })
       .slice(0, limit);
 
     // Get URLs and related data for each outfit
@@ -344,9 +349,14 @@ export const getOutfitHistory = query({
       .order("desc")
       .collect();
 
-    // Filter out hidden outfits and limit
+    // Filter out hidden outfits, sort by sortOrder, and limit
     const outfits = allOutfits
       .filter((o) => !o.hiddenFromRecent)
+      .sort((a, b) => {
+        const orderA = a.sortOrder ?? a.generatedAt;
+        const orderB = b.sortOrder ?? b.generatedAt;
+        return orderA - orderB;
+      })
       .slice(0, limit);
 
     // Get URLs and related data for each outfit
@@ -581,6 +591,55 @@ export const hideOrDeleteOutfit = mutation({
       await ctx.db.delete(args.outfitId);
       return { action: "deleted" };
     }
+  },
+});
+
+// Reorder outfits - swap sortOrder between two outfits
+export const reorderOutfit = mutation({
+  args: {
+    clerkId: v.string(),
+    outfitId: v.id("outfit_images"),
+    direction: v.union(v.literal("up"), v.literal("down")),
+  },
+  handler: async (ctx, args) => {
+    // Get all user's outfits ordered by sortOrder (or generatedAt as fallback)
+    const outfits = await ctx.db
+      .query("outfit_images")
+      .withIndex("by_clerkId", (q) => q.eq("clerkId", args.clerkId))
+      .collect();
+
+    // Filter to visible outfits only and sort by sortOrder (or generatedAt desc)
+    const visibleOutfits = outfits
+      .filter(o => !o.hiddenFromRecent)
+      .sort((a, b) => {
+        const orderA = a.sortOrder ?? a.generatedAt;
+        const orderB = b.sortOrder ?? b.generatedAt;
+        return orderA - orderB;
+      });
+
+    // Find current outfit's index
+    const currentIndex = visibleOutfits.findIndex(o => o._id === args.outfitId);
+    if (currentIndex === -1) {
+      throw new Error("Outfit not found");
+    }
+
+    // Calculate swap target
+    const swapIndex = args.direction === "up" ? currentIndex - 1 : currentIndex + 1;
+    if (swapIndex < 0 || swapIndex >= visibleOutfits.length) {
+      return { success: false, message: "Already at boundary" };
+    }
+
+    const currentOutfit = visibleOutfits[currentIndex];
+    const swapOutfit = visibleOutfits[swapIndex];
+
+    // Swap sortOrders
+    const currentOrder = currentOutfit.sortOrder ?? currentOutfit.generatedAt;
+    const swapOrder = swapOutfit.sortOrder ?? swapOutfit.generatedAt;
+
+    await ctx.db.patch(currentOutfit._id, { sortOrder: swapOrder });
+    await ctx.db.patch(swapOutfit._id, { sortOrder: currentOrder });
+
+    return { success: true };
   },
 });
 

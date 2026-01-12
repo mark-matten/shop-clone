@@ -237,8 +237,9 @@ export const getAutocompleteSuggestions = query({
       }
     }
 
-    // Get ALL products and score them by name match
-    const products = await ctx.db.query("products").collect();
+    // Get products - limit to 2000 to avoid reading too many bytes
+    // Products are ordered by creation time, so we get a mix of products
+    const products = await ctx.db.query("products").take(2000);
     const scoredProducts: { name: string; score: number }[] = [];
 
     for (const product of products) {
