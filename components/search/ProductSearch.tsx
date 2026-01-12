@@ -390,6 +390,14 @@ export function ProductSearch() {
         // Platform filter
         if (filters.platforms.length > 0 && !filters.platforms.includes(product.sourcePlatform)) return false;
 
+        // In Stock Only filter - exclude products where all variants are sold out
+        if (filters.inStockOnly) {
+          if (product.variants && product.variants.length > 0) {
+            const hasAvailableVariant = product.variants.some(v => v.available);
+            if (!hasAvailableVariant) return false;
+          }
+        }
+
         return true;
       });
     }
@@ -610,6 +618,7 @@ export function ProductSearch() {
         priceMax: search.filters.priceMax || "",
         sizes: search.filters.sizes || [],
         platforms: search.filters.platforms || [],
+        inStockOnly: search.filters.inStockOnly || false,
       });
     }
     // Run the search

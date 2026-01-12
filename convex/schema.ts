@@ -298,6 +298,7 @@ export default defineSchema({
       priceMax: v.optional(v.string()),
       sizes: v.optional(v.array(v.string())),
       platforms: v.optional(v.array(v.string())),
+      inStockOnly: v.optional(v.boolean()),
     })),
     createdAt: v.number(),
   })

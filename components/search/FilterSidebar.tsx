@@ -16,6 +16,7 @@ export interface FilterState {
   priceMax: string;
   sizes: string[];
   platforms: string[];
+  inStockOnly: boolean;
 }
 
 const brandOptions = ["Nike", "Gucci", "Levi's", "Sam Edelman", "Everlane", "Reformation", "Chanel", "Adidas", "Patagonia"];
@@ -30,6 +31,7 @@ const emptyFilters: FilterState = {
   priceMax: "",
   sizes: [],
   platforms: [],
+  inStockOnly: false,
 };
 
 export function FilterDropdown({ onApply, isOpen, onClose, initialFilters }: FilterDropdownProps) {
@@ -75,7 +77,8 @@ export function FilterDropdown({ onApply, isOpen, onClose, initialFilters }: Fil
     filters.sizes.length +
     filters.platforms.length +
     (filters.priceMin ? 1 : 0) +
-    (filters.priceMax ? 1 : 0);
+    (filters.priceMax ? 1 : 0) +
+    (filters.inStockOnly ? 1 : 0);
 
   const conditionLabels: Record<string, string> = {
     new: "New",
@@ -139,6 +142,19 @@ export function FilterDropdown({ onApply, isOpen, onClose, initialFilters }: Fil
                   </button>
                 ))}
               </div>
+            </div>
+            <div>
+              <label className="flex cursor-pointer items-center gap-2">
+                <input
+                  type="checkbox"
+                  checked={filters.inStockOnly}
+                  onChange={() => setFilters({ ...filters, inStockOnly: !filters.inStockOnly })}
+                  className="h-4 w-4 rounded border-zinc-300 text-zinc-900 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800"
+                />
+                <span className="text-sm font-medium text-zinc-900 dark:text-white">
+                  In Stock Only
+                </span>
+              </label>
             </div>
             <div>
               <h3 className="mb-2 text-sm font-medium text-zinc-900 dark:text-white">
