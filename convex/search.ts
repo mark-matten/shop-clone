@@ -332,6 +332,43 @@ const TYPO_CORRECTIONS: Record<string, string> = {
   "everlan": "everlane",
 };
 
+// Popular fashion brands for relevance boosting
+const POPULAR_BRANDS = new Set([
+  "everlane", "reformation", "madewell", "aritzia", "zara", "h&m",
+  "uniqlo", "cos", "& other stories", "arket", "massimo dutti",
+  "j.crew", "banana republic", "gap", "old navy", "levi's", "levis",
+  "nike", "adidas", "new balance", "converse", "vans", "dr. martens",
+  "birkenstock", "allbirds", "rothy's", "sam edelman", "steve madden",
+  "coach", "kate spade", "michael kors", "tory burch", "marc jacobs",
+  "free people", "anthropologie", "urban outfitters", "asos", "nordstrom",
+  "patagonia", "north face", "rei", "lululemon", "athleta", "alo yoga",
+  "skims", "spanx", "girlfriend collective", "outdoor voices",
+]);
+
+// Calculate brand match score
+function calculateBrandScore(productBrand: string, queryWords: string[], queryText: string): number {
+  const brandLower = productBrand.toLowerCase();
+  const queryLower = queryText.toLowerCase();
+  let score = 0;
+
+  // Direct brand mention in query
+  if (queryLower.includes(brandLower) || queryWords.some(w => brandLower.includes(w) && w.length >= 3)) {
+    score += 40; // Strong boost for brand match
+  }
+
+  // Small boost for popular brands (helps with relevance when no specific brand searched)
+  if (POPULAR_BRANDS.has(brandLower)) {
+    score += 5;
+  }
+
+  return score;
+}
+
+// Check for exact phrase match (words appearing consecutively)
+function hasExactPhraseMatch(text: string, phrase: string): boolean {
+  return text.toLowerCase().includes(phrase.toLowerCase());
+}
+
 // Correct common typos in search query
 function correctTypos(query: string): string {
   const words = query.toLowerCase().split(/\s+/);
@@ -1601,6 +1638,16 @@ export const filterProductsInternal = internalQuery({
 
       // Calculate relevance score
       let score = nameScore; // Start with name match score
+
+      // Score for brand match
+      if (product.brand) {
+        score += calculateBrandScore(product.brand, nameMatchWords, cleanedQuery);
+      }
+
+      // Bonus for exact phrase match in product name
+      if (cleanedQuery.length >= 3 && hasExactPhraseMatch(product.name, cleanedQuery)) {
+        score += 35; // Strong bonus for products containing the exact search phrase
+      }
 
       // Score for color match
       if (detectedColors.length > 0) {

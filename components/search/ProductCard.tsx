@@ -8,6 +8,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { LazyImage } from "@/components/ui/LazyImage";
 import { SignInPromptModal } from "@/components/ui/SignInPromptModal";
+import { useToast } from "@/components/ui/Toast";
 
 interface ProductVariant {
   id: string;
@@ -71,6 +72,7 @@ const genderLabels = {
 
 export function ProductCard({ product, isFavorited = false }: ProductCardProps) {
   const { user } = useUser();
+  const toast = useToast();
   const [isFavorite, setIsFavorite] = useState(isFavorited);
   const [showSignInPrompt, setShowSignInPrompt] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -202,8 +204,10 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
         productId: product._id as Id<"products">,
       });
       setIsFavorite(false);
+      toast.success("Removed from favorites");
     } catch (error) {
       console.error("Failed to remove favorite:", error);
+      toast.error("Failed to remove from favorites");
     } finally {
       setIsLoading(false);
     }
@@ -237,8 +241,10 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
       setTrackPrice(false);
       setTrackType("any");
       setTargetPrice("");
+      toast.success(trackPrice ? "Added to favorites with price tracking" : "Added to favorites");
     } catch (error) {
       console.error("Failed to save favorite:", error);
+      toast.error("Failed to add to favorites");
     } finally {
       setIsSaving(false);
     }
@@ -252,8 +258,10 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
         userId: convexUser._id,
         productId: product._id as Id<"products">,
       });
+      toast.success("Stopped tracking price");
     } catch (error) {
       console.error("Failed to untrack product:", error);
+      toast.error("Failed to stop tracking");
     }
   };
 
@@ -376,19 +384,21 @@ export function ProductCard({ product, isFavorited = false }: ProductCardProps) 
         {/* Favorite button (with tracking indicator) */}
         <button
           onClick={handleFavoriteClick}
-          className={`absolute left-2 top-2 rounded-full p-2 transition-all ${
+          className={`absolute left-2 top-2 rounded-full p-2.5 transition-all ${
             isFavorite
               ? "bg-red-500 text-white"
               : "bg-white/90 text-zinc-600 opacity-0 group-hover:opacity-100 hover:bg-white dark:bg-zinc-800/90 dark:text-zinc-400 dark:hover:bg-zinc-800"
           }`}
           title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+          aria-label={isFavorite ? "Remove from favorites" : "Add to favorites"}
         >
           <svg
-            className="h-4 w-4"
+            className="h-5 w-5"
             fill={isFavorite ? "currentColor" : "none"}
             viewBox="0 0 24 24"
             stroke="currentColor"
             strokeWidth={2}
+            aria-hidden="true"
           >
             <path
               strokeLinecap="round"

@@ -4,6 +4,7 @@ import { useState, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { useToast } from "@/components/ui/Toast";
 
 interface UserPhoto {
   _id: Id<"user_photos">;
@@ -25,6 +26,7 @@ export function PhotoManager({ clerkId, onSelectPhoto, selectedPhotoId }: PhotoM
   const [isUploading, setIsUploading] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const toast = useToast();
 
   const photos = useQuery(api.storage.getUserPhotos, { clerkId });
   const generateUploadUrl = useMutation(api.storage.generateUploadUrl);
@@ -34,13 +36,13 @@ export function PhotoManager({ clerkId, onSelectPhoto, selectedPhotoId }: PhotoM
 
   const handleUpload = useCallback(async (file: File) => {
     if (!file.type.startsWith("image/")) {
-      alert("Please upload an image file");
+      toast.error("Please upload an image file");
       return;
     }
 
     // Limit file size to 10MB
     if (file.size > 10 * 1024 * 1024) {
-      alert("Image must be less than 10MB");
+      toast.error("Image must be less than 10MB");
       return;
     }
 
@@ -70,13 +72,14 @@ export function PhotoManager({ clerkId, onSelectPhoto, selectedPhotoId }: PhotoM
         fileName: file.name,
         setAsDefault: !photos || photos.length === 0,
       });
+      toast.success("Photo uploaded successfully");
     } catch (error) {
       console.error("Upload error:", error);
-      alert("Failed to upload photo");
+      toast.error("Failed to upload photo");
     } finally {
       setIsUploading(false);
     }
-  }, [clerkId, generateUploadUrl, saveUserPhoto, photos]);
+  }, [clerkId, generateUploadUrl, saveUserPhoto, photos, toast]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -110,14 +113,26 @@ export function PhotoManager({ clerkId, onSelectPhoto, selectedPhotoId }: PhotoM
   };
 
   const handleSetDefault = async (photoId: Id<"user_photos">) => {
-    await setDefaultPhoto({ clerkId, photoId });
+    try {
+      await setDefaultPhoto({ clerkId, photoId });
+      toast.success("Default photo updated");
+    } catch (error) {
+      console.error("Failed to set default photo:", error);
+      toast.error("Failed to set default photo");
+    }
   };
 
   const handleDelete = async (photoId: Id<"user_photos">) => {
     if (confirm("Are you sure you want to delete this photo?")) {
-      await deleteUserPhoto({ clerkId, photoId });
-      if (selectedPhotoId === photoId && onSelectPhoto) {
-        onSelectPhoto(null, null);
+      try {
+        await deleteUserPhoto({ clerkId, photoId });
+        if (selectedPhotoId === photoId && onSelectPhoto) {
+          onSelectPhoto(null, null);
+        }
+        toast.success("Photo deleted");
+      } catch (error) {
+        console.error("Failed to delete photo:", error);
+        toast.error("Failed to delete photo");
       }
     }
   };
@@ -286,9 +301,17 @@ export function PhotoManager({ clerkId, onSelectPhoto, selectedPhotoId }: PhotoM
 
       {/* No Photos Message */}
       {photos && photos.length === 0 && (
-        <p className="text-center text-sm text-zinc-500 dark:text-zinc-400">
-          No photos uploaded yet. Upload a photo to use for virtual try-on.
-        </p>
+        <div className="text-center py-4">
+          <svg className="mx-auto h-10 w-10 text-zinc-300 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+          </svg>
+          <p className="mt-3 text-sm font-medium text-zinc-600 dark:text-zinc-400">
+            No photos uploaded yet
+          </p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-500">
+            Upload a photo of yourself to see how clothes look on you
+          </p>
+        </div>
       )}
     </div>
   );

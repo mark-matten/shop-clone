@@ -142,11 +142,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
           menBottomWaistMax: menSizes.waist.max,
           menBottomLengthMin: menSizes.length.min,
           menBottomLengthMax: menSizes.length.max,
-          // Notification preferences
-          smsNotifications: notifications.sms,
-          emailNotifications: notifications.email,
-          emailPriceDrops: notifications.priceDrops,
-          emailTargetReached: notifications.targetReached,
+          // Note: Notification preferences saved to user preferences table separately
         },
       });
       onComplete();

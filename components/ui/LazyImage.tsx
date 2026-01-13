@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 
 interface LazyImageProps {
-  src: string;
+  src?: string | null;
   alt: string;
   className?: string;
   placeholderClassName?: string;
@@ -70,13 +70,13 @@ export function LazyImage({
   return (
     <div ref={imgRef} className={`relative ${className}`}>
       {/* Placeholder/Loading state with shimmer effect */}
-      {(!isLoaded || hasError) && (
+      {(!isLoaded || hasError || !src) && (
         <div
           className={`absolute inset-0 flex items-center justify-center ${placeholderClassName} ${
-            isLoaded ? "opacity-0" : "opacity-100"
+            isLoaded && src ? "opacity-0" : "opacity-100"
           } transition-opacity duration-300`}
         >
-          {hasError ? (
+          {(hasError || !src) ? (
             <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
               {fallbackIcon || defaultFallback}
             </div>
@@ -105,7 +105,7 @@ export function LazyImage({
       `}</style>
 
       {/* Actual image */}
-      {isInView && !hasError && (
+      {isInView && !hasError && src && (
         <img
           src={src}
           alt={alt}

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
+import { useToast } from "@/components/ui/Toast";
 
 interface FindFriendsModalProps {
   isOpen: boolean;
@@ -16,6 +17,7 @@ export function FindFriendsModal({ isOpen, onClose, clerkId }: FindFriendsModalP
   const [isSearching, setIsSearching] = useState(false);
   const [searchedPhone, setSearchedPhone] = useState<string | null>(null);
   const [actionInProgress, setActionInProgress] = useState(false);
+  const toast = useToast();
 
   // Search for user by phone number
   const searchResult = useQuery(
@@ -73,8 +75,10 @@ export function FindFriendsModal({ isOpen, onClose, clerkId }: FindFriendsModalP
     setActionInProgress(true);
     try {
       await followUser({ clerkId, targetUserId: searchResult._id });
+      toast.success("Follow request sent!");
     } catch (error) {
       console.error("Failed to follow:", error);
+      toast.error("Failed to send follow request. Please try again.");
     } finally {
       setActionInProgress(false);
     }
@@ -85,8 +89,10 @@ export function FindFriendsModal({ isOpen, onClose, clerkId }: FindFriendsModalP
     setActionInProgress(true);
     try {
       await unfollowUser({ clerkId, targetUserId: searchResult._id });
+      toast.success("Unfollowed successfully");
     } catch (error) {
       console.error("Failed to unfollow:", error);
+      toast.error("Failed to unfollow. Please try again.");
     } finally {
       setActionInProgress(false);
     }
@@ -97,8 +103,10 @@ export function FindFriendsModal({ isOpen, onClose, clerkId }: FindFriendsModalP
     setActionInProgress(true);
     try {
       await cancelFollowRequest({ clerkId, targetUserId: searchResult._id });
+      toast.success("Request cancelled");
     } catch (error) {
       console.error("Failed to cancel request:", error);
+      toast.error("Failed to cancel request. Please try again.");
     } finally {
       setActionInProgress(false);
     }
@@ -130,8 +138,9 @@ export function FindFriendsModal({ isOpen, onClose, clerkId }: FindFriendsModalP
           <button
             onClick={handleClose}
             className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            aria-label="Close"
           >
-            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
           </button>

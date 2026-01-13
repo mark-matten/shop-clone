@@ -7,6 +7,7 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import Link from "next/link";
 import Image from "next/image";
+import { LazyImage } from "@/components/ui/LazyImage";
 
 interface DetailsItem {
   product: {
@@ -174,15 +175,16 @@ export default function PublicOutfitPage() {
                       className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-zinc-50 p-2.5 sm:p-3 dark:border-zinc-700 dark:bg-zinc-800 cursor-pointer hover:border-moi-400 active:bg-zinc-100 dark:active:bg-zinc-700 transition-colors"
                     >
                       <div className="h-14 w-14 sm:h-16 sm:w-16 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
-                        {item.imageUrl ? (
-                          <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                        <LazyImage
+                          src={item.imageUrl}
+                          alt={item.name}
+                          className="h-full w-full object-cover"
+                          fallbackIcon={
                             <svg className="h-5 w-5 sm:h-6 sm:w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                             </svg>
-                          </div>
-                        )}
+                          }
+                        />
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-sm sm:text-base font-medium text-zinc-900 dark:text-white truncate">

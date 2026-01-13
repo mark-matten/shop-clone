@@ -5,6 +5,7 @@ import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import Link from "next/link";
+import { useToast } from "@/components/ui/Toast";
 
 interface NotificationCenterProps {
   clerkId: string;
@@ -26,6 +27,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
 
   const [actionInProgress, setActionInProgress] = useState<string | null>(null);
   const [filter, setFilter] = useState<FilterType>("all");
+  const toast = useToast();
 
   // Filter notifications based on selected tab
   const filteredNotifications = notifications?.filter((n) => {
@@ -47,6 +49,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
       await markAllAsRead({ clerkId });
     } catch (error) {
       console.error("Failed to mark all as read:", error);
+      toast.error("Failed to mark notifications as read");
     }
   };
 
@@ -63,6 +66,7 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
       await deleteNotification({ clerkId, notificationId });
     } catch (error) {
       console.error("Failed to delete:", error);
+      toast.error("Failed to delete notification");
     }
   };
 
@@ -71,8 +75,10 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
     try {
       await approveRequest({ clerkId, requesterId });
       await markAsRead({ notificationId });
+      toast.success("Follow request accepted");
     } catch (error) {
       console.error("Failed to approve:", error);
+      toast.error("Failed to accept request");
     } finally {
       setActionInProgress(null);
     }
@@ -83,8 +89,10 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
     try {
       await rejectRequest({ clerkId, requesterId });
       await markAsRead({ notificationId });
+      toast.success("Follow request declined");
     } catch (error) {
       console.error("Failed to reject:", error);
+      toast.error("Failed to decline request");
     } finally {
       setActionInProgress(null);
     }
@@ -203,8 +211,9 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
               <button
                 onClick={onClose}
                 className="rounded-lg p-2 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+                aria-label="Close notifications"
               >
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
@@ -344,9 +353,10 @@ export function NotificationCenter({ clerkId, isOpen, onClose }: NotificationCen
                         e.stopPropagation();
                         handleDelete(notification._id);
                       }}
-                      className="flex-shrink-0 rounded p-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+                      className="flex-shrink-0 rounded p-2 -m-1 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-600 dark:hover:bg-zinc-800"
+                      aria-label="Delete notification"
                     >
-                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                       </svg>
                     </button>

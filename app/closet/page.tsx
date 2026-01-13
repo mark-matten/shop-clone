@@ -10,6 +10,7 @@ import { Id } from "@/convex/_generated/dataModel";
 import { Header } from "@/components/layout";
 import { AddClothesModal, EditImageModal, TryOnModal } from "@/components/closet";
 import { FindFriendsModal } from "@/components/social/FindFriendsModal";
+import { LazyImage } from "@/components/ui/LazyImage";
 import { FollowingList } from "@/components/social/FollowingList";
 import {
   DndContext,
@@ -278,15 +279,16 @@ function SortableListItem({
   // Content for thumbnail
   const thumbnailContent = (
     <div className="h-12 w-12 sm:h-14 sm:w-14 overflow-hidden rounded-lg bg-zinc-100 dark:bg-zinc-800">
-      {product.imageUrl ? (
-        <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center text-zinc-400">
+      <LazyImage
+        src={product.imageUrl}
+        alt={product.name}
+        className="h-full w-full object-cover"
+        fallbackIcon={
           <svg className="h-4 w-4 sm:h-5 sm:w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
           </svg>
-        </div>
-      )}
+        }
+      />
     </div>
   );
 
@@ -648,9 +650,11 @@ function DragOverlayItem({ item }: { item: CombinedItem }) {
   return (
     <div className="w-48 overflow-hidden rounded-xl border border-red-400 bg-white shadow-xl dark:bg-zinc-900">
       <div className="aspect-square overflow-hidden bg-zinc-100 dark:bg-zinc-800">
-        {product.imageUrl && (
-          <img src={product.imageUrl} alt={product.name} className="h-full w-full object-cover" />
-        )}
+        <LazyImage
+          src={product.imageUrl}
+          alt={product.name}
+          className="h-full w-full object-cover"
+        />
       </div>
       <div className="p-3">
         <p className="truncate text-sm font-medium text-zinc-900 dark:text-white">{product.name}</p>
@@ -1089,7 +1093,7 @@ export default function ClosetPage() {
     const groups: Record<string, CombinedItem[]> = {};
     for (const item of filteredByType) {
       const rawCat = item.customCategory || item.product?.category || "other";
-      const productName = item.name || item.product?.name;
+      const productName = item.product?.name;
       const normalizedCat = getCategoryKey(rawCat, productName);
       if (!groups[normalizedCat]) groups[normalizedCat] = [];
       groups[normalizedCat].push(item);
@@ -1365,8 +1369,8 @@ export default function ClosetPage() {
 
     const activeCategoryRaw = activeItem.customCategory || activeItem.product?.category || "other";
     const overCategoryRaw = overItem.customCategory || overItem.product?.category || "other";
-    const activeProductName = activeItem.name || activeItem.product?.name;
-    const overProductName = overItem.name || overItem.product?.name;
+    const activeProductName = activeItem.product?.name;
+    const overProductName = overItem.product?.name;
     const activeCategoryNormalized = getCategoryKey(activeCategoryRaw, activeProductName);
     const overCategoryNormalized = getCategoryKey(overCategoryRaw, overProductName);
 
@@ -2359,15 +2363,16 @@ export default function ClosetPage() {
                             className="flex items-center gap-2 rounded-lg border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-800/50 cursor-pointer hover:border-moi-400 transition-colors"
                           >
                             <div className="h-10 w-10 flex-shrink-0 overflow-hidden rounded-lg bg-zinc-200 dark:bg-zinc-700">
-                              {item.imageUrl ? (
-                                <img src={item.imageUrl} alt={item.name} className="h-full w-full object-cover" />
-                              ) : (
-                                <div className="flex h-full w-full items-center justify-center text-zinc-400">
+                              <LazyImage
+                                src={item.imageUrl}
+                                alt={item.name}
+                                className="h-full w-full object-cover"
+                                fallbackIcon={
                                   <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                                   </svg>
-                                </div>
-                              )}
+                                }
+                              />
                             </div>
                             <div className="min-w-0 flex-1">
                               <p className="truncate text-xs font-medium text-zinc-900 dark:text-white">

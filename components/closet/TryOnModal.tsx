@@ -5,6 +5,7 @@ import { useQuery, useAction, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PhotoManager } from "./PhotoManager";
+import { LazyImage } from "@/components/ui/LazyImage";
 import Link from "next/link";
 
 interface ClosetItem {
@@ -335,10 +336,9 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
       filtered = filtered.filter(outfit => {
         // Match outfit name
         if (outfit.name?.toLowerCase().includes(query)) return true;
-        // Match item names
+        // Match item names or categories
         if (outfit.items?.some(item =>
           item.name?.toLowerCase().includes(query) ||
-          item.brand?.toLowerCase().includes(query) ||
           item.category?.toLowerCase().includes(query)
         )) return true;
         return false;
@@ -906,9 +906,10 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                               e.stopPropagation();
                               setDetailsItem(item);
                             }}
-                            className="absolute right-1 top-1 rounded-full bg-white/90 dark:bg-zinc-900/90 p-1 shadow-sm cursor-pointer hover:bg-white dark:hover:bg-zinc-800"
+                            className="absolute right-0.5 top-0.5 rounded-full bg-white/90 dark:bg-zinc-900/90 p-1.5 shadow-sm cursor-pointer hover:bg-white dark:hover:bg-zinc-800"
+                            aria-label="View item details"
                           >
-                            <svg className="h-3 w-3 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                           </div>
@@ -1019,12 +1020,12 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     const categoryKey = getCategoryKey(item.displayCategory || "other");
                     return (
                       <div key={item._id} className="relative flex-shrink-0 w-20">
-                        <div className="h-20 w-20 rounded-xl overflow-hidden border-2 border-moi-400">
-                          {item.displayImageUrl ? (
-                            <img src={item.displayImageUrl} alt={item.displayName || ""} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="h-full w-full bg-zinc-200 dark:bg-zinc-700" />
-                          )}
+                        <div className="h-20 w-20 rounded-xl overflow-hidden border-2 border-moi-400 bg-zinc-200 dark:bg-zinc-700">
+                          <LazyImage
+                            src={item.displayImageUrl}
+                            alt={item.displayName || ""}
+                            className="h-full w-full object-cover"
+                          />
                         </div>
                         <button
                           onClick={() => removeSelectedItem(categoryKey)}
@@ -1277,9 +1278,20 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                     </div>
                     <div className="flex gap-3 overflow-x-auto py-3 mt-2">
                       {filteredOutfitHistory.length === 0 ? (
-                        <p className="text-sm text-zinc-500 dark:text-zinc-400 py-2">
-                          No outfits found{outfitSearchQuery ? ` for "${outfitSearchQuery}"` : ""}
-                        </p>
+                        <div className="text-sm text-zinc-500 dark:text-zinc-400 py-2">
+                          <p>No outfits found{outfitSearchQuery ? ` for "${outfitSearchQuery}"` : ""}</p>
+                          {!outfitSearchQuery && !historyCollectionFilter && (
+                            <p className="mt-1 text-xs">Select items below and tap "Generate" to create your first outfit!</p>
+                          )}
+                          {historyCollectionFilter && (
+                            <button
+                              onClick={() => setHistoryCollectionFilter(null)}
+                              className="mt-2 text-xs text-moi-600 hover:text-moi-700 dark:text-moi-400"
+                            >
+                              View all outfits
+                            </button>
+                          )}
+                        </div>
                       ) : filteredOutfitHistory.map((outfit) => (
                         <div
                           key={outfit._id}
@@ -1475,15 +1487,16 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       const categoryKey = getCategoryKey(item.displayCategory || "other");
                       return (
                         <div key={item._id} className="group relative aspect-square overflow-hidden rounded-xl border-2 border-moi-400 bg-zinc-100 dark:bg-zinc-800">
-                          {item.displayImageUrl ? (
-                            <img src={item.displayImageUrl} alt={item.displayName || "Selected item"} className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center">
+                          <LazyImage
+                            src={item.displayImageUrl}
+                            alt={item.displayName || "Selected item"}
+                            className="h-full w-full object-cover"
+                            fallbackIcon={
                               <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                               </svg>
-                            </div>
-                          )}
+                            }
+                          />
                           <button
                             onClick={() => removeSelectedItem(categoryKey)}
                             className="absolute right-1 top-1 rounded-full bg-red-500 p-1 text-white opacity-0 transition-opacity group-hover:opacity-100"
@@ -1818,15 +1831,16 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                           : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600"
                       }`}
                     >
-                      {item.displayImageUrl ? (
-                        <img src={item.displayImageUrl} alt={item.displayName || "Closet item"} className="h-full w-full object-cover" />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
+                      <LazyImage
+                        src={item.displayImageUrl}
+                        alt={item.displayName || "Closet item"}
+                        className="h-full w-full object-cover"
+                        fallbackIcon={
                           <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                           </svg>
-                        </div>
-                      )}
+                        }
+                      />
                       <div className="absolute left-1 top-1 rounded-full bg-white/90 p-1 shadow-sm dark:bg-zinc-900/90">
                         {item.isOwned ? (
                           <svg className="h-3.5 w-3.5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
@@ -2003,7 +2017,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                         >
                           {outfit.url ? (
                             <div className="relative">
-                              <img src={outfit.url} alt={outfit.name || "Saved outfit"} className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-moi-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-moi-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
+                              <LazyImage src={outfit.url} alt={outfit.name || "Saved outfit"} className={`h-14 w-14 rounded-lg object-cover transition-all ${isSelected ? "ring-2 ring-moi-400 ring-offset-2 dark:ring-offset-zinc-900" : "hover:ring-2 hover:ring-moi-400 hover:ring-offset-2 dark:hover:ring-offset-zinc-900"}`} />
                               {outfit.collectionName && (
                                 <button
                                   onClick={(e) => {
