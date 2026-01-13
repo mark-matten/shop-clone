@@ -86,6 +86,12 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     waist: { min: "", max: "" },
     length: { min: "", max: "" },
   });
+  const [notifications, setNotifications] = useState({
+    sms: true,
+    email: false,
+    priceDrops: true,
+    targetReached: true,
+  });
   const [isSaving, setIsSaving] = useState(false);
 
   const { user: clerkUser } = useUser();
@@ -95,6 +101,7 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
     { title: "Welcome!", subtitle: "Let's personalize your experience" },
     { title: "What do you shop for?", subtitle: "Select all that apply" },
     { title: "Your sizes", subtitle: "We'll filter results to match your size range" },
+    { title: "Stay in the loop", subtitle: "Get notified about price drops" },
   ];
 
   const handleNext = () => {
@@ -135,6 +142,11 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
           menBottomWaistMax: menSizes.waist.max,
           menBottomLengthMin: menSizes.length.min,
           menBottomLengthMax: menSizes.length.max,
+          // Notification preferences
+          smsNotifications: notifications.sms,
+          emailNotifications: notifications.email,
+          emailPriceDrops: notifications.priceDrops,
+          emailTargetReached: notifications.targetReached,
         },
       });
       onComplete();
@@ -356,6 +368,126 @@ export function OnboardingModal({ onComplete }: OnboardingModalProps) {
                     Go back and select what you shop for to set your sizes
                   </div>
                 )}
+              </div>
+            </div>
+          )}
+
+          {/* Step 3: Notification preferences */}
+          {step === 3 && (
+            <div>
+              <h2 className="text-xl font-bold text-zinc-900 dark:text-white">
+                {steps[step].title}
+              </h2>
+              <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+                {steps[step].subtitle}
+              </p>
+
+              <div className="mt-6 space-y-4">
+                {/* Notification methods */}
+                <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                  <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">
+                    How should we notify you?
+                  </h3>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/30">
+                          <svg className="h-4 w-4 text-blue-600 dark:text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 18h.01M8 21h8a2 2 0 002-2V5a2 2 0 00-2-2H8a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <span className="text-zinc-700 dark:text-zinc-300">SMS Text Messages</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNotifications({ ...notifications, sms: !notifications.sms })}
+                        className={`relative h-6 w-11 rounded-full transition-colors ${
+                          notifications.sms ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-600"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            notifications.sms ? "translate-x-5" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/30">
+                          <svg className="h-4 w-4 text-purple-600 dark:text-purple-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+                          </svg>
+                        </div>
+                        <span className="text-zinc-700 dark:text-zinc-300">Email</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNotifications({ ...notifications, email: !notifications.email })}
+                        className={`relative h-6 w-11 rounded-full transition-colors ${
+                          notifications.email ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-600"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            notifications.email ? "translate-x-5" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    </label>
+                  </div>
+                </div>
+
+                {/* What to notify about */}
+                <div className="rounded-xl border border-zinc-200 p-4 dark:border-zinc-700">
+                  <h3 className="mb-3 font-medium text-zinc-900 dark:text-white">
+                    What should we notify you about?
+                  </h3>
+                  <div className="space-y-3">
+                    <label className="flex items-center justify-between">
+                      <div>
+                        <span className="text-zinc-700 dark:text-zinc-300">Price drops</span>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">When items you track drop 10%+</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNotifications({ ...notifications, priceDrops: !notifications.priceDrops })}
+                        className={`relative h-6 w-11 rounded-full transition-colors ${
+                          notifications.priceDrops ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-600"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            notifications.priceDrops ? "translate-x-5" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    </label>
+                    <label className="flex items-center justify-between">
+                      <div>
+                        <span className="text-zinc-700 dark:text-zinc-300">Target price reached</span>
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">When items hit your target price</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setNotifications({ ...notifications, targetReached: !notifications.targetReached })}
+                        className={`relative h-6 w-11 rounded-full transition-colors ${
+                          notifications.targetReached ? "bg-emerald-600" : "bg-zinc-300 dark:bg-zinc-600"
+                        }`}
+                      >
+                        <span
+                          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                            notifications.targetReached ? "translate-x-5" : "translate-x-0.5"
+                          }`}
+                        />
+                      </button>
+                    </label>
+                  </div>
+                </div>
+
+                <p className="text-center text-xs text-zinc-400 dark:text-zinc-500">
+                  You can change these settings anytime in your profile
+                </p>
               </div>
             </div>
           )}

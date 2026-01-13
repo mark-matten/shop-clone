@@ -179,20 +179,27 @@ export const checkPricesAndAlert = internalAction({
   },
 });
 
-// Send SMS for all unsent alerts
+// Send SMS and email for all unsent alerts
 export const sendUnsentAlerts = internalAction({
   args: {},
   handler: async (ctx) => {
     const unsentAlerts = await ctx.runQuery(internal.alerts.getUnsentAlerts);
 
-    let sent = 0;
+    let smsSent = 0;
+    let emailSent = 0;
+
     for (const alert of unsentAlerts) {
-      const result = await ctx.runAction(internal.alerts.sendSMSAlert, { alertId: alert._id });
-      if (result.success) sent++;
+      // Send SMS
+      const smsResult = await ctx.runAction(internal.alerts.sendSMSAlert, { alertId: alert._id });
+      if (smsResult.success) smsSent++;
+
+      // Send Email (in parallel with SMS marking)
+      const emailResult = await ctx.runAction(internal.alerts.sendEmailAlert, { alertId: alert._id });
+      if (emailResult.success) emailSent++;
     }
 
-    console.log(`Sent ${sent} SMS alerts`);
-    return { sent };
+    console.log(`Sent ${smsSent} SMS alerts and ${emailSent} email alerts`);
+    return { smsSent, emailSent };
   },
 });
 
@@ -297,6 +304,107 @@ export const sendSMSAlert = internalAction({
     await ctx.runMutation(internal.alerts.markAlertSentInternal, { alertId: args.alertId });
 
     return { success: true };
+  },
+});
+
+// Send email alert via Resend
+export const sendEmailAlert = internalAction({
+  args: {
+    alertId: v.id("price_alerts"),
+  },
+  handler: async (ctx, args) => {
+    const alert = await ctx.runQuery(internal.alerts.getAlertById, { alertId: args.alertId });
+    if (!alert) return { success: false, error: "Alert not found" };
+
+    const user = await ctx.runQuery(internal.alerts.getUserById, { userId: alert.userId });
+    if (!user || !user.email) return { success: false, error: "User or email not found" };
+
+    // Check if user has email notifications enabled
+    if (!user.preferences?.emailNotifications) {
+      return { success: false, error: "Email notifications disabled" };
+    }
+
+    // Check specific alert type preferences
+    if (alert.alertType === "price_drop" && !user.preferences?.emailPriceDrops) {
+      return { success: false, error: "Price drop emails disabled" };
+    }
+    if (alert.alertType === "target_reached" && !user.preferences?.emailTargetReached) {
+      return { success: false, error: "Target reached emails disabled" };
+    }
+
+    const resendApiKey = process.env.RESEND_API_KEY;
+    if (!resendApiKey) {
+      console.log(`[Email - Resend not configured] To: ${user.email}`);
+      return { success: false, error: "Email not configured" };
+    }
+
+    const savings = (alert.previousPrice - alert.newPrice).toFixed(2);
+    const productName = alert.product?.name || "Product";
+    const isTargetReached = alert.alertType === "target_reached";
+
+    const subject = isTargetReached
+      ? `Target Price Alert: ${productName}`
+      : `Price Drop Alert: ${productName}`;
+
+    const html = `
+      <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px;">
+        <h1 style="color: #10b981; font-size: 24px; margin-bottom: 16px;">
+          ${isTargetReached ? "🎯 Target Price Reached!" : "📉 Price Drop Alert!"}
+        </h1>
+        <div style="background: #f4f4f5; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+          <h2 style="margin: 0 0 8px 0; font-size: 18px; color: #18181b;">${productName}</h2>
+          <p style="margin: 0; color: #71717a; font-size: 14px;">
+            ${isTargetReached ? "This item hit your target price!" : "This item dropped in price!"}
+          </p>
+        </div>
+        <div style="display: flex; gap: 16px; margin-bottom: 20px;">
+          <div style="flex: 1; text-align: center; padding: 16px; background: #fef2f2; border-radius: 8px;">
+            <p style="margin: 0; color: #71717a; font-size: 12px;">Was</p>
+            <p style="margin: 4px 0 0 0; color: #ef4444; font-size: 20px; font-weight: 600; text-decoration: line-through;">$${alert.previousPrice.toFixed(2)}</p>
+          </div>
+          <div style="flex: 1; text-align: center; padding: 16px; background: #ecfdf5; border-radius: 8px;">
+            <p style="margin: 0; color: #71717a; font-size: 12px;">Now</p>
+            <p style="margin: 4px 0 0 0; color: #10b981; font-size: 20px; font-weight: 600;">$${alert.newPrice.toFixed(2)}</p>
+          </div>
+        </div>
+        <p style="text-align: center; color: #10b981; font-size: 16px; font-weight: 600;">
+          You save $${savings}!
+        </p>
+        <hr style="border: none; border-top: 1px solid #e4e4e7; margin: 24px 0;">
+        <p style="color: #a1a1aa; font-size: 12px; text-align: center;">
+          You're receiving this because you enabled price alerts on armoi.<br>
+          <a href="#" style="color: #71717a;">Manage notification preferences</a>
+        </p>
+      </div>
+    `;
+
+    try {
+      const response = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: "armoi <alerts@armoi.com>",
+          to: user.email,
+          subject,
+          html,
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("Resend error:", error);
+        return { success: false, error: "Email send failed" };
+      }
+
+      console.log(`Email sent to ${user.email}: ${subject}`);
+      return { success: true };
+    } catch (error) {
+      console.error("Failed to send email:", error);
+      return { success: false, error: "Email send failed" };
+    }
   },
 });
 
