@@ -28,10 +28,16 @@ export function SearchBar({
 
   const { user: clerkUser } = useUser();
 
-  // Get autocomplete suggestions
+  // Get autocomplete suggestions (when typing)
   const suggestions = useQuery(
     api.searchHistory.getAutocompleteSuggestions,
     query.length >= 2 ? { clerkId: clerkUser?.id, prefix: query } : "skip"
+  );
+
+  // Get recent searches (when focused but not typing)
+  const recentSearches = useQuery(
+    api.searchHistory.getRecentSearches,
+    clerkUser?.id ? { clerkId: clerkUser.id, limit: 5 } : "skip"
   );
 
   const handleSubmit = useCallback(
@@ -161,7 +167,7 @@ export function SearchBar({
             setQuery(e.target.value);
             setShowSuggestions(e.target.value.length >= 2);
           }}
-          onFocus={() => query.length >= 2 && setShowSuggestions(true)}
+          onFocus={() => setShowSuggestions(true)}
           onKeyDown={handleKeyDown}
           placeholder={placeholder}
           className="w-full rounded-full border border-zinc-200 bg-white px-6 py-4 pr-14 text-lg text-zinc-900 placeholder-zinc-400 shadow-sm transition-shadow focus:border-zinc-400 focus:outline-none focus:ring-2 focus:ring-zinc-200 dark:border-zinc-700 dark:bg-zinc-900 dark:text-white dark:placeholder-zinc-500 dark:focus:border-zinc-600 dark:focus:ring-zinc-800"
@@ -238,31 +244,67 @@ export function SearchBar({
           )}
         </button>
 
-        {/* Autocomplete Suggestions */}
-        {showSuggestions && suggestions && suggestions.length > 0 && (
-          <div
-            ref={suggestionsRef}
-            className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
-          >
-            {suggestions.map((suggestion, index) => (
-              <button
-                key={`${suggestion.type}-${suggestion.query}-${index}`}
-                type="button"
-                onClick={() => handleSelectSuggestion(suggestion.query)}
-                className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
-                  index === selectedIndex
-                    ? "bg-zinc-100 dark:bg-zinc-800"
-                    : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                }`}
+        {/* Autocomplete Suggestions or Recent Searches */}
+        {showSuggestions && (
+          <>
+            {/* When typing: show autocomplete */}
+            {query.length >= 2 && suggestions && suggestions.length > 0 && (
+              <div
+                ref={suggestionsRef}
+                className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
               >
-                <span className="text-zinc-400">{getTypeIcon(suggestion.type)}</span>
-                <span className="flex-1 text-zinc-900 dark:text-white">
-                  {suggestion.query}
-                </span>
-                <span className="text-xs text-zinc-400 capitalize">{suggestion.type}</span>
-              </button>
-            ))}
-          </div>
+                {suggestions.map((suggestion, index) => (
+                  <button
+                    key={`${suggestion.type}-${suggestion.query}-${index}`}
+                    type="button"
+                    onClick={() => handleSelectSuggestion(suggestion.query)}
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                      index === selectedIndex
+                        ? "bg-zinc-100 dark:bg-zinc-800"
+                        : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    <span className="text-zinc-400">{getTypeIcon(suggestion.type)}</span>
+                    <span className="flex-1 text-zinc-900 dark:text-white">
+                      {suggestion.query}
+                    </span>
+                    <span className="text-xs text-zinc-400 capitalize">{suggestion.type}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            {/* When empty/focused: show recent searches */}
+            {query.length < 2 && recentSearches && recentSearches.length > 0 && (
+              <div
+                ref={suggestionsRef}
+                className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-lg dark:border-zinc-700 dark:bg-zinc-900"
+              >
+                <div className="px-4 py-2 text-xs font-medium text-zinc-500 dark:text-zinc-400 border-b border-zinc-100 dark:border-zinc-800">
+                  Recent Searches
+                </div>
+                {recentSearches.map((search, index) => (
+                  <button
+                    key={`recent-${search._id}-${index}`}
+                    type="button"
+                    onClick={() => handleSelectSuggestion(search.query)}
+                    className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                      index === selectedIndex
+                        ? "bg-zinc-100 dark:bg-zinc-800"
+                        : "hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                    }`}
+                  >
+                    <span className="text-zinc-400">{getTypeIcon("recent")}</span>
+                    <span className="flex-1 text-zinc-900 dark:text-white">
+                      {search.query}
+                    </span>
+                    <span className="text-xs text-zinc-400">
+                      {search.resultCount} results
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
       {!hideExample && (
