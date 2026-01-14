@@ -6,7 +6,9 @@ import { api } from "@/convex/_generated/api";
 import { Id } from "@/convex/_generated/dataModel";
 import { PhotoManager } from "./PhotoManager";
 import { ModelSelector } from "./ModelSelector";
+import { ClosetItemCard } from "./ClosetItemCard";
 import { LazyImage } from "@/components/ui/LazyImage";
+import { VirtualizedGrid } from "@/components/ui/VirtualizedGrid";
 import Link from "next/link";
 
 interface ClosetItem {
@@ -840,96 +842,43 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               </div>
             </div>
 
-            {/* Items Grid - Scrollable */}
-            <div className="flex-1 overflow-y-auto p-3">
-              {currentCategoryItems.length > 0 ? (
-                <div className="grid grid-cols-3 gap-2">
-                  {currentCategoryItems.map((item) => {
-                    const categoryKey = getCategoryKey(item.displayCategory || "other");
-                    const isSelected = selectedByCategory.get(categoryKey) === item._id;
-                    const otherSelectedInCategory = selectedByCategory.has(categoryKey) && !isSelected;
+            {/* Items Grid - Virtualized */}
+            <VirtualizedGrid
+              items={currentCategoryItems}
+              columns={3}
+              rowHeight={140}
+              gap={8}
+              className="flex-1 p-3"
+              keyExtractor={(item) => item._id}
+              renderItem={(item) => {
+                const categoryKey = getCategoryKey(item.displayCategory || "other");
+                const isSelected = selectedByCategory.get(categoryKey) === item._id;
+                const otherSelectedInCategory = selectedByCategory.has(categoryKey) && !isSelected;
 
-                    return (
-                      <button
-                        key={item._id}
-                        onClick={() => toggleItemSelection(item)}
-                        className={`relative overflow-hidden rounded-xl border-2 transition-all ${
-                          isSelected
-                            ? "border-moi-400 ring-2 ring-moi-400/30"
-                            : otherSelectedInCategory
-                            ? "border-transparent opacity-40"
-                            : "border-transparent"
-                        }`}
-                      >
-                        <div className="aspect-square">
-                          {item.displayImageUrl ? (
-                            <img
-                              src={item.displayImageUrl}
-                              alt={item.displayName || "Closet item"}
-                              className="h-full w-full object-cover"
-                            />
-                          ) : (
-                            <div className="flex h-full w-full items-center justify-center bg-zinc-100 dark:bg-zinc-800">
-                              <svg className="h-6 w-6 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                              </svg>
-                            </div>
-                          )}
-                        </div>
-                        {/* Product Name */}
-                        <div className="bg-white/90 dark:bg-zinc-900/90 px-1.5 py-1">
-                          <p className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 truncate">
-                            {item.displayName || "Unnamed"}
-                          </p>
-                        </div>
-                        {/* Owned/Wishlist Icon */}
-                        <div className="absolute left-1 top-1 rounded-full bg-white/90 p-0.5 shadow-sm dark:bg-zinc-900/90">
-                          {item.isOwned ? (
-                            <svg className="h-3 w-3 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          ) : item.isWishlist ? (
-                            <svg className="h-3 w-3 text-moi-500" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                            </svg>
-                          ) : null}
-                        </div>
-                        {/* Selection Indicator or Info Button */}
-                        {isSelected ? (
-                          <div className="absolute right-1 top-1 rounded-full bg-moi-400 p-0.5">
-                            <svg className="h-3 w-3 text-white" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        ) : (
-                          <div
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setDetailsItem(item);
-                            }}
-                            className="absolute right-0.5 top-0.5 rounded-full bg-white/90 dark:bg-zinc-900/90 p-1.5 shadow-sm cursor-pointer hover:bg-white dark:hover:bg-zinc-800"
-                            aria-label="View item details"
-                          >
-                            <svg className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                            </svg>
-                          </div>
-                        )}
-                      </button>
-                    );
-                  })}
+                return (
+                  <ClosetItemCard
+                    item={item}
+                    isSelected={isSelected}
+                    isOtherSelectedInCategory={otherSelectedInCategory}
+                    onSelect={() => toggleItemSelection(item)}
+                    onShowDetails={() => setDetailsItem(item)}
+                    variant="mobile"
+                  />
+                );
+              }}
+              emptyState={
+                <div className="flex-1 p-3">
+                  <div className="flex flex-col items-center justify-center py-6 text-center">
+                    <svg className="h-8 w-8 text-zinc-300 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                    </svg>
+                    <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                      No {activeCategory} in your closet
+                    </p>
+                  </div>
                 </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <svg className="h-8 w-8 text-zinc-300 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                    No {activeCategory} in your closet
-                  </p>
-                </div>
-              )}
-            </div>
+              }
+            />
           </div>
 
           {/* Mobile Preview Section (Bottom) - Virtual Try-On */}
@@ -1695,83 +1644,86 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
             </div>
           </div>
 
-          {/* Items Grid */}
-          <div className="flex-1 overflow-y-auto px-6 pt-3 pb-6">
-            {currentCategoryItems.length > 0 ? (
-              <div className="grid grid-cols-3 gap-3">
-                {currentCategoryItems.map((item) => {
-                  const categoryKey = getCategoryKey(item.displayCategory || "other");
-                  const isSelected = selectedByCategory.get(categoryKey) === item._id;
-                  const otherSelectedInCategory = selectedByCategory.has(categoryKey) && !isSelected;
+          {/* Items Grid - Virtualized */}
+          <VirtualizedGrid
+            items={currentCategoryItems}
+            columns={3}
+            rowHeight={160}
+            gap={12}
+            className="flex-1 px-6 pt-3 pb-6"
+            keyExtractor={(item) => item._id}
+            renderItem={(item) => {
+              const categoryKey = getCategoryKey(item.displayCategory || "other");
+              const isSelected = selectedByCategory.get(categoryKey) === item._id;
+              const otherSelectedInCategory = selectedByCategory.has(categoryKey) && !isSelected;
 
-                  return (
-                    <button
-                      key={item._id}
-                      onClick={() => toggleItemSelection(item)}
-                      className={`group relative aspect-square overflow-hidden rounded-xl border-2 transition-all ${
-                        isSelected ? "border-moi-400 ring-2 ring-moi-400/20"
-                          : otherSelectedInCategory ? "border-transparent opacity-50 hover:opacity-75"
-                          : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600"
-                      }`}
+              return (
+                <button
+                  onClick={() => toggleItemSelection(item)}
+                  className={`group relative aspect-square overflow-hidden rounded-xl border-2 transition-all w-full h-full ${
+                    isSelected ? "border-moi-400 ring-2 ring-moi-400/20"
+                      : otherSelectedInCategory ? "border-transparent opacity-50 hover:opacity-75"
+                      : "border-transparent hover:border-zinc-300 dark:hover:border-zinc-600"
+                  }`}
+                >
+                  <LazyImage
+                    src={item.displayImageUrl}
+                    alt={item.displayName || "Closet item"}
+                    className="h-full w-full object-cover"
+                    fallbackIcon={
+                      <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                      </svg>
+                    }
+                  />
+                  <div className="absolute left-1 top-1 rounded-full bg-white/90 p-1 shadow-sm dark:bg-zinc-900/90">
+                    {item.isOwned ? (
+                      <svg className="h-3.5 w-3.5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    ) : (
+                      <svg className="h-3.5 w-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      </svg>
+                    )}
+                  </div>
+                  {isSelected ? (
+                    <div className="absolute right-1 top-1 rounded-full bg-moi-400 p-1">
+                      <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                      </svg>
+                    </div>
+                  ) : (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDetailsItem(item);
+                      }}
+                      className="absolute right-1 top-1 rounded-full bg-white/90 dark:bg-zinc-900/90 p-1.5 shadow-sm cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white dark:hover:bg-zinc-800"
                     >
-                      <LazyImage
-                        src={item.displayImageUrl}
-                        alt={item.displayName || "Closet item"}
-                        className="h-full w-full object-cover"
-                        fallbackIcon={
-                          <svg className="h-8 w-8 text-zinc-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                          </svg>
-                        }
-                      />
-                      <div className="absolute left-1 top-1 rounded-full bg-white/90 p-1 shadow-sm dark:bg-zinc-900/90">
-                        {item.isOwned ? (
-                          <svg className="h-3.5 w-3.5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg className="h-3.5 w-3.5 text-red-500" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
-                          </svg>
-                        )}
-                      </div>
-                      {/* Selection Indicator or Info Button */}
-                      {isSelected ? (
-                        <div className="absolute right-1 top-1 rounded-full bg-moi-400 p-1">
-                          <svg className="h-4 w-4 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
-                          </svg>
-                        </div>
-                      ) : (
-                        <div
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setDetailsItem(item);
-                          }}
-                          className="absolute right-1 top-1 rounded-full bg-white/90 dark:bg-zinc-900/90 p-1.5 shadow-sm cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity hover:bg-white dark:hover:bg-zinc-800"
-                        >
-                          <svg className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                        </div>
-                      )}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
-                        <p className="truncate text-xs font-medium text-white">{item.displayName}</p>
-                        {item.displayBrand && <p className="truncate text-xs text-white/70">{item.displayBrand}</p>}
-                      </div>
-                    </button>
-                  );
-                })}
+                      <svg className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </div>
+                  )}
+                  <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+                    <p className="truncate text-xs font-medium text-white">{item.displayName}</p>
+                    {item.displayBrand && <p className="truncate text-xs text-white/70">{item.displayBrand}</p>}
+                  </div>
+                </button>
+              );
+            }}
+            emptyState={
+              <div className="flex-1 px-6 pt-3 pb-6">
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                  <svg className="h-12 w-12 text-zinc-300 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+                  </svg>
+                  <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No {activeCategory} in your closet</p>
+                </div>
               </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <svg className="h-12 w-12 text-zinc-300 dark:text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                </svg>
-                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No {activeCategory} in your closet</p>
-              </div>
-            )}
-          </div>
+            }
+          />
 
           {/* Selected Summary & Recent Outfits */}
           {selectedByCategory.size > 0 && (
