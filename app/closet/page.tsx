@@ -328,7 +328,7 @@ function SortableListItem({
         )}
         {/* Status Badge inline */}
         {item.isOwned ? (
-          <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+          <span className="inline-flex items-center gap-0.5 rounded-full bg-pink-300 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
             <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
             </svg>
@@ -475,7 +475,7 @@ function SortableItem({
           )}
           {/* Status Badge inline on mobile */}
           {item.isOwned ? (
-            <span className="inline-flex items-center gap-0.5 rounded-full bg-purple-500 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
+            <span className="inline-flex items-center gap-0.5 rounded-full bg-pink-300 px-1.5 py-0.5 text-[10px] sm:text-xs font-medium text-white leading-none">
               <svg className="h-2.5 w-2.5 sm:h-3 sm:w-3 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                 <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
               </svg>
@@ -1612,7 +1612,7 @@ export default function ClosetPage() {
             onClick={() => { setTypeFilter("owned"); setSelectedCategory(null); }}
             className={`inline-flex items-center gap-1 rounded-lg px-2 py-1 sm:px-4 sm:py-2 text-xs sm:text-sm font-medium transition-colors ${
               typeFilter === "owned"
-                ? "bg-purple-500 text-white"
+                ? "bg-pink-300 text-white"
                 : "bg-zinc-100 text-zinc-700 hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
             }`}
           >
@@ -1864,7 +1864,7 @@ export default function ClosetPage() {
                     onClick={() => { setEditIsOwned(true); setEditIsWishlist(false); }}
                     className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium transition-all ${
                       editIsOwned
-                        ? "border-purple-500 bg-purple-500 text-white"
+                        ? "border-pink-300 bg-pink-300 text-white"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                     }`}
                   >
@@ -2671,10 +2671,10 @@ export default function ClosetPage() {
               <div className="absolute left-3 top-3 rounded-full bg-white/90 dark:bg-zinc-900/90 px-2.5 py-1.5 flex items-center gap-1 shadow-sm">
                 {detailsItem.isOwned ? (
                   <>
-                    <svg className="h-4 w-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-4 w-4 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Owned</span>
+                    <span className="text-xs font-medium text-pink-500 dark:text-pink-400">Owned</span>
                   </>
                 ) : detailsItem.isWishlist ? (
                   <>

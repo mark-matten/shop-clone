@@ -265,13 +265,17 @@ export const getSavedOutfits = query({
         // Get item details
         const itemIdsToLookup: string[] = outfit.itemIds ||
           (outfit.closetItemIds ? outfit.closetItemIds.map(id => id.toString()) : []);
+        console.log("[getSavedOutfits] Looking up items for outfit:", outfit._id, "itemIds:", itemIdsToLookup);
         const items = await Promise.all(
           itemIdsToLookup.map(async (id) => {
+            console.log("[getSavedOutfits] Looking up item ID:", id);
             // Try direct lookup by _id first (most reliable method)
             let closetItemDoc = null;
             try {
               closetItemDoc = await ctx.db.get(id as Id<"closet_items">);
-            } catch {
+              console.log("[getSavedOutfits] closet_items lookup result:", closetItemDoc ? "found" : "not found", closetItemDoc?.isWishlist);
+            } catch (e) {
+              console.log("[getSavedOutfits] closet_items lookup error:", e);
               // ID format might not match, try productId lookup
             }
 
@@ -281,6 +285,7 @@ export const getSavedOutfits = query({
                 .query("closet_items")
                 .filter((q) => q.eq(q.field("productId"), id as any))
                 .first();
+              console.log("[getSavedOutfits] productId lookup result:", closetItemDoc ? "found" : "not found");
             }
 
             if (closetItemDoc) {
@@ -291,6 +296,7 @@ export const getSavedOutfits = query({
               // Determine ownership status
               const isWishlist = closetItemDoc.isWishlist === true;
               const isOwned = !isWishlist;
+              console.log("[getSavedOutfits] Returning closet item with isOwned:", isOwned, "isWishlist:", isWishlist);
 
               // Get product info if linked
               if (closetItemDoc.productId) {
@@ -330,13 +336,16 @@ export const getSavedOutfits = query({
             let favoriteDoc = null;
             try {
               favoriteDoc = await ctx.db.get(id as Id<"favorites">);
-            } catch {
+              console.log("[getSavedOutfits] favorites lookup result:", favoriteDoc ? "found" : "not found");
+            } catch (e) {
+              console.log("[getSavedOutfits] favorites lookup error:", e);
               // ID format might not match
             }
 
             if (favoriteDoc && favoriteDoc.productId) {
               const product = await ctx.db.get(favoriteDoc.productId);
               if (product) {
+                console.log("[getSavedOutfits] Returning favorite item with isOwned: false, isWishlist: true");
                 return {
                   _id: favoriteDoc._id,
                   productId: favoriteDoc.productId.toString(),
@@ -355,6 +364,7 @@ export const getSavedOutfits = query({
               }
             }
 
+            console.log("[getSavedOutfits] Item not found in any table for ID:", id);
             return null;
           })
         );
@@ -428,6 +438,9 @@ export const getOutfitHistory = query({
             }
 
             if (closetItemDoc) {
+              // Determine ownership status
+              const isWishlistItem = closetItemDoc.isWishlist === true;
+
               // For product-linked closet items
               if (closetItemDoc.productId) {
                 const product = await ctx.db.get(closetItemDoc.productId);
@@ -442,6 +455,8 @@ export const getOutfitHistory = query({
                   material: closetItemDoc.material || product?.material,
                   gender: closetItemDoc.gender || product?.gender,
                   productId: closetItemDoc.productId.toString(), // For linking to product page
+                  isOwned: !isWishlistItem,
+                  isWishlist: isWishlistItem,
                 };
               }
 
@@ -462,6 +477,8 @@ export const getOutfitHistory = query({
                 material: closetItemDoc.material,
                 gender: closetItemDoc.gender,
                 productId: undefined, // No product link for URL/generated items
+                isOwned: !isWishlistItem,
+                isWishlist: isWishlistItem,
               };
             }
 
@@ -487,6 +504,8 @@ export const getOutfitHistory = query({
                   material: product.material,
                   gender: product.gender,
                   productId: favorite.productId.toString(), // For linking to product page
+                  isOwned: false,
+                  isWishlist: true,
                 };
               }
             }

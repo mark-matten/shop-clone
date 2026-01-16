@@ -1659,7 +1659,7 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                   />
                   <div className="absolute left-1 top-1 rounded-full bg-white/90 p-1 shadow-sm dark:bg-zinc-900/90">
                     {item.isOwned ? (
-                      <svg className="h-3.5 w-3.5 text-purple-500" fill="currentColor" viewBox="0 0 20 20">
+                      <svg className="h-3.5 w-3.5 text-pink-300" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                       </svg>
                     ) : (
@@ -2300,10 +2300,10 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
               <div className="absolute left-3 top-3 rounded-full bg-white/90 dark:bg-zinc-900/90 px-2 py-1 flex items-center gap-1 shadow-sm">
                 {detailsItem.isOwned ? (
                   <>
-                    <svg className="h-4 w-4 text-emerald-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="h-4 w-4 text-pink-400" fill="currentColor" viewBox="0 0 20 20">
                       <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
                     </svg>
-                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">Owned</span>
+                    <span className="text-xs font-medium text-pink-500 dark:text-pink-400">Owned</span>
                   </>
                 ) : detailsItem.isWishlist ? (
                   <>

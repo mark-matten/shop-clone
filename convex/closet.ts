@@ -953,6 +953,8 @@ export const getAllClosetItems = query({
       }
 
       if (productIdStr && displayName && displayCategory) {
+        // Check if this closet item is marked as wishlist (for user-added wishlist items)
+        const isWishlistItem = item.isWishlist === true;
         itemsByProductId.set(productIdStr, {
           _id: item._id.toString(),
           productId: productIdStr,
@@ -960,8 +962,8 @@ export const getAllClosetItems = query({
           displayBrand,
           displayCategory,
           displayImageUrl,
-          isOwned: true,
-          isWishlist: false,
+          isOwned: !isWishlistItem,
+          isWishlist: isWishlistItem,
           addedAt: item.addedAt,
           sortOrder: item.sortOrder,
           source,

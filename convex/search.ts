@@ -1641,11 +1641,11 @@ export const filterProductsInternal = internalQuery({
 
       // Score for brand match
       if (product.brand) {
-        score += calculateBrandScore(product.brand, nameMatchWords, cleanedQuery);
+        score += calculateBrandScore(product.brand, nameMatchWords, queryLower);
       }
 
       // Bonus for exact phrase match in product name
-      if (cleanedQuery.length >= 3 && hasExactPhraseMatch(product.name, cleanedQuery)) {
+      if (queryLower.length >= 3 && hasExactPhraseMatch(product.name, queryLower)) {
         score += 35; // Strong bonus for products containing the exact search phrase
       }
 

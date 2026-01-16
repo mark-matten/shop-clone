@@ -493,7 +493,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                     onClick={() => setDescOwnership("owned")}
                     className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all ${
                       descOwnership === "owned"
-                        ? "border-purple-500 bg-purple-500 text-white"
+                        ? "border-pink-300 bg-pink-300 text-white"
                         : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                     }`}
                     disabled={isLoading}
@@ -698,7 +698,7 @@ export function AddClothesModal({ isOpen, onClose, clerkId, onItemAdded }: AddCl
                         onClick={() => setUrlOwnership("owned")}
                         className={`flex flex-1 items-center justify-center gap-2 rounded-lg border px-3 py-2.5 text-sm font-medium transition-all ${
                           urlOwnership === "owned"
-                            ? "border-purple-500 bg-purple-500 text-white"
+                            ? "border-pink-300 bg-pink-300 text-white"
                             : "border-zinc-200 bg-white text-zinc-700 hover:border-zinc-400 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:border-zinc-500"
                         }`}
                         disabled={isLoading}

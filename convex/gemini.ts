@@ -284,7 +284,17 @@ export const generateTryOnImage = action({
           });
           if (closetItem) return closetItem;
         } catch {
-          // Not a valid closet_item ID, try as product
+          // Not a valid closet_item ID, try other tables
+        }
+
+        // Try as a favorites ID (for wishlist items)
+        try {
+          const favoriteItem = await ctx.runQuery(internal.gemini.getFavoriteWithImage, {
+            favoriteId: id as Id<"favorites">,
+          });
+          if (favoriteItem) return favoriteItem;
+        } catch {
+          // Not a valid favorites ID, try as product
         }
 
         // Fallback: try as a product ID (for backwards compatibility)
@@ -299,9 +309,11 @@ export const generateTryOnImage = action({
     );
 
     const validItems = items.filter((item): item is NonNullable<typeof item> => item !== null);
-    console.log("[TryOn] Found", validItems.length, "valid items");
+    console.log("[TryOn] Found", validItems.length, "valid items out of", items.length, "total");
+    console.log("[TryOn] Input productIds:", args.productIds);
+    console.log("[TryOn] Items lookup results:", items.map((item, i) => item ? `${i}: found (${item.name})` : `${i}: null`));
     if (validItems.length === 0) {
-      throw new Error("No valid items provided");
+      throw new Error(`No valid items provided. Input IDs: ${args.productIds.join(", ")}`);
     }
 
     // Build prompt
@@ -344,22 +356,27 @@ export const generateTryOnImage = action({
       });
 
       promptParts.push(
-        "CREATE A LAYERED DRESS OUTFIT:",
+        "🚨 LAYERED OUTFIT - READ CAREFULLY:",
         "",
-        `This is a ${topItem?.name || "sweater"} worn OVER a ${dressItem?.name || "dress"}.`,
+        "This is a TWO-PIECE LAYERED LOOK where a top is worn OVER a dress:",
+        `  1. THE DRESS (${dressItem?.name || "dress"}): A full-length dress that covers the ENTIRE lower body`,
+        `  2. THE TOP (${topItem?.name || "sweater/top"}): Worn ON TOP of the dress, covering the torso`,
         "",
-        "EXACT VISUAL DESCRIPTION OF THE FINAL IMAGE:",
-        `- Upper body: Model wearing the ${topItem?.name || "top"} - it ends around the waist or hips`,
-        `- Lower body: The ${dressItem?.name || "dress"} fabric is VISIBLE below the top, flowing down and covering the legs`,
-        "- The dress extends from below the top all the way down to mid-calf or ankles",
-        "- You can see the dress material/fabric on the model's legs - NOT pants, NOT jeans, NOT bare skin",
+        "WHAT THE MODEL MUST LOOK LIKE:",
+        "✅ TORSO: Wearing the sweater/top (only this visible on upper body)",
+        "✅ WAIST TO ANKLES: The DRESS skirt portion is visible - flowing fabric covering legs",
+        "✅ The dress fabric MUST be visible from the bottom of the sweater down to the feet",
         "",
-        "STYLE REFERENCE: Like a cozy fall outfit with a chunky sweater layered over a flowy maxi dress.",
+        "THINK OF IT LIKE THIS:",
+        "- Imagine someone wearing a maxi dress, then putting on a cropped sweater on top",
+        "- The sweater hides the top of the dress, but the dress skirt flows out below",
+        "- The model's legs are completely COVERED by dress fabric (not bare, not pants)",
         "",
-        `ITEMS IN THIS OUTFIT (exactly ${validItems.length}):`,
-        ...validItems.map(item => `  ✓ ${item.name} (${item.category})`),
-        "",
-        "⛔ DO NOT SHOW: pants, jeans, trousers, leggings, or bare legs. The DRESS covers the legs.",
+        "❌ ABSOLUTELY DO NOT SHOW:",
+        "- NO pants, jeans, or trousers",
+        "- NO bare legs or skin below the waist",
+        "- NO leggings or tights",
+        "- The lower body is 100% covered by DRESS FABRIC",
         ""
       );
     } else {
@@ -445,11 +462,11 @@ export const generateTryOnImage = action({
     if (hasDress && hasTop && !hasBottoms) {
       // Dress + Top - reinforce the layered look
       promptParts.push(
-        "LAYERING DETAILS:",
-        "- The sweater/top is worn ON TOP of the dress (dress underneath)",
-        "- From waist/hip down, only the DRESS is visible - no other clothing",
-        "- The dress fabric flows down covering the entire lower body",
-        "- This is a DRESS outfit, not a pants outfit",
+        "🔴 REMINDER - LAYERED DRESS OUTFIT:",
+        "- The sweater/top is worn ON TOP of the dress",
+        "- Below the sweater, you MUST see DRESS FABRIC flowing down to cover the legs",
+        "- The dress skirt is the ONLY thing covering the lower body",
+        "- Picture: cropped sweater + long flowing dress underneath = dress fabric visible below sweater",
         ""
       );
     } else if (hasDress && hasTop && hasBottoms) {
@@ -504,7 +521,10 @@ export const generateTryOnImage = action({
     if (hasDress && hasTop && !hasBottoms) {
       promptParts.push(
         "",
-        "🚨 REMINDER: This is a LAYERED DRESS look. The model's legs are covered by DRESS FABRIC (not pants). Show the dress flowing from under the sweater/top down to the ankles."
+        "🚨 FINAL CHECK - LAYERED DRESS OUTFIT:",
+        "Before generating, confirm: Is dress fabric visible below the sweater covering the model's legs?",
+        "✅ CORRECT: Sweater on top, dress skirt visible flowing from waist to ankles",
+        "❌ WRONG: Sweater with pants, bare legs, or any other bottom garment"
       );
     }
 
@@ -737,6 +757,28 @@ export const getProductWithImage = internalQuery({
       brand: product.brand,
       category: product.category,
       color: product.colorName,
+      material: product.material,
+      imageStorageId: undefined as Id<"_storage"> | undefined,
+      imageUrl: product.imageUrl,
+    };
+  },
+});
+
+// Internal query to get favorite item with its product image
+export const getFavoriteWithImage = internalQuery({
+  args: { favoriteId: v.id("favorites") },
+  handler: async (ctx, args) => {
+    const favorite = await ctx.db.get(args.favoriteId);
+    if (!favorite || !favorite.productId) return null;
+
+    const product = await ctx.db.get(favorite.productId);
+    if (!product) return null;
+
+    return {
+      name: product.name,
+      brand: product.brand,
+      category: favorite.customCategory || product.category,
+      color: favorite.colorName || product.colorName,
       material: product.material,
       imageStorageId: undefined as Id<"_storage"> | undefined,
       imageUrl: product.imageUrl,
