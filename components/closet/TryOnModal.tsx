@@ -1261,12 +1261,23 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       </button>
                     )}
                     {savedOutfitId && (
-                      <span className="flex items-center gap-2 rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Saved
-                      </span>
+                      <>
+                        <span className="flex items-center gap-2 rounded-lg bg-green-100 px-4 py-2 text-sm font-medium text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Saved
+                        </span>
+                        <Link
+                          href={`/closet?outfit=${savedOutfitId}`}
+                          className="flex items-center gap-2 rounded-lg bg-moi-100 px-4 py-2 text-sm font-medium text-moi-700 hover:bg-moi-200 transition-colors dark:bg-moi-900/30 dark:text-moi-400 dark:hover:bg-moi-900/50"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+                          </svg>
+                          View in Closet
+                        </Link>
+                      </>
                     )}
                     <button
                       onClick={handleDownloadOutfit}
