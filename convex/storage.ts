@@ -288,6 +288,10 @@ export const getSavedOutfits = query({
               if (closetItemDoc.source === "generated" && closetItemDoc.generatedImageStorageId) {
                 imageUrl = await ctx.storage.getUrl(closetItemDoc.generatedImageStorageId) ?? undefined;
               }
+              // Determine ownership status
+              const isWishlist = closetItemDoc.isWishlist === true;
+              const isOwned = !isWishlist;
+
               // Get product info if linked
               if (closetItemDoc.productId) {
                 const product = await ctx.db.get(closetItemDoc.productId);
@@ -303,6 +307,8 @@ export const getSavedOutfits = query({
                   gender: closetItemDoc.gender || product?.gender,
                   colorName: closetItemDoc.colorName || product?.colorName,
                   size: closetItemDoc.selectedSize || closetItemDoc.size,
+                  isOwned,
+                  isWishlist,
                 };
               }
               return {
@@ -315,8 +321,40 @@ export const getSavedOutfits = query({
                 gender: closetItemDoc.gender,
                 colorName: closetItemDoc.color || closetItemDoc.colorName,
                 size: closetItemDoc.size,
+                isOwned,
+                isWishlist,
               };
             }
+
+            // Try favorites table (all favorites are wishlist items)
+            let favoriteDoc = null;
+            try {
+              favoriteDoc = await ctx.db.get(id as Id<"favorites">);
+            } catch {
+              // ID format might not match
+            }
+
+            if (favoriteDoc && favoriteDoc.productId) {
+              const product = await ctx.db.get(favoriteDoc.productId);
+              if (product) {
+                return {
+                  _id: favoriteDoc._id,
+                  productId: favoriteDoc.productId.toString(),
+                  name: product.name,
+                  imageUrl: product.imageUrl,
+                  brand: product.brand,
+                  price: product.price,
+                  category: favoriteDoc.customCategory || product.category,
+                  material: product.material,
+                  gender: product.gender,
+                  colorName: favoriteDoc.colorName || product.colorName,
+                  size: favoriteDoc.size,
+                  isOwned: false,
+                  isWishlist: true,
+                };
+              }
+            }
+
             return null;
           })
         );

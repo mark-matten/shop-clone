@@ -2376,8 +2376,8 @@ export default function ClosetPage() {
                                 colorName: item.colorName,
                               },
                               selectedOptions: item.size ? { "Size": item.size } : undefined,
-                              isOwned: true,
-                              isWishlist: false,
+                              isOwned: item.isOwned ?? true,
+                              isWishlist: item.isWishlist ?? false,
                               addedAt: Date.now(),
                               isUserAdded: !item.productId, // No productId means user-added item
                             })}
