@@ -80,7 +80,7 @@ export function FollowingList({ clerkId, onFindFriends }: FollowingListProps) {
         </p>
         <button
           onClick={onFindFriends}
-          className="mt-4 rounded-lg bg-moi-600 px-4 py-2 text-sm font-medium text-white hover:bg-moi-700"
+          className="mt-4 rounded-lg bg-moi-400 px-4 py-2 text-sm font-medium text-white hover:bg-moi-500"
         >
           Find Friends
         </button>
