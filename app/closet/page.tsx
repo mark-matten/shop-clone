@@ -693,6 +693,7 @@ export default function ClosetPage() {
   const [showSavedOutfitsModal, setShowSavedOutfitsModal] = useState(false);
   const [showFindFriendsModal, setShowFindFriendsModal] = useState(false);
   const [outfitCollectionFilter, setOutfitCollectionFilter] = useState<string | null>(null);
+  const [sourceOutfitForCollection, setSourceOutfitForCollection] = useState<{ id: string; name: string } | null>(null);
   const [selectedOutfit, setSelectedOutfit] = useState<typeof savedOutfits extends (infer T)[] | undefined ? T | null : never>(null);
   const [isEditingOutfit, setIsEditingOutfit] = useState(false);
   const [editOutfitName, setEditOutfitName] = useState("");
@@ -2171,7 +2172,7 @@ export default function ClosetPage() {
       {showSavedOutfitsModal && (
         <div
           className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 p-0 sm:p-4 pt-safe"
-          onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); }}
+          onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); setOutfitCollectionFilter(null); setSourceOutfitForCollection(null); }}
         >
           <div
             className="w-full sm:max-w-2xl rounded-t-2xl sm:rounded-2xl bg-white p-3 sm:p-4 sm:p-6 dark:bg-zinc-900 max-h-[calc(100dvh-env(safe-area-inset-top,0px)-1rem)] sm:max-h-[85vh] overflow-hidden flex flex-col"
@@ -2206,6 +2207,10 @@ export default function ClosetPage() {
                   {(selectedOutfit as any).collectionId && collections && (
                     <button
                       onClick={() => {
+                        setSourceOutfitForCollection({
+                          id: (selectedOutfit as any)._id,
+                          name: (selectedOutfit as any).name || "Untitled Outfit"
+                        });
                         setOutfitCollectionFilter((selectedOutfit as any).collectionId);
                         setSelectedOutfit(null);
                       }}
@@ -2217,7 +2222,7 @@ export default function ClosetPage() {
                 </div>
               )}
               <button
-                onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); setOutfitCollectionFilter(null); }}
+                onClick={() => { setShowSavedOutfitsModal(false); setSelectedOutfit(null); setIsEditingOutfit(false); setOutfitCollectionFilter(null); setSourceOutfitForCollection(null); }}
                 className="rounded-full p-1.5 text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               >
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -2519,11 +2524,31 @@ export default function ClosetPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
+                  {/* Back to outfit link */}
+                  {sourceOutfitForCollection && outfitCollectionFilter && (
+                    <button
+                      onClick={() => {
+                        const outfit = savedOutfits?.find((o) => o._id === sourceOutfitForCollection.id);
+                        if (outfit) {
+                          setSelectedOutfit(outfit);
+                        }
+                        setSourceOutfitForCollection(null);
+                        setOutfitCollectionFilter(null);
+                      }}
+                      className="flex items-center gap-1.5 text-sm text-moi-500 hover:text-moi-600 dark:text-moi-400 dark:hover:text-moi-300"
+                    >
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                      </svg>
+                      Back to {sourceOutfitForCollection.name}
+                    </button>
+                  )}
+
                   {/* Collection filter tabs */}
                   {collections && collections.length > 0 && (
                     <div className="flex gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:flex-wrap scrollbar-hide">
                       <button
-                        onClick={() => setOutfitCollectionFilter(null)}
+                        onClick={() => { setOutfitCollectionFilter(null); setSourceOutfitForCollection(null); }}
                         className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                           outfitCollectionFilter === null
                             ? "bg-moi-400 text-white"
@@ -2535,7 +2560,7 @@ export default function ClosetPage() {
                       {collections.map((col) => (
                         <button
                           key={col._id}
-                          onClick={() => setOutfitCollectionFilter(col._id)}
+                          onClick={() => { setOutfitCollectionFilter(col._id); setSourceOutfitForCollection(null); }}
                           className={`flex-shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
                             outfitCollectionFilter === col._id
                               ? "bg-moi-400 text-white"
