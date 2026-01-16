@@ -869,6 +869,22 @@ export default function ClosetPage() {
     }
   }, [searchParams, user?.id, addFavorite, router]);
 
+  // Handle outfit URL parameter (from TryOnModal "View in Closet" button)
+  useEffect(() => {
+    const outfitId = searchParams.get("outfit");
+    if (outfitId && savedOutfits) {
+      const outfit = savedOutfits.find((o) => o._id === outfitId);
+      if (outfit) {
+        setShowSavedOutfitsModal(true);
+        setSelectedOutfit(outfit);
+        // Clear the URL parameter
+        const newUrl = new URL(window.location.href);
+        newUrl.searchParams.delete("outfit");
+        router.replace(newUrl.pathname + newUrl.search);
+      }
+    }
+  }, [searchParams, savedOutfits, router]);
+
   // Combine closet items and favorites into a unified list
   const combinedItems = useMemo((): CombinedItem[] => {
     if (!closetItems && !favorites) return [];

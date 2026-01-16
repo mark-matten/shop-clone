@@ -946,12 +946,23 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                       </button>
                     )}
                     {savedOutfitId && (
-                      <span className="flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700">
-                        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                        </svg>
-                        Saved
-                      </span>
+                      <>
+                        <span className="flex items-center gap-1.5 rounded-lg bg-green-100 px-3 py-1.5 text-xs font-medium text-green-700">
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                          Saved
+                        </span>
+                        <Link
+                          href={`/closet?outfit=${savedOutfitId}`}
+                          className="flex items-center gap-1.5 rounded-lg bg-moi-100 px-3 py-1.5 text-xs font-medium text-moi-700 hover:bg-moi-200 dark:bg-moi-900/30 dark:text-moi-400 dark:hover:bg-moi-900/50"
+                        >
+                          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+                          </svg>
+                          View in Closet
+                        </Link>
+                      </>
                     )}
                     <button
                       onClick={handleDownloadOutfit}
@@ -1165,47 +1176,6 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                                 </span>
                               </div>
                             )}
-                            {/* Edit button - mobile */}
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setEditingOutfitId(outfit._id);
-                                setEditingOutfitName(outfit.name || "");
-                                setEditingOutfitCollectionId(outfit.collectionId || null);
-                              }}
-                              className="absolute -right-1 top-1/2 -translate-y-1/2 flex h-5 w-5 items-center justify-center rounded-full bg-moi-500 text-white shadow-lg"
-                            >
-                              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                              </svg>
-                            </button>
-                            {/* Reorder buttons - mobile */}
-                            <div className="absolute -left-1 top-1/2 -translate-y-1/2 flex flex-col gap-0.5">
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  reorderOutfit({ clerkId, outfitId: outfit._id, direction: "up" });
-                                }}
-                                className="flex h-4 w-4 items-center justify-center rounded-full bg-zinc-600 text-white shadow-lg hover:bg-zinc-500"
-                                title="Move left"
-                              >
-                                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                                </svg>
-                              </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  reorderOutfit({ clerkId, outfitId: outfit._id, direction: "down" });
-                                }}
-                                className="flex h-4 w-4 items-center justify-center rounded-full bg-zinc-600 text-white shadow-lg hover:bg-zinc-500"
-                                title="Move right"
-                              >
-                                <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                                </svg>
-                              </button>
-                            </div>
                           </div>
                         ) : (
                           <div className="flex h-24 w-24 items-center justify-center rounded-xl bg-zinc-200 dark:bg-zinc-700">
@@ -1884,21 +1854,6 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                             </div>
                           )}
                         </div>
-                        {/* Edit button */}
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingOutfitId(outfit._id);
-                            setEditingOutfitName(outfit.name || "");
-                            setEditingOutfitCollectionId(outfit.collectionId || null);
-                          }}
-                          className="absolute -left-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-moi-500 text-white opacity-0 group-hover:opacity-100 transition-opacity hover:bg-moi-600"
-                          title="Edit"
-                        >
-                          <svg className="h-2.5 w-2.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                          </svg>
-                        </button>
                         {/* X button to remove individual outfit */}
                         <button
                           onClick={(e) => handleRemoveFromHistory(e, outfit._id)}
@@ -1909,33 +1864,6 @@ export function TryOnModal({ isOpen, onClose, clerkId, initialItem }: TryOnModal
                             <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                           </svg>
                         </button>
-                        {/* Reorder buttons - desktop */}
-                        <div className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              reorderOutfit({ clerkId, outfitId: outfit._id, direction: "up" });
-                            }}
-                            className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-zinc-600 text-white hover:bg-zinc-500"
-                            title="Move left"
-                          >
-                            <svg className="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
-                            </svg>
-                          </button>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              reorderOutfit({ clerkId, outfitId: outfit._id, direction: "down" });
-                            }}
-                            className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-zinc-600 text-white hover:bg-zinc-500"
-                            title="Move right"
-                          >
-                            <svg className="h-2 w-2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                        </div>
                       </div>
                     );
                   })}
